@@ -1,147 +1,144 @@
-import { Bell, Settings, User, LogOut, Calculator } from "lucide-react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
-import { clsx } from "clsx";
-import { useState, useRef, useEffect } from "react";
-import { useUser } from "../context/UserContext";
+import { Search, Bell, Plus, ChevronDown, User, LogOut, Settings as SettingsIcon, MessageSquare, LogIn } from 'lucide-react';
+import { useState } from 'react';
+import { useUser } from '../context/UserContext';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function Header() {
   const { profile } = useUser();
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
+  const location = useLocation();
+  const isAuthPage = ['/login', '/forgot-password', '/register'].includes(location.pathname);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setActiveDropdown(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const navItems = [
-    { label: "Dashboard", path: "/" },
-    { label: "Clientes", path: "/clients" },
-    { label: "Proyectos", path: "/projects" },
-    { label: "Tablero", path: "/kanban" },
-    { label: "Tiempos", path: "/timesheet" },
-    { label: "Reportes", path: "/reports" },
-    { label: "Finanzas", path: "/finance" },
-    { label: "Stack Tech", path: "/tech-stack" },
-  ];
+  if (isAuthPage) return null;
 
   return (
-    <header className="flex shrink-0 items-center justify-between w-full z-50 relative">
-      {/* Logo */}
-      <div className="flex items-center gap-4">
-        <svg viewBox="0 0 200 60" className="h-8" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="0" y="0" width="16" height="60" fill="#111111" />
-          <text x="24" y="44" fontFamily="sans-serif" fontWeight="bold" fontSize="42" fill="#111111" letterSpacing="-0.05em">ingentia</text>
-        </svg>
+    <header className="h-20 bg-white/60 backdrop-blur-xl border-b border-white/40 px-8 flex items-center justify-between sticky top-0 z-40">
+      {/* Left Search */}
+      <div className="flex-1 max-w-md">
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#999999] group-focus-within:text-[#1A1A1A] transition-colors" size={18} />
+          <input 
+            type="text" 
+            placeholder="Buscar proyectos, clientes, facturas..." 
+            className="w-full h-11 bg-white/40 border border-white/60 rounded-full pl-12 pr-4 outline-none focus:ring-2 focus:ring-[#FFD166]/50 focus:border-[#FFD166]/50 transition-all font-medium text-sm text-[#1A1A1A] placeholder:text-[#999999]"
+          />
+        </div>
       </div>
 
-      {/* Navigation Pill */}
-      <nav className="hidden lg:flex items-center bg-white/40 backdrop-blur-md rounded-full p-1.5 shadow-sm border border-white/50">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              clsx(
-                "px-5 py-2 rounded-full text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-[#222222] text-white shadow-md"
-                  : "text-[#4A4A4A] hover:text-[#111111] hover:bg-white/50"
-              )
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-
       {/* Right Actions */}
-      <div className="flex items-center gap-3 ml-auto lg:ml-0" ref={dropdownRef}>
-        <Link to="/smart-quoter" className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#222222] text-[#FFD166] hover:bg-black transition-colors text-sm font-bold shadow-md">
-          <Calculator size={16} />
-          <span className="hidden sm:inline">Smart Quoter</span>
-        </Link>
-        <Link to="/settings" className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-[#4A4A4A] hover:bg-white/60 transition-colors text-sm font-medium">
-          <Settings size={18} />
-          <span className="hidden sm:inline">Ajustes</span>
-        </Link>
-
-        <div className="relative">
-          <button
-            onClick={() => setActiveDropdown(activeDropdown === 'notifications' ? null : 'notifications')}
-            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-[#4A4A4A] hover:bg-white/60 transition-colors"
-          >
-            <Bell size={18} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-[#FFD166] rounded-full border border-white"></span>
-          </button>
-
-          {activeDropdown === 'notifications' && (
-            <div className="absolute right-0 mt-2 w-80 bg-white/80 backdrop-blur-xl rounded-[24px] border border-white/40 shadow-xl overflow-hidden z-50">
-              <div className="p-4 border-b border-black/5 flex justify-between items-center bg-white/50">
-                <h3 className="font-medium text-[#1A1A1A]">Notificaciones</h3>
-                <button className="text-xs text-[#666666] hover:text-[#1A1A1A]">Marcar leídas</button>
-              </div>
-              <div className="max-h-[300px] overflow-y-auto">
-                <div className="p-4 border-b border-black/5 hover:bg-white/40 transition-colors cursor-pointer">
-                  <p className="text-sm text-[#1A1A1A] font-medium mb-1">Nuevo proyecto asignado</p>
-                  <p className="text-xs text-[#666666]">Se te ha asignado al proyecto "Migración Cloud".</p>
-                  <p className="text-[10px] text-[#666666] mt-2">Hace 5 min</p>
-                </div>
-                <div className="p-4 border-b border-black/5 hover:bg-white/40 transition-colors cursor-pointer">
-                  <p className="text-sm text-[#1A1A1A] font-medium mb-1">Factura pagada</p>
-                  <p className="text-xs text-[#666666]">TechCorp ha pagado la factura F-2024-089.</p>
-                  <p className="text-[10px] text-[#666666] mt-2">Hace 2 horas</p>
-                </div>
-                <div className="p-4 border-b border-black/5 hover:bg-white/40 transition-colors cursor-pointer">
-                  <p className="text-sm text-[#1A1A1A] font-medium mb-1">Alerta de Riesgo</p>
-                  <p className="text-xs text-[#666666]">El proyecto "E-commerce B2B" tiene un C.M. negativo.</p>
-                  <p className="text-[10px] text-[#666666] mt-2">Hace 5 horas</p>
-                </div>
-              </div>
-              <div className="p-3 text-center bg-white/50 hover:bg-white/80 transition-colors cursor-pointer">
-                <span className="text-sm font-medium text-[#1A1A1A]">Ver todas</span>
-              </div>
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
+          {/* Create Button */}
+          <div className="relative group mr-2">
+            <button className="h-11 bg-[#222222] hover:bg-black text-white px-6 rounded-full flex items-center gap-2 transition-all shadow-lg shadow-black/10 active:scale-95 group">
+              <Plus size={18} className="transition-transform group-hover:rotate-90" />
+              <span className="text-sm font-medium">Crear</span>
+            </button>
+            
+            {/* Quick Actions Dropdown */}
+            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-black/5 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+               <Link to="/new-project" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">P</div>
+                  Nuevo Proyecto
+               </Link>
+               <Link to="/new-client" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">C</div>
+                  Nuevo Cliente
+               </Link>
+               <Link to="/new-invoice" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">F</div>
+                  Nueva Factura
+               </Link>
             </div>
-          )}
+          </div>
+
+          {/* Notifications */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              className="w-11 h-11 bg-white border border-black/5 rounded-full flex items-center justify-center text-[#666666] hover:text-[#1A1A1A] hover:bg-black/5 transition-all relative"
+            >
+              <Bell size={20} />
+              <span className="absolute top-3 right-3 w-2 h-2 bg-[#FFD166] rounded-full border-2 border-white"></span>
+            </button>
+
+            {isNotificationsOpen && (
+              <div className="absolute right-0 top-full mt-4 w-80 bg-white rounded-3xl shadow-2xl border border-black/5 overflow-hidden animate-in slide-in-from-top-4 duration-300">
+                <div className="p-4 border-b border-black/5 flex justify-between items-center">
+                  <h4 className="font-bold text-[#1A1A1A]">Notificaciones</h4>
+                  <button className="text-[10px] font-bold text-[#008fcd] uppercase tracking-widest">Marcar todo</button>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                   <div className="p-4 flex gap-4 hover:bg-black/5 transition-colors cursor-pointer border-b border-black/5">
+                      <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
+                         <Bell size={18} />
+                      </div>
+                      <div>
+                         <p className="text-sm font-medium text-[#1A1A1A]">Nueva factura generada</p>
+                         <p className="text-xs text-[#666666] mt-1">El proyecto 'E-commerce' ha generado la factura #412.</p>
+                         <p className="text-[10px] text-[#999999] mt-2 font-bold uppercase">Hace 5 minutos</p>
+                      </div>
+                   </div>
+                   <div className="p-4 flex gap-4 hover:bg-black/5 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center text-sky-600 shrink-0">
+                         <MessageSquare size={18} />
+                      </div>
+                      <div>
+                         <p className="text-sm font-medium text-[#1A1A1A]">Nuevo mensaje de cliente</p>
+                         <p className="text-xs text-[#666666] mt-1">Juan Pérez ha respondido a la propuesta de presupuesto.</p>
+                         <p className="text-[10px] text-[#999999] mt-2 font-bold uppercase">Hace 2 horas</p>
+                      </div>
+                   </div>
+                </div>
+                <button className="w-full py-3 text-xs font-bold text-[#666666] bg-black/5 hover:bg-black/10 transition-colors uppercase tracking-[0.2em]">Ver todas las notificaciones</button>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Vertical Divider */}
+        <div className="w-px h-8 bg-black/5"></div>
+
+        {/* User Profile */}
         <div className="relative">
-          <button
-            onClick={() => setActiveDropdown(activeDropdown === 'user' ? null : 'user')}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-[#4A4A4A] hover:bg-white/60 transition-colors overflow-hidden"
+          <button 
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="flex items-center gap-3 p-1.5 pr-4 rounded-full bg-white border border-black/5 hover:bg-black/5 transition-all group"
           >
-            {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <User size={18} />
-            )}
+            <div className="w-9 h-9 rounded-full bg-[#222222] flex items-center justify-center text-white font-medium text-xs overflow-hidden">
+               {profile.avatarUrl ? (
+                 <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+               ) : (
+                 `${profile.firstName[0]}${profile.lastName[0]}`
+               )}
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-bold text-[#1A1A1A] leading-none">{profile.firstName}</span>
+              <span className="text-[10px] font-medium text-[#666666] mt-1">{profile.role}</span>
+            </div>
+            <ChevronDown size={14} className={`text-[#999999] transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {activeDropdown === 'user' && (
-            <div className="absolute right-0 mt-2 w-56 bg-white/80 backdrop-blur-xl rounded-[24px] border border-white/40 shadow-xl overflow-hidden z-50 p-2">
-              <div className="px-4 py-3 border-b border-black/5 mb-2">
-                <p className="text-sm font-medium text-[#1A1A1A]">{profile.firstName} {profile.lastName}</p>
-                <p className="text-xs text-[#666666]">{profile.role}</p>
-              </div>
-              <Link to="/settings" onClick={() => setActiveDropdown(null)} className="flex items-center gap-2 px-4 py-2 text-sm text-[#4A4A4A] hover:text-[#1A1A1A] hover:bg-white/60 rounded-xl transition-colors">
-                <User size={16} />
-                Mi Perfil
-              </Link>
-              <Link to="/settings" onClick={() => setActiveDropdown(null)} className="flex items-center gap-2 px-4 py-2 text-sm text-[#4A4A4A] hover:text-[#1A1A1A] hover:bg-white/60 rounded-xl transition-colors">
-                <Settings size={16} />
-                Ajustes
-              </Link>
-              <div className="h-px bg-black/5 my-2"></div>
-              <button onClick={() => navigate('/login')} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors">
-                <LogOut size={16} />
-                Cerrar Sesión
-              </button>
+          {isProfileOpen && (
+            <div className="absolute right-0 top-full mt-4 w-64 bg-white rounded-3xl shadow-2xl border border-black/5 p-2 overflow-hidden animate-in slide-in-from-top-4 duration-300">
+               <div className="p-3 mb-2 border-b border-black/5">
+                  <p className="text-xs font-bold text-[#999999] uppercase tracking-widest mb-1">Empresa</p>
+                  <p className="text-sm font-bold text-[#1A1A1A]">Ingentia Digital Studio</p>
+               </div>
+               <Link to="/settings" className="flex items-center gap-3 w-full p-3 rounded-2xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
+                  <User size={18} className="text-[#666666]" />
+                  Mi Perfil
+               </Link>
+               <Link to="/settings#config" className="flex items-center gap-3 w-full p-3 rounded-2xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
+                  <SettingsIcon size={18} className="text-[#666666]" />
+                  Ajustes
+               </Link>
+               <div className="h-px bg-black/5 my-2"></div>
+               <Link to="/login" className="flex items-center gap-3 w-full p-3 rounded-2xl hover:bg-rose-50 text-sm font-medium text-rose-600 transition-colors">
+                  <LogOut size={18} />
+                  Cerrar Sesión
+               </Link>
             </div>
           )}
         </div>
