@@ -167,6 +167,13 @@ export default function SmartQuoter() {
     const clientName = mockClients.find(c => c.id === clientId)?.name || "Cliente";
     const projectName = mockProjects.find(p => p.id === projectId)?.name || "Proyecto";
 
+    // PDF template props matching old BudgetPDFTemplate interface
+    const pdfFormData = { clientId, projectId, clientName, projectName };
+    const pdfResult = results ? {
+        module1: { total: results.pricing.module1.price },
+        module2: { total: results.pricing.module2.price }
+    } : undefined;
+
     return (
         <div className="max-w-7xl mx-auto pb-12">
             <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-4">
@@ -473,9 +480,8 @@ export default function SmartQuoter() {
                 {results && (
                     <BudgetPDFTemplate
                         ref={printRef}
-                        results={results}
-                        clientName={clientName}
-                        projectName={projectName}
+                        formData={pdfFormData}
+                        result={pdfResult}
                     />
                 )}
             </div>
