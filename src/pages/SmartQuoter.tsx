@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { mockClients, mockProjects, mockNotebooks } from "../data/mockData";
-import BudgetPDFTemplate from "../components/BudgetPDFTemplate";
+import { BudgetPDFTemplate } from "../components/BudgetPDFTemplate";
 
 type AppState = 'welcome' | 'loading' | 'results';
 type TabState = 'strategy' | 'budget';
@@ -86,12 +86,12 @@ export default function SmartQuoter() {
                 diagnosis: "El cliente presenta procesos manuales que generan cuellos de botella en la gestión operativa. Hay oportunidades significativas para implementar IA conversacional y automatizar el ciclo logístico.",
                 hoursStage1: companySize === "SME" ? 25 : companySize === "Medium" ? 75 : 120,
                 hoursStage2: companySize === "SME" ? 60 : companySize === "Medium" ? 180 : 350,
-                labelStage1: companySize === "SME" ? "Auditoría de procesos" : "Auditoría de Ingeniería Integral",
-                labelStage2: companySize === "SME" ? "Plan de Implementación Ágil" : "Diseño de Arquitectura TO-BE",
+                labelStage1: companySize === "SME" ? "Auditoría de procesos" : "Auditoría Integral",
+                labelStage2: companySize === "SME" ? "Plan Ágil" : "Arquitectura TO-BE",
                 roiEstimate: "Reducción del 30% en tiempos de proceso manual",
                 salesStrategy: companySize === "SME"
-                    ? "Enfocarse en retorno rápido ('Quick Wins') y un paquete inicial de bajo costo."
-                    : "Demostrar alineación estratégica B2B/B2C y mitigación de riesgos operativos a gran escala.",
+                    ? "Enfocarse en retorno rápido y un paquete inicial de bajo costo."
+                    : "Demostrar alineación estratégica B2B/B2C y mitigación de riesgos a gran escala.",
                 deliverables: [
                     "Mapeo detallado de procesos actuales (AS-IS)",
                     "Matriz de cuellos de botella e ineficiencias",
@@ -103,7 +103,7 @@ export default function SmartQuoter() {
                     "Resistencia cultural al cambio",
                     "Falta de normalización en sistemas heredados (Legacy DB)"
                 ],
-                commercialNarrative: `Estimado Equipo Directivo,\n\nTras analizar su contexto operativo, hemos identificado áreas clave de fuga de valor. IngentIA propone un modelo de abordaje segmentado iniciando con una Auditoría de Procesos de Ingeniería para asegurar un ROI alto en la inversión digital.`,
+                commercialNarrative: `Estimado Equipo Directivo,\n\nTras analizar su contexto operativo, hemos identificado áreas clave de fuga de valor. IngentIA propone un modelo de abordaje segmentado iniciando con una Auditoría de Procesos para asegurar un ROI alto en la inversión digital.`,
                 pricing: {
                     module1: {
                         description: "Auditoría en sitio, levantamiento de arquitectura actual y documentación de procesos AS-IS vs TO-BE.",
@@ -111,7 +111,7 @@ export default function SmartQuoter() {
                         deliveryDays: companySize === "SME" ? 15 : 30
                     },
                     module2: {
-                        description: serviceType === "Consultancy" ? "Desarrollo de Playbook Estratégico." : "Desarrollo completo de Ecosistema Integrado de AI.",
+                        description: serviceType === "Consultancy" ? "Desarrollo de Playbook Estratégico." : "Desarrollo completo de Ecosistema de AI.",
                         price: serviceType === "Consultancy" ? 0 : (companySize === "SME" ? 5000 : 18000),
                         pricingModel: serviceType === "Consultancy" ? "N/A" : "Precio Fijo con 50% anticipo"
                     },
@@ -158,11 +158,14 @@ export default function SmartQuoter() {
     const handleNotebookSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const nbId = e.target.value;
         if (!nbId) { setNotebookLmContext(""); return; }
-        const selected = (mockNotebooks as any[]).find(n => n.id === nbId);
+        const selected = (mockNotebooks as any[]).find((n: any) => n.id === nbId);
         if (selected) {
             setNotebookLmContext(`[NotebookLM Import]: ${selected.title}\n\nSummary:\n${selected.summary || ''}`);
         }
     };
+
+    const clientName = mockClients.find(c => c.id === clientId)?.name || "Cliente";
+    const projectName = mockProjects.find(p => p.id === projectId)?.name || "Proyecto";
 
     return (
         <div className="max-w-7xl mx-auto pb-12">
@@ -226,7 +229,7 @@ export default function SmartQuoter() {
                                         <select value={companySize} onChange={(e) => setCompanySize(e.target.value)}
                                             className="w-full bg-white/50 border border-black/10 rounded-2xl p-3 text-[#1A1A1A] focus:ring-2 focus:ring-[#FFD166] outline-none transition-all appearance-none text-sm">
                                             <option value="SME">Pequeña / SME</option>
-                                            <option value="Medium">Mediana (Estándar)</option>
+                                            <option value="Medium">Mediana</option>
                                             <option value="Large">Corporación</option>
                                         </select>
                                     </div>
@@ -241,7 +244,7 @@ export default function SmartQuoter() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2">
-                                        <LinkIcon className="w-4 h-4 text-[#008fcd]" /> Sitios y Redes (separados por coma)
+                                        <LinkIcon className="w-4 h-4 text-[#008fcd]" /> Sitios y Redes
                                     </label>
                                     <input type="text" value={clientUrl} onChange={(e) => setClientUrl(e.target.value)}
                                         placeholder="https://ejemplo.com, @instagram..."
@@ -253,8 +256,8 @@ export default function SmartQuoter() {
                                     </label>
                                     <select onChange={handleNotebookSelect} defaultValue=""
                                         className="w-full bg-[#008fcd]/5 border border-[#008fcd]/20 rounded-2xl p-3 text-[#006b99] focus:ring-2 focus:ring-[#008fcd] outline-none transition-all appearance-none text-sm font-medium">
-                                        <option value="">Seleccionar cuaderno desde la cuenta...</option>
-                                        {(mockNotebooks as any[]).map(n => (
+                                        <option value="">Seleccionar cuaderno...</option>
+                                        {(mockNotebooks as any[]).map((n: any) => (
                                             <option key={n.id} value={n.id}>{n.title}</option>
                                         ))}
                                     </select>
@@ -262,7 +265,7 @@ export default function SmartQuoter() {
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-[#1A1A1A]">Contexto NotebookLM / Manual</label>
                                     <textarea value={notebookLmContext} onChange={(e) => setNotebookLmContext(e.target.value)} rows={3}
-                                        placeholder="El contexto del cuaderno seleccionado aparecerá aquí..."
+                                        placeholder="El contexto del cuaderno aparecerá aquí..."
                                         className="w-full bg-white/50 border border-black/10 rounded-2xl p-4 text-[#1A1A1A] focus:ring-2 focus:ring-[#FFD166] outline-none transition-all text-sm resize-none"></textarea>
                                 </div>
                                 <div className="space-y-2 pt-2">
@@ -355,9 +358,9 @@ export default function SmartQuoter() {
                                                 <h4 className="text-[#1A1A1A] font-bold mb-3 flex items-center gap-2 text-lg">
                                                     <TrendingUp className="text-[#4bbd6e] w-5 h-5" /> Dimensionamiento de Mercado (PxQ)
                                                 </h4>
-                                                <div className="bg-[#4bbd6e]/5 p-5 rounded-2xl text-sm text-[#1A1A1A] border border-[#4bbd6e]/20 leading-relaxed">
+                                                <div className="bg-[#4bbd6e]/5 p-5 rounded-2xl text-sm text-[#1A1A1A] border border-[#4bbd6e]/20">
                                                     <p className="mb-3">{results.financialEstimation.revenueJustification}</p>
-                                                    <div className="text-[#4bbd6e] font-semibold text-sm">Relación Inversión/Facturación: {results.financialEstimation.investmentToRevenueRatio}</div>
+                                                    <div className="text-[#4bbd6e] font-semibold text-sm">Inversión/Facturación: {results.financialEstimation.investmentToRevenueRatio}</div>
                                                 </div>
                                             </section>
                                             <section>
@@ -367,8 +370,8 @@ export default function SmartQuoter() {
                                                 <div className="bg-amber-50 p-5 rounded-2xl text-sm italic text-[#8a6b18] border-l-4 border-[#FFD166]">{results.salesStrategy}</div>
                                             </section>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-black/5">
-                                                <div className="space-y-4">
-                                                    <h4 className="text-xs font-bold text-[#666666] uppercase tracking-widest">Entregables Clave</h4>
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-[#666666] uppercase tracking-widest mb-3">Entregables Clave</h4>
                                                     <ul className="text-sm space-y-3 text-[#1A1A1A]">
                                                         {results.deliverables.map((d, i) => (
                                                             <li key={i} className="flex items-start gap-2">
@@ -378,8 +381,8 @@ export default function SmartQuoter() {
                                                         ))}
                                                     </ul>
                                                 </div>
-                                                <div className="space-y-4">
-                                                    <h4 className="text-xs font-bold text-[#666666] uppercase tracking-widest">Riesgos Identificados</h4>
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-[#666666] uppercase tracking-widest mb-3">Riesgos Identificados</h4>
                                                     <ul className="text-sm space-y-3 text-[#1A1A1A]">
                                                         {results.risks.map((r, i) => (
                                                             <li key={i} className="flex items-start gap-2">
@@ -470,11 +473,9 @@ export default function SmartQuoter() {
                 {results && (
                     <BudgetPDFTemplate
                         ref={printRef}
-                        formData={{ clientId, projectId }}
-                        result={{
-                            module1: { total: results.pricing.module1.price },
-                            module2: { total: results.pricing.module2.price }
-                        }}
+                        results={results}
+                        clientName={clientName}
+                        projectName={projectName}
                     />
                 )}
             </div>
