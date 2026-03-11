@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { mockClients, mockProjects, mockNotebooks } from "../data/mockData";
-import { BudgetPDFTemplate } from "../components/BudgetPDFTemplate";
+import BudgetPDFTemplate from "../components/BudgetPDFTemplate";
 
 type AppState = 'welcome' | 'loading' | 'results';
 type TabState = 'strategy' | 'budget';

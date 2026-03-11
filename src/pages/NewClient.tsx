@@ -1,13 +1,14 @@
 import { ArrowLeft, Save, Building, Mail, Phone, MapPin, Globe } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function NewClient() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     industry: '',
-    taxId: '',
     email: '',
     phone: '',
     address: '',
@@ -16,10 +17,29 @@ export default function NewClient() {
     contactRole: ''
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate save and redirect
-    navigate('/clients');
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('clients')
+        .insert([{
+          name: formData.name,
+          industry: formData.industry,
+          email: formData.email,
+          phone: formData.phone,
+          contact_person: formData.contactName,
+          status: 'Activo'
+        }]);
+
+      if (error) throw error;
+      navigate('/clients');
+    } catch (error) {
+      console.error('Error creating client:', error);
+      alert('Error al crear el cliente');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,11 +72,6 @@ export default function NewClient() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-[#1A1A1A]">NIF / CIF</label>
-            <input required type="text" placeholder="Ej. B-12345678" value={formData.taxId} onChange={e => setFormData({...formData, taxId: e.target.value})} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
-          </div>
-
-          <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-[#1A1A1A]">Correo Electrónico</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -72,7 +87,7 @@ export default function NewClient() {
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Phone size={18} className="text-[#666666]" />
               </div>
-              <input required type="tel" placeholder="+34 900 000 000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
+              <input required type="tel" placeholder="+54 9 11 ..." value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
             </div>
           </div>
 
@@ -115,9 +130,13 @@ export default function NewClient() {
           <Link to="/clients" className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:text-[#1A1A1A] hover:bg-white/50 transition-colors">
             Cancelar
           </Link>
-          <button type="submit" className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10">
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10"
+          >
             <Save size={18} />
-            Crear Cliente
+            {loading ? 'Guardando...' : 'Crear Cliente'}
           </button>
         </div>
       </form>

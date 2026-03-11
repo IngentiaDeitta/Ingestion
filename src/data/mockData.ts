@@ -5,7 +5,11 @@ export const mockStats = {
   revenueGrowth: 12.5,
   portfolioHealth: 94.2,
   totalHours: 1240,
-  billableHoursPercentage: 84.5
+  billableHoursPercentage: 84.5,
+  totalClients: 24,
+  totalProjects: 12,
+  alertsCount: 3,
+  projectsAtRisk: 2
 };
 
 export const mockProjectHealth = [
@@ -19,6 +23,8 @@ export const mockClients = [
     id: '1',
     name: 'TechFlow Solutions',
     company: 'TechFlow S.L.',
+    contact: 'Alex Rivera',
+    industry: 'Software',
     email: 'contacto@techflow.com',
     projects: 3,
     totalSpent: 45000,
@@ -29,6 +35,8 @@ export const mockClients = [
     id: '2',
     name: 'Global Retail Corp',
     company: 'Global Retail S.A.',
+    contact: 'Sofia López',
+    industry: 'Logística',
     email: 'info@globalretail.com',
     projects: 1,
     totalSpent: 12500,
@@ -39,6 +47,8 @@ export const mockClients = [
     id: '3',
     name: 'Innovate Med',
     company: 'Innovate Med SL',
+    contact: 'Mark Johnson',
+    industry: 'Salud',
     email: 'admin@innovatemed.com',
     projects: 5,
     totalSpent: 89000,
@@ -54,8 +64,10 @@ export const mockProjects = [
     client: 'Innovate Med',
     budget: 15000,
     progress: 75,
-    status: 'In Progress',
+    status: 'En Progreso',
     dueDate: '15 Nov 2023',
+    team: 2,
+    cm: '32%',
     members: [
       { name: 'JP', color: '#FFD166' },
       { name: 'MR', color: '#222222' }
@@ -67,8 +79,10 @@ export const mockProjects = [
     client: 'Global Retail Corp',
     budget: 28000,
     progress: 45,
-    status: 'In Progress',
+    status: 'En Riesgo',
     dueDate: '12 Dic 2023',
+    team: 4,
+    cm: '-8%',
     members: [
       { name: 'CG', color: '#FFD166' },
       { name: 'SL', color: '#222222' },
@@ -81,8 +95,10 @@ export const mockProjects = [
     client: 'TechFlow Solutions',
     budget: 42000,
     progress: 90,
-    status: 'Review',
+    status: 'Completado',
     dueDate: '01 Nov 2023',
+    team: 3,
+    cm: '45%',
     members: [
       { name: 'JP', color: '#FFD166' },
       { name: 'CG', color: '#222222' }
@@ -99,16 +115,16 @@ export const mockTasks = [
 ];
 
 export const mockTransactions = [
-  { id: 'inv-412', description: 'Factura Mensual - Octubre', amount: 4500, type: 'Income', date: '24 Oct 2023', status: 'Paid' },
-  { id: 'exp-123', description: 'Licencias Adobe Creative Cloud', amount: 150, type: 'Expense', date: '22 Oct 2023', status: 'Paid' },
-  { id: 'inv-411', description: 'Web Development Phase 1', amount: 8200, type: 'Income', date: '18 Oct 2023', status: 'Paid' },
-  { id: 'exp-122', description: 'Servidores AWS', amount: 450, type: 'Expense', date: '15 Oct 2023', status: 'Pending' },
+  { id: 'inv-412', description: 'Factura Mensual - Octubre', amount: 4500, type: 'income', date: '24 Oct 2023', status: 'Pagado' },
+  { id: 'exp-123', description: 'Licencias Adobe Creative Cloud', amount: 150, type: 'expense', date: '22 Oct 2023', status: 'Pagado' },
+  { id: 'inv-411', description: 'Web Development Phase 1', amount: 8200, type: 'income', date: '18 Oct 2023', status: 'Pagado' },
+  { id: 'exp-122', description: 'Servidores AWS', amount: 450, type: 'expense', date: '15 Oct 2023', status: 'Pendiente' },
 ];
 
 export const mockAlerts = [
-  { id: '1', title: 'Presupuesto excedido', message: 'El proyecto App Móvil ha superado el 90% del presupuesto.', type: 'Warning', date: 'Hace 1 hora' },
-  { id: '2', title: 'Nueva tarea asignada', message: 'Tienes 4 nuevas tareas en el tablero Kanban.', type: 'Info', date: 'Hace 3 horas' },
-  { id: '3', title: 'Factura pendiente', message: 'La factura #412 está próxima a vencer.', type: 'Error', date: 'Hace 1 día' },
+  { id: '1', title: 'Presupuesto excedido', description: 'El proyecto App Móvil ha superado el 90% del presupuesto.', type: 'Warning', date: 'Hace 1 hora' },
+  { id: '2', title: 'Nueva tarea asignada', description: 'Tienes 4 nuevas tareas en el tablero Kanban.', type: 'Info', date: 'Hace 3 horas' },
+  { id: '3', title: 'Factura pendiente', description: 'La factura #412 está próxima a vencer.', type: 'Error', date: 'Hace 1 día' },
 ];
 
 export const mockNotebooks = [

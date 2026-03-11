@@ -1,14 +1,60 @@
 import { ArrowLeft, Save, Calendar, DollarSign, AlignLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function NewProject() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    client: '',
+    budget: '',
+    start_date: '',
+    due_date: '',
+    description: ''
+  });
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    const { data } = await supabase.from('clients').select('id, name').order('name');
+    setClients(data || []);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate save and redirect
-    navigate('/projects');
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('projects')
+        .insert([{
+          name: formData.name,
+          client: formData.client,
+          budget: parseFloat(formData.budget) || 0,
+          due_date: formData.due_date ? formatDate(formData.due_date) : '',
+          description: formData.description,
+          progress: 0,
+          status: 'En Progreso'
+        }]);
+
+      if (error) throw error;
+      navigate('/projects');
+    } catch (error) {
+      console.error('Error creating project:', error);
+      alert('Error al crear el proyecto');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
   };
 
   return (
@@ -27,16 +73,28 @@ export default function NewProject() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-2 md:col-span-2">
             <label className="text-sm font-medium text-[#1A1A1A]">Nombre del Proyecto</label>
-            <input required type="text" placeholder="Ej. Rediseño App Móvil" className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
+            <input 
+              required 
+              type="text" 
+              placeholder="Ej. Rediseño App Móvil" 
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
+            />
           </div>
           
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-[#1A1A1A]">Cliente</label>
-            <select required className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all appearance-none">
+            <select 
+              required 
+              value={formData.client}
+              onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+              className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all appearance-none"
+            >
               <option value="">Seleccionar cliente...</option>
-              <option value="1">TechCorp Solutions</option>
-              <option value="2">Global Retail Group</option>
-              <option value="3">Innovate Finance</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
             </select>
           </div>
 
@@ -46,7 +104,14 @@ export default function NewProject() {
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <DollarSign size={18} className="text-[#666666]" />
               </div>
-              <input required type="number" placeholder="0.00" className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
+              <input 
+                required 
+                type="number" 
+                placeholder="0.00" 
+                value={formData.budget}
+                onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
+              />
             </div>
           </div>
 
@@ -56,7 +121,13 @@ export default function NewProject() {
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Calendar size={18} className="text-[#666666]" />
               </div>
-              <input required type="date" className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
+              <input 
+                required 
+                type="date" 
+                value={formData.start_date}
+                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
+              />
             </div>
           </div>
 
@@ -66,7 +137,13 @@ export default function NewProject() {
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Calendar size={18} className="text-[#666666]" />
               </div>
-              <input required type="date" className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
+              <input 
+                required 
+                type="date" 
+                value={formData.due_date}
+                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
+              />
             </div>
           </div>
 
@@ -76,7 +153,13 @@ export default function NewProject() {
               <div className="absolute top-4 left-4 pointer-events-none">
                 <AlignLeft size={18} className="text-[#666666]" />
               </div>
-              <textarea rows={4} placeholder="Describe el alcance del proyecto..." className="w-full rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 py-3 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all resize-none"></textarea>
+              <textarea 
+                rows={4} 
+                placeholder="Describe el alcance del proyecto..." 
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 py-3 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all resize-none"
+              ></textarea>
             </div>
           </div>
         </div>
@@ -85,9 +168,13 @@ export default function NewProject() {
           <Link to="/projects" className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:text-[#1A1A1A] hover:bg-white/50 transition-colors">
             Cancelar
           </Link>
-          <button type="submit" className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10">
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10"
+          >
             <Save size={18} />
-            Crear Proyecto
+            {loading ? 'Guardando...' : 'Crear Proyecto'}
           </button>
         </div>
       </form>

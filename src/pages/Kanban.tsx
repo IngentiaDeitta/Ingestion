@@ -1,7 +1,13 @@
 import { Plus, MoreHorizontal, Calendar, MessageSquare, Paperclip, X, Save, User, Tag } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { mockTasks } from '../data/mockData';
+import { supabase } from '../lib/supabase';
+
+interface TeamMember {
+  id: string;
+  name: string;
+  avatar_color: string;
+}
 
 interface Task {
   id: string;
@@ -28,35 +34,109 @@ interface BoardData {
   columnOrder: string[];
 }
 
-const getInitialData = (): BoardData => {
-  const tasks: Record<string, Task> = {};
-  mockTasks.forEach((t: any) => {
-    tasks[t.id] = {
-      ...t,
-      comments: t.comments || 0,
-      attachments: t.attachments || 0,
-    };
-  });
+const INITIAL_COLUMNS: Record<string, Column> = {
+  'col-1': { id: 'col-1', title: 'Por Hacer', taskIds: [] },
+  'col-2': { id: 'col-2', title: 'En Progreso', taskIds: [] },
+  'col-3': { id: 'col-3', title: 'En Revisión', taskIds: [] },
+  'col-4': { id: 'col-4', title: 'Completado', taskIds: [] },
+};
 
-  return {
-    tasks,
-    columns: {
-      'col-1': { id: 'col-1', title: 'Por Hacer', taskIds: mockTasks.filter((t: any) => t.status === 'todo').map((t: any) => t.id) },
-      'col-2': { id: 'col-2', title: 'En Progreso', taskIds: mockTasks.filter((t: any) => t.status === 'in-progress').map((t: any) => t.id) },
-      'col-3': { id: 'col-3', title: 'En Revisión', taskIds: mockTasks.filter((t: any) => t.status === 'review').map((t: any) => t.id) },
-      'col-4': { id: 'col-4', title: 'Completado', taskIds: mockTasks.filter((t: any) => t.status === 'done').map((t: any) => t.id) },
-    },
-    columnOrder: ['col-1', 'col-2', 'col-3', 'col-4'],
-  };
+const STATUS_MAP: Record<string, string> = {
+  'todo': 'col-1',
+  'in-progress': 'col-2',
+  'review': 'col-3',
+  'done': 'col-4',
+};
+
+const COLUMN_TO_STATUS: Record<string, string> = {
+  'col-1': 'todo',
+  'col-2': 'in-progress',
+  'col-3': 'review',
+  'col-4': 'done',
 };
 
 export default function Kanban() {
-  const [data, setData] = useState(getInitialData());
+  const [data, setData] = useState<BoardData>({
+    tasks: {},
+    columns: INITIAL_COLUMNS,
+    columnOrder: ['col-1', 'col-2', 'col-3', 'col-4'],
+  });
+  const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
-  const [newTask, setNewTask] = useState<Partial<Task>>({ title: '', project: '', priority: 'Media' });
 
-  const onDragEnd = (result: DropResult) => {
+  useEffect(() => {
+    fetchTasks();
+    fetchTeam();
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase.from('projects').select('*').order('name');
+      if (error) throw error;
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchTeam = async () => {
+    try {
+      const { data, error } = await supabase.from('team').select('*');
+      if (error) throw error;
+      setTeam(data || []);
+    } catch (error) {
+      console.error('Error fetching team:', error);
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const { data: tasksData, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const tasks: Record<string, Task> = {};
+      const columns = JSON.parse(JSON.stringify(INITIAL_COLUMNS));
+
+      tasksData?.forEach((t: any) => {
+        const task: Task = {
+          id: t.id,
+          title: t.title,
+          project: t.project,
+          priority: t.priority,
+          comments: t.comments_count || 0,
+          attachments: t.attachments_count || 0,
+          dueDate: t.due_date,
+          assignee: t.assignee,
+          tags: t.tags,
+          description: t.description,
+        };
+        tasks[task.id] = task;
+        const columnId = STATUS_MAP[t.status] || 'col-1';
+        columns[columnId].taskIds.push(task.id);
+      });
+
+      setData({
+        tasks,
+        columns,
+        columnOrder: ['col-1', 'col-2', 'col-3', 'col-4'],
+      });
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
     if (!destination) return;
@@ -65,63 +145,131 @@ export default function Kanban() {
     const startColumn = data.columns[source.droppableId];
     const finishColumn = data.columns[destination.droppableId];
 
+    // Optimistic Update
+    const newData = { ...data };
+
     if (startColumn === finishColumn) {
       const newTaskIds = Array.from(startColumn.taskIds);
       newTaskIds.splice(source.index, 1);
       newTaskIds.splice(destination.index, 0, draggableId);
 
-      const newColumn = { ...startColumn, taskIds: newTaskIds };
-      setData({ ...data, columns: { ...data.columns, [newColumn.id]: newColumn } });
+      newData.columns[startColumn.id].taskIds = newTaskIds;
+      setData(newData);
       return;
     }
 
     const startTaskIds = Array.from(startColumn.taskIds);
     startTaskIds.splice(source.index, 1);
-    const newStart = { ...startColumn, taskIds: startTaskIds };
+    newData.columns[startColumn.id].taskIds = startTaskIds;
 
     const finishTaskIds = Array.from(finishColumn.taskIds);
     finishTaskIds.splice(destination.index, 0, draggableId);
-    const newFinish = { ...finishColumn, taskIds: finishTaskIds };
+    newData.columns[finishColumn.id].taskIds = finishTaskIds;
 
-    setData({
-      ...data,
-      columns: { ...data.columns, [newStart.id]: newStart, [newFinish.id]: newFinish },
-    });
-  };
+    setData(newData);
 
-  const handleSaveNewTask = () => {
-    if (!newTask.title) return;
-    const newId = `task-${Date.now()}`;
-    const task: Task = {
-      id: newId,
-      title: newTask.title || '',
-      project: newTask.project || 'General',
-      priority: newTask.priority as any || 'Media',
-      comments: 0,
-      attachments: 0,
-      dueDate: 'Sin fecha',
-    };
+    // Persist to Supabase
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: COLUMN_TO_STATUS[destination.droppableId] })
+        .eq('id', draggableId);
 
-    setData(prev => ({
-      ...prev,
-      tasks: { ...prev.tasks, [newId]: task },
-      columns: {
-        ...prev.columns,
-        'col-1': { ...prev.columns['col-1'], taskIds: [newId, ...prev.columns['col-1'].taskIds] }
-      }
-    }));
-    setIsNewTaskOpen(false);
-    setNewTask({ title: '', project: '', priority: 'Media' });
-  };
-
-  const handleUpdateTask = (id: string, updates: Partial<Task>) => {
-    setData(prev => ({
-      ...prev,
-      tasks: { ...prev.tasks, [id]: { ...prev.tasks[id], ...updates } }
-    }));
-    if (selectedTask && selectedTask.id === id) {
-      setSelectedTask({ ...selectedTask, ...updates });
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      fetchTasks(); // Revert on error
     }
+  };
+
+  const handleSaveNewTask = async (taskData: Partial<Task>) => {
+    try {
+      const { data: createdTask, error } = await supabase
+        .from('tasks')
+        .insert([{
+          title: taskData.title,
+          project: taskData.project || 'General',
+          priority: taskData.priority || 'Media',
+          status: 'todo',
+          assignee: taskData.assignee,
+          due_date: taskData.dueDate ? formatDate(taskData.dueDate) : 'Sin fecha'
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (createdTask) {
+        const task: Task = {
+          id: createdTask.id,
+          title: createdTask.title,
+          project: createdTask.project,
+          priority: createdTask.priority,
+          comments: 0,
+          attachments: 0,
+          dueDate: createdTask.due_date,
+        };
+
+        setData(prev => ({
+          ...prev,
+          tasks: { ...prev.tasks, [task.id]: task },
+          columns: {
+            ...prev.columns,
+            'col-1': { ...prev.columns['col-1'], taskIds: [task.id, ...prev.columns['col-1'].taskIds] }
+          }
+        }));
+      }
+
+      setIsNewTaskOpen(false);
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
+  };
+
+  const handleUpdateTask = async (id: string, updates: Partial<Task>) => {
+    // Basic mapping for DB fields
+    const dbUpdates: any = {};
+    if (updates.priority) dbUpdates.priority = updates.priority;
+    if (updates.dueDate) dbUpdates.due_date = updates.dueDate;
+    if (updates.assignee !== undefined) dbUpdates.assignee = updates.assignee;
+    if (updates.tags) dbUpdates.tags = updates.tags;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update(dbUpdates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setData(prev => ({
+        ...prev,
+        tasks: { ...prev.tasks, [id]: { ...prev.tasks[id], ...updates } }
+      }));
+      
+      if (selectedTask && selectedTask.id === id) {
+        setSelectedTask({ ...selectedTask, ...updates });
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr || !dateStr.includes('-')) return dateStr;
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
+  const isDarkColor = (hex: string) => {
+    if (!hex) return false;
+    const color = hex.replace('#', '');
+    const r = parseInt(color.substring(0, 2), 16);
+    const g = parseInt(color.substring(2, 4), 16);
+    const b = parseInt(color.substring(4, 6), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness < 155;
   };
 
   return (
@@ -132,11 +280,24 @@ export default function Kanban() {
           <p className="text-[#666666] mt-1">Gestiona tareas y flujos de trabajo de tus proyectos.</p>
         </div>
         <div className="flex items-center gap-3">
+          {loading && (
+            <span className="text-xs text-[#666666] animate-pulse">Sincronizando...</span>
+          )}
           <div className="flex -space-x-2 mr-2">
-            <div className="w-8 h-8 rounded-full bg-white border-2 border-[#E5E9E6] flex items-center justify-center text-xs font-medium text-[#1A1A1A] z-30">JP</div>
-            <div className="w-8 h-8 rounded-full bg-white border-2 border-[#E5E9E6] flex items-center justify-center text-xs font-medium text-[#1A1A1A] z-20">MR</div>
-            <div className="w-8 h-8 rounded-full bg-white border-2 border-[#E5E9E6] flex items-center justify-center text-xs font-medium text-[#1A1A1A] z-10">CG</div>
-            <div className="w-8 h-8 rounded-full bg-black/5 border-2 border-[#E5E9E6] flex items-center justify-center text-xs font-medium text-[#666666] z-0">+2</div>
+            {team.slice(0, 3).map((m, i) => (
+              <div 
+                key={m.id} 
+                className={`w-8 h-8 rounded-full border-2 border-[#E5E9E6] flex items-center justify-center text-xs font-medium text-[#1A1A1A] z-${30 - (i * 10)}`}
+                style={{ backgroundColor: i % 2 === 0 ? 'white' : '#F5F5F5' }}
+              >
+                {m.name.split(' ').map(n => n[0]).join('')}
+              </div>
+            ))}
+            {team.length > 3 && (
+              <div className="w-8 h-8 rounded-full bg-black/5 border-2 border-[#E5E9E6] flex items-center justify-center text-xs font-medium text-[#666666] z-0">
+                +{team.length - 3}
+              </div>
+            )}
           </div>
           <button onClick={() => setIsNewTaskOpen(true)} className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10">
             <Plus size={20} />
@@ -200,6 +361,15 @@ export default function Kanban() {
 
                                 <div className="flex items-center justify-between pt-4 border-t border-black/5">
                                   <div className="flex items-center gap-3 text-xs text-[#666666] font-medium">
+                                    {task.assignee && (
+                                      <div 
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm ${isDarkColor(team.find(m => m.name === task.assignee)?.avatar_color || '') ? 'text-white' : 'text-[#1A1A1A]'}`}
+                                        style={{ backgroundColor: team.find(m => m.name === task.assignee)?.avatar_color || '#F5F5F5' }}
+                                        title={task.assignee}
+                                      >
+                                        {task.assignee.split(' ').map(n => n[0]).join('')}
+                                      </div>
+                                    )}
                                     {task.comments > 0 && (
                                       <div className="flex items-center gap-1 hover:text-[#1A1A1A] transition-colors">
                                         <MessageSquare size={14} />
@@ -242,148 +412,249 @@ export default function Kanban() {
 
       {/* Task Detail Modal */}
       {selectedTask && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-black/5 flex justify-between items-start">
-              <div>
-                <span className="text-xs font-medium text-[#666666] mb-1 block">{selectedTask.project}</span>
-                <h3 className="text-2xl font-medium text-[#1A1A1A]">{selectedTask.title}</h3>
-              </div>
-              <button onClick={() => setSelectedTask(null)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-                <X size={20} className="text-[#1A1A1A]" />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto flex flex-col gap-6">
-              <div className="flex flex-wrap gap-6">
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-[#666666]">Estado</span>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50">
-                    {(Object.values(data.columns) as Column[]).find(c => c.taskIds.includes(selectedTask.id))?.title}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-[#666666]">Prioridad</span>
-                  <select
-                    value={selectedTask.priority}
-                    onChange={(e) => handleUpdateTask(selectedTask.id, { priority: e.target.value as any })}
-                    className="h-8 rounded-full border border-black/10 bg-white text-xs font-medium px-3 outline-none"
-                  >
-                    <option value="Alta">Alta</option>
-                    <option value="Media">Media</option>
-                    <option value="Baja">Baja</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-[#666666]">Vencimiento</span>
-                  <input
-                    type="text"
-                    value={selectedTask.dueDate}
-                    onChange={(e) => handleUpdateTask(selectedTask.id, { dueDate: e.target.value })}
-                    className="h-8 rounded-full border border-black/10 bg-white text-xs font-medium px-3 outline-none w-28"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2"><User size={16} /> Asignado a</span>
-                <input
-                  type="text"
-                  placeholder="Añadir usuario..."
-                  value={selectedTask.assignee || ''}
-                  onChange={(e) => handleUpdateTask(selectedTask.id, { assignee: e.target.value })}
-                  className="w-full h-10 rounded-xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none text-sm"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2"><Tag size={16} /> Etiquetas</span>
-                <input
-                  type="text"
-                  placeholder="Añadir etiquetas separadas por coma..."
-                  value={selectedTask.tags?.join(', ') || ''}
-                  onChange={(e) => handleUpdateTask(selectedTask.id, { tags: e.target.value.split(',').map(t => t.trim()) })}
-                  className="w-full h-10 rounded-xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none text-sm"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-[#1A1A1A]">Descripción</span>
-                <textarea
-                  rows={4}
-                  placeholder="Añade una descripción más detallada..."
-                  value={selectedTask.description || ''}
-                  onChange={(e) => handleUpdateTask(selectedTask.id, { description: e.target.value })}
-                  className="w-full rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] p-4 outline-none text-sm resize-none"
-                ></textarea>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-black/5 flex justify-end">
-              <button onClick={() => setSelectedTask(null)} className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors">
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+        <TaskDetailModal 
+          task={selectedTask} 
+          columns={data.columns}
+          teamMembers={team}
+          availableProjects={projects}
+          onClose={() => setSelectedTask(null)} 
+          onUpdate={handleUpdateTask} 
+        />
       )}
 
       {/* New Task Modal */}
       {isNewTaskOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-black/5 flex justify-between items-center">
-              <h3 className="text-xl font-medium text-[#1A1A1A]">Nueva Tarea</h3>
-              <button onClick={() => setIsNewTaskOpen(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-                <X size={20} className="text-[#1A1A1A]" />
-              </button>
+        <NewTaskModal 
+          teamMembers={team}
+          availableProjects={projects}
+          onClose={() => setIsNewTaskOpen(false)} 
+          onSave={handleSaveNewTask} 
+        />
+      )}
+    </div>
+  );
+}
+
+// Optimization: Separate components to manage local state and prevent board re-renders
+function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onSave: (task: any) => void }) {
+  const [newTask, setNewTask] = useState({ title: '', project: availableProjects[0]?.name || 'General', priority: 'Media' as const, assignee: '', dueDate: '' });
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-black/5 flex justify-between items-center">
+          <h3 className="text-xl font-medium text-[#1A1A1A]">Nueva Tarea</h3>
+          <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+            <X size={20} className="text-[#1A1A1A]" />
+          </button>
+        </div>
+
+        <div className="p-6 flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-[#1A1A1A]">Título</label>
+            <input
+              autoFocus
+              type="text"
+              placeholder="¿Qué hay que hacer?"
+              value={newTask.title}
+              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+              className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#1A1A1A]">Proyecto</label>
+              <select
+                value={newTask.project}
+                onChange={(e) => setNewTask({ ...newTask, project: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]"
+              >
+                {availableProjects.map(p => (
+                  <option key={p.id} value={p.name}>{p.name}</option>
+                ))}
+                <option value="General">General</option>
+              </select>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#1A1A1A]">Prioridad</label>
+              <select
+                value={newTask.priority}
+                onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]"
+              >
+                <option value="Alta">Alta</option>
+                <option value="Media">Media</option>
+                <option value="Baja">Baja</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#1A1A1A]">Asignado a</label>
+              <select
+                value={newTask.assignee}
+                onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]"
+              >
+                <option value="">Sin asignar</option>
+                {teamMembers.map(m => (
+                  <option key={m.id} value={m.name}>{m.name}</option>
+                ))}
+              </select>
             </div>
 
-            <div className="p-6 flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-[#1A1A1A]">Título</label>
-                <input
-                  type="text"
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                  className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-[#1A1A1A]">Proyecto</label>
-                <input
-                  type="text"
-                  value={newTask.project}
-                  onChange={(e) => setNewTask({ ...newTask, project: e.target.value })}
-                  className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-[#1A1A1A]">Prioridad</label>
-                <select
-                  value={newTask.priority}
-                  onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
-                  className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]"
-                >
-                  <option value="Alta">Alta</option>
-                  <option value="Media">Media</option>
-                  <option value="Baja">Baja</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-black/5 flex justify-end gap-3">
-              <button onClick={() => setIsNewTaskOpen(false)} className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:bg-black/5 transition-colors">
-                Cancelar
-              </button>
-              <button onClick={handleSaveNewTask} className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors">
-                <Save size={18} />
-                Crear Tarea
-              </button>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#1A1A1A]">Vencimiento</label>
+              <input
+                type="date"
+                value={newTask.dueDate}
+                onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]"
+              />
             </div>
           </div>
         </div>
-      )}
+
+        <div className="p-6 border-t border-black/5 flex justify-end gap-3">
+          <button onClick={onClose} className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:bg-black/5 transition-colors">
+            Cancelar
+          </button>
+          <button 
+            disabled={!newTask.title}
+            onClick={() => onSave(newTask)} 
+            className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-6 py-3 rounded-full text-sm font-medium transition-colors"
+          >
+            <Save size={18} />
+            Crear Tarea
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClose, onUpdate }: { task: Task, columns: any, teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onUpdate: (id: string, updates: any) => void }) {
+  const [localTask, setLocalTask] = useState(task);
+
+  const handleLocalUpdate = (updates: Partial<Task>) => {
+    const updated = { ...localTask, ...updates };
+    setLocalTask(updated);
+    onUpdate(task.id, updates);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-black/5 flex justify-between items-start">
+          <div>
+            <span className="text-xs font-medium text-[#666666] mb-1 block">{localTask.project}</span>
+            <input 
+              className="text-2xl font-medium text-[#1A1A1A] bg-transparent border-none outline-none w-full"
+              value={localTask.title}
+              onChange={(e) => handleLocalUpdate({ title: e.target.value })}
+            />
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+            <X size={20} className="text-[#1A1A1A]" />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto flex flex-col gap-6">
+          <div className="flex flex-wrap gap-6">
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-[#666666]">Estado</span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50">
+                {(Object.values(columns) as Column[]).find(c => c.taskIds.includes(task.id))?.title}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-[#666666]">Prioridad</span>
+              <select
+                value={localTask.priority}
+                onChange={(e) => handleLocalUpdate({ priority: e.target.value as any })}
+                className="h-8 rounded-full border border-black/10 bg-white text-xs font-medium px-3 outline-none"
+              >
+                <option value="Alta">Alta</option>
+                <option value="Media">Media</option>
+                <option value="Baja">Baja</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-[#666666]">Vencimiento</span>
+              <input
+                type="date"
+                value={localTask.dueDate && localTask.dueDate.split('/').length === 3 
+                  ? `${localTask.dueDate.split('/')[2]}-${localTask.dueDate.split('/')[1]}-${localTask.dueDate.split('/')[0]}` 
+                  : localTask.dueDate}
+                onChange={(e) => {
+                  const [year, month, day] = e.target.value.split('-');
+                  handleLocalUpdate({ dueDate: `${day}/${month}/${year}` });
+                }}
+                className="h-8 rounded-full border border-black/10 bg-white text-xs font-medium px-3 outline-none w-32"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2"><User size={16} /> Asignado a</span>
+            <select
+              value={localTask.assignee || ''}
+              onChange={(e) => handleLocalUpdate({ assignee: e.target.value })}
+              className="w-full h-10 rounded-xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none text-sm"
+            >
+              <option value="">Sin asignar</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.name}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2"><Plus size={16} /> Proyecto</span>
+            <select
+              value={localTask.project}
+              onChange={(e) => handleLocalUpdate({ project: e.target.value })}
+              className="w-full h-10 rounded-xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none text-sm"
+            >
+              <option value="General">General</option>
+              {availableProjects.map(p => (
+                <option key={p.id} value={p.name}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2"><Tag size={16} /> Etiquetas</span>
+            <input
+              type="text"
+              placeholder="Añadir etiquetas separadas por coma..."
+              value={localTask.tags?.join(', ') || ''}
+              onChange={(e) => handleLocalUpdate({ tags: e.target.value.split(',').map(t => t.trim()) })}
+              className="w-full h-10 rounded-xl border border-black/10 bg-black/5 text-[#1A1A1A] px-4 outline-none text-sm"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-[#1A1A1A]">Descripción</span>
+            <textarea
+              rows={4}
+              placeholder="Añade una descripción más detallada..."
+              value={localTask.description || ''}
+              onChange={(e) => handleLocalUpdate({ description: e.target.value })}
+              className="w-full rounded-2xl border border-black/10 bg-black/5 text-[#1A1A1A] p-4 outline-none text-sm resize-none"
+            ></textarea>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-black/5 flex justify-end">
+          <button onClick={onClose} className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors">
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

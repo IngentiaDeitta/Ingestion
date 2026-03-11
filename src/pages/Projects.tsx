@@ -1,10 +1,56 @@
-import { Plus, Search, Filter, MoreVertical, LayoutGrid, List, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, MoreVertical, LayoutGrid, List, Clock, CheckCircle2, AlertCircle, Trash2, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
-import { mockProjects, mockStats } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+
+interface Project {
+  id: string;
+  name: string;
+  client: string;
+  budget: number;
+  progress: number;
+  status: string;
+  due_date: string;
+}
 
 export default function Projects() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar este proyecto?')) return;
+    try {
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) throw error;
+      setProjects(projects.filter(p => p.id !== id));
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Error al eliminar proyecto');
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
@@ -19,7 +65,7 @@ export default function Projects() {
         </Link>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm flex flex-col">
         <div className="p-6 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-96">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#666666]">
@@ -53,8 +99,10 @@ export default function Projects() {
           </div>
         </div>
 
-        {viewMode === 'list' ? (
-          <div className="overflow-x-auto">
+        {loading ? (
+          <div className="p-20 text-center text-[#666666]">Cargando proyectos...</div>
+        ) : viewMode === 'list' ? (
+          <div className="overflow-x-auto min-h-[300px]">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-black/5">
@@ -66,12 +114,12 @@ export default function Projects() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5">
-                {mockProjects.map((project) => (
+                {projects.map((project) => (
                   <tr key={project.id} className="hover:bg-white/40 transition-colors group">
                     <td className="px-6 py-4">
                       <Link to={`/projects/${project.id}`} className="flex flex-col">
                         <span className="font-medium text-[#1A1A1A]">{project.name}</span>
-                        <span className="text-xs text-[#666666] mt-0.5">Vence: {project.dueDate}</span>
+                        <span className="text-xs text-[#666666] mt-0.5">Vence: {project.due_date}</span>
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-sm text-[#666666]">
@@ -100,9 +148,48 @@ export default function Projects() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-[#666666] hover:text-[#1A1A1A] transition-colors p-2 rounded-full hover:bg-black/5">
-                        <MoreVertical size={20} />
-                      </button>
+                      <div className="relative inline-block text-left">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenu(activeMenu === project.id ? null : project.id);
+                          }}
+                          className="text-[#666666] hover:text-[#1A1A1A] transition-colors p-2 rounded-full hover:bg-black/5 relative z-30"
+                        >
+                          <MoreVertical size={20} />
+                        </button>
+                        
+                        {activeMenu === project.id && (
+                          <>
+                            <div 
+                              className="fixed inset-0 z-10" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenu(null);
+                              }}
+                            ></div>
+                            <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white shadow-2xl border border-black/5 z-[100] overflow-hidden py-1">
+                              <Link 
+                                to={`/projects/${project.id}`}
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] hover:bg-black/5 transition-colors"
+                              >
+                                <Edit size={16} />
+                                Editar / Ver
+                              </Link>
+                              <button 
+                                onClick={() => {
+                                  handleDelete(project.id);
+                                  setActiveMenu(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-black/5"
+                              >
+                                <Trash2 size={16} />
+                                Eliminar
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -111,7 +198,7 @@ export default function Projects() {
           </div>
         ) : (
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockProjects.map((project) => (
+            {projects.map((project) => (
               <div key={project.id} className="bg-white/50 border border-black/5 rounded-[24px] p-6 hover:shadow-md transition-shadow relative group">
                 <div className="flex justify-between items-start mb-4">
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :
@@ -120,9 +207,45 @@ export default function Projects() {
                     }`}>
                     {project.status}
                   </span>
-                  <button className="text-[#666666] hover:text-[#1A1A1A] opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical size={18} />
-                  </button>
+                  <div className="relative inline-block text-left">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenu(activeMenu === project.id ? null : project.id);
+                      }}
+                      className="text-[#666666] hover:text-[#1A1A1A] transition-colors p-2 rounded-full hover:bg-black/5 relative z-30"
+                    >
+                      <MoreVertical size={18} />
+                    </button>
+                    
+                    {activeMenu === project.id && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={() => setActiveMenu(null)}
+                        ></div>
+                        <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white shadow-2xl border border-black/5 z-20 overflow-hidden py-1">
+                          <Link 
+                            to={`/projects/${project.id}`}
+                            className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] hover:bg-black/5 transition-colors"
+                          >
+                            <Edit size={16} />
+                            Editar / Ver
+                          </Link>
+                          <button 
+                            onClick={() => {
+                              handleDelete(project.id);
+                              setActiveMenu(null);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-black/5"
+                          >
+                            <Trash2 size={16} />
+                            Eliminar
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <Link to={`/projects/${project.id}`}>
@@ -144,20 +267,11 @@ export default function Projects() {
 
                   <div className="flex items-center justify-between pt-4 border-t border-black/5">
                     <div className="flex -space-x-2">
-                      {[...Array(Math.min(project.team, 3))].map((_, i) => (
-                        <div key={i} className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-xs font-medium text-[#666666]">
-                          {String.fromCharCode(65 + i)}
-                        </div>
-                      ))}
-                      {project.team > 3 && (
-                        <div className="w-8 h-8 rounded-full bg-white/50 border-2 border-white flex items-center justify-center text-xs font-medium text-[#666666]">
-                          +{project.team - 3}
-                        </div>
-                      )}
+                       <div className="w-8 h-8 rounded-full bg-[#FFD166] border-2 border-white flex items-center justify-center text-xs font-bold text-[#1A1A1A]">P</div>
                     </div>
                     <div className="text-right">
-                      <span className="block text-xs text-[#666666]">C.M.</span>
-                      <span className={`text-sm font-medium ${project.cm.startsWith('-') ? 'text-red-500' : 'text-[#1A1A1A]'}`}>{project.cm}</span>
+                      <span className="block text-xs text-[#666666]">Vence</span>
+                      <span className="text-sm font-medium text-[#1A1A1A]">{project.due_date}</span>
                     </div>
                   </div>
                 </Link>
@@ -167,11 +281,7 @@ export default function Projects() {
         )}
 
         <div className="p-6 border-t border-black/5 flex items-center justify-between">
-          <p className="text-sm text-[#666666]">Mostrando <span className="font-medium text-[#1A1A1A]">1</span> a <span className="font-medium text-[#1A1A1A]">{mockProjects.length}</span> de <span className="font-medium text-[#1A1A1A]">{mockStats.totalProjects}</span> proyectos</p>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 border border-black/10 rounded-full text-sm font-medium text-[#1A1A1A] hover:bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Anterior</button>
-            <button className="px-4 py-2 border border-black/10 rounded-full text-sm font-medium text-[#1A1A1A] hover:bg-white/50">Siguiente</button>
-          </div>
+          <p className="text-sm text-[#666666]">Mostrando <span className="font-medium text-[#1A1A1A]">{projects.length}</span> proyectos</p>
         </div>
       </div>
     </div>
