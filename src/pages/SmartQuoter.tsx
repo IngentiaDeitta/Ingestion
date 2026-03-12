@@ -322,7 +322,7 @@ export default function SmartQuoter() {
                         </div>
 
                         <div className="flex flex-col gap-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-medium text-[#1A1A1A]">Tamaño de Empresa</label>
                                     <select value={companySize} onChange={(e) => setCompanySize(e.target.value)} className={inputClass}>
@@ -402,7 +402,7 @@ export default function SmartQuoter() {
                     {appState === 'results' && results && (
                         <>
                             {/* Stat Cards */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="bg-white/60 backdrop-blur-xl rounded-[24px] border border-white/40 shadow-sm p-5">
                                     <div className="p-2 bg-white rounded-xl shadow-sm text-[#1A1A1A] w-fit mb-3">
                                         <Clock size={18} />
@@ -441,22 +441,22 @@ export default function SmartQuoter() {
 
                             {/* Tabs Content */}
                             <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden mt-2">
-                                <div className="flex border-b border-black/5">
+                                <div className="flex overflow-x-auto border-b border-black/5 hide-scrollbar">
                                     <button onClick={() => setActiveTab('strategy')}
-                                        className={`px-8 py-4 text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'strategy'
+                                        className={`px-6 py-4 text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'strategy'
                                             ? 'border-b-2 border-[#222222] text-[#1A1A1A] bg-white/30'
                                             : 'text-[#666666] hover:text-[#1A1A1A]'}`}>
                                         <Briefcase size={16} /> Análisis Estratégico
                                     </button>
                                     <button onClick={() => setActiveTab('budget')}
-                                        className={`px-8 py-4 text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'budget'
+                                        className={`px-6 py-4 text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'budget'
                                             ? 'border-b-2 border-[#222222] text-[#1A1A1A] bg-white/30'
                                             : 'text-[#666666] hover:text-[#1A1A1A]'}`}>
                                         <DollarSign size={16} /> Presupuesto Modular
                                     </button>
                                 </div>
 
-                                <div className="p-8">
+                                <div className="p-4 sm:p-8">
                                     {activeTab === 'strategy' && (
                                         <div className="flex flex-col gap-8">
                                             {/* Diagnóstico */}
@@ -529,12 +529,12 @@ export default function SmartQuoter() {
 
                                     {activeTab === 'budget' && (
                                             <div className="flex flex-col gap-8">
-                                                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-black/5 pb-6">
+                                                <div className="flex flex-col lg:flex-row justify-between items-center gap-4 border-b border-black/5 pb-6 text-center lg:text-left">
                                                     <div>
                                                         <h3 className="text-xl font-medium text-[#1A1A1A]">Cotización Modular IngentIA</h3>
                                                         <p className="text-sm text-[#666666]">Configura los alcances de tu propuesta comercial</p>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                                                         <button 
                                                             onClick={(e) => {
                                                                 e.preventDefault();
@@ -544,13 +544,13 @@ export default function SmartQuoter() {
                                                                 });
                                                                 setIsSaveModalOpen(true);
                                                             }}
-                                                            className="flex items-center gap-2 bg-white border border-black/10 hover:bg-black/5 text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-all shadow-sm"
+                                                            className="flex items-center justify-center gap-2 bg-white border border-black/10 hover:bg-black/5 text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-all shadow-sm w-full sm:w-auto"
                                                         >
                                                             <Save size={16} /> 
                                                             Guardar Registro
                                                         </button>
                                                         <button onClick={() => handlePrint()}
-                                                            className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-all shadow-md group">
+                                                            className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-all shadow-md group w-full sm:w-auto">
                                                             <Download size={16} className="group-hover:translate-y-0.5 transition-transform" /> 
                                                             Exportar PDF
                                                         </button>
@@ -571,8 +571,8 @@ export default function SmartQuoter() {
                                             {/* Grilla de Módulos */}
                                             <div className="grid grid-cols-1 gap-4">
                                                 {/* Módulo 1 */}
-                                                <div className={`bg-white border rounded-[28px] p-6 transition-all duration-300 ${!selectedModules.includes('module1') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5'}`}>
-                                                    <div className="flex justify-between items-start mb-4">
+                                                <div className={`bg-white border flex flex-col rounded-[28px] p-4 sm:p-6 transition-all duration-300 ${!selectedModules.includes('module1') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5'}`}>
+                                                    <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
                                                         <div className="flex items-center gap-4">
                                                             <input 
                                                                 type="checkbox" 
@@ -581,27 +581,27 @@ export default function SmartQuoter() {
                                                                     if (e.target.checked) setSelectedModules([...selectedModules, 'module1']);
                                                                     else setSelectedModules(selectedModules.filter(m => m !== 'module1'));
                                                                 }}
-                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer"
+                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer shrink-0"
                                                             />
                                                             <div>
                                                                 <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">Módulo de Consultoría</span>
-                                                                <h4 className="font-semibold text-[#1A1A1A] text-lg">Módulo 1: Auditoría de Procesos</h4>
+                                                                <h4 className="font-semibold text-[#1A1A1A] text-base sm:text-lg leading-tight mt-0.5">Módulo 1: Auditoría de Procesos</h4>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <span className="text-2xl font-light text-[#1A1A1A]">${results.pricing.module1.price.toLocaleString()}</span>
+                                                        <div className="text-left sm:text-right pl-10 sm:pl-0">
+                                                            <span className="text-xl sm:text-2xl font-light text-[#1A1A1A]">${results.pricing.module1.price.toLocaleString()}</span>
                                                             <span className="text-xs text-[#666666] ml-1 font-medium">USD</span>
                                                         </div>
                                                     </div>
-                                                    <p className="text-[#666666] text-sm leading-relaxed mb-6 ml-10">{results.pricing.module1.description}</p>
-                                                    <div className="flex items-center gap-2 text-xs text-[#666666] font-semibold bg-black/5 px-4 py-2.5 rounded-2xl w-fit ml-10">
+                                                    <p className="text-[#666666] text-sm leading-relaxed mb-6 sm:ml-10">{results.pricing.module1.description}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-[#666666] font-semibold bg-black/5 px-4 py-2.5 rounded-2xl w-fit sm:ml-10">
                                                         <Clock size={14} /> Tiempo de Entrega: {results.pricing.module1.deliveryDays} días
                                                     </div>
                                                 </div>
 
                                                 {/* Módulo 2 */}
-                                                <div className={`bg-white border rounded-[28px] p-6 transition-all duration-300 ${results.pricing.module2.price === 0 ? 'hidden' : (!selectedModules.includes('module2') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5')}`}>
-                                                    <div className="flex justify-between items-start mb-4">
+                                                <div className={`bg-white border flex flex-col rounded-[28px] p-4 sm:p-6 transition-all duration-300 ${results.pricing.module2.price === 0 ? 'hidden' : (!selectedModules.includes('module2') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5')}`}>
+                                                    <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
                                                         <div className="flex items-center gap-4">
                                                             <input 
                                                                 type="checkbox" 
@@ -610,26 +610,26 @@ export default function SmartQuoter() {
                                                                     if (e.target.checked) setSelectedModules([...selectedModules, 'module2']);
                                                                     else setSelectedModules(selectedModules.filter(m => m !== 'module2'));
                                                                 }}
-                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer"
+                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer shrink-0"
                                                             />
                                                             <div>
                                                                 <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">{results.pricing.module2.pricingModel}</span>
-                                                                <h4 className="font-semibold text-[#1A1A1A] text-lg">Módulo 2: Implementación</h4>
+                                                                <h4 className="font-semibold text-[#1A1A1A] text-base sm:text-lg leading-tight mt-0.5">Módulo 2: Implementación</h4>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <span className="text-2xl font-light text-[#1A1A1A]">
+                                                        <div className="text-left sm:text-right pl-10 sm:pl-0">
+                                                            <span className="text-xl sm:text-2xl font-light text-[#1A1A1A]">
                                                                 {results.pricing.module2.price > 0 ? `$${results.pricing.module2.price.toLocaleString()}` : 'N/A'}
                                                             </span>
                                                             <span className="text-xs text-[#666666] ml-1 font-medium">USD</span>
                                                         </div>
                                                     </div>
-                                                    <p className="text-[#666666] text-sm leading-relaxed ml-10">{results.pricing.module2.description}</p>
+                                                    <p className="text-[#666666] text-sm leading-relaxed sm:ml-10">{results.pricing.module2.description}</p>
                                                 </div>
 
                                                 {/* Módulo 3 */}
-                                                <div className={`bg-white border rounded-[28px] p-6 transition-all duration-300 ${results.pricing.module3.monthlyPrice === 0 ? 'hidden' : (!selectedModules.includes('module3') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5')}`}>
-                                                    <div className="flex justify-between items-start mb-4">
+                                                <div className={`bg-white border flex flex-col rounded-[28px] p-4 sm:p-6 transition-all duration-300 ${results.pricing.module3.monthlyPrice === 0 ? 'hidden' : (!selectedModules.includes('module3') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5')}`}>
+                                                    <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
                                                         <div className="flex items-center gap-4">
                                                             <input 
                                                                 type="checkbox" 
@@ -638,21 +638,21 @@ export default function SmartQuoter() {
                                                                     if (e.target.checked) setSelectedModules([...selectedModules, 'module3']);
                                                                     else setSelectedModules(selectedModules.filter(m => m !== 'module3'));
                                                                 }}
-                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer"
+                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer shrink-0"
                                                             />
                                                             <div>
                                                                 <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">Módulo Recurrente</span>
-                                                                <h4 className="font-semibold text-[#1A1A1A] text-lg">Módulo 3: Evolución & Soporte</h4>
+                                                                <h4 className="font-semibold text-[#1A1A1A] text-base sm:text-lg leading-tight mt-0.5">Módulo 3: Evolución & Soporte</h4>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <span className="text-2xl font-light text-[#1A1A1A]">
+                                                        <div className="text-left sm:text-right pl-10 sm:pl-0">
+                                                            <span className="text-xl sm:text-2xl font-light text-[#1A1A1A]">
                                                                 {results.pricing.module3.monthlyPrice > 0 ? `$${results.pricing.module3.monthlyPrice.toLocaleString()}` : 'N/A'}
                                                             </span>
                                                             <span className="text-xs text-[#666666] ml-1 font-medium">USD/mes</span>
                                                         </div>
                                                     </div>
-                                                    <p className="text-[#666666] text-sm leading-relaxed ml-10">{results.pricing.module3.description}</p>
+                                                    <p className="text-[#666666] text-sm leading-relaxed sm:ml-10">{results.pricing.module3.description}</p>
                                                 </div>
                                             </div>
 
