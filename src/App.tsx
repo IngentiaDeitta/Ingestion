@@ -17,8 +17,10 @@ import Team from './pages/Team';
 import Settings from './pages/Settings';
 import TechStack from './pages/TechStack';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import NotFound from './pages/NotFound';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -26,27 +28,30 @@ function App() {
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         
         {/* Protected App Routes */}
-        <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/new" element={<NewProject />} />
-          <Route path="/projects/:id" element={<ProjectDetail />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/clients/new" element={<NewClient />} />
-          <Route path="/clients/:id" element={<ClientDetail />} />
-          <Route path="/finance" element={<Finance />} />
-          <Route path="/finance/new-invoice" element={<NewInvoice />} />
-          <Route path="/kanban" element={<Kanban />} />
-          <Route path="/smart-quoter" element={<SmartQuoter />} />
-          <Route path="/timesheet" element={<Timesheet />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/team" element={<Team />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/tech-stack" element={<TechStack />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/new" element={<NewProject />} />
+            <Route path="/projects/:id" element={<ProjectDetail />} />
+            <Route path="/clients" element={<Clients />} />
+            <Route path="/clients/new" element={<NewClient />} />
+            <Route path="/clients/:id" element={<ClientDetail />} />
+            <Route path="/finance" element={<Finance />} />
+            <Route path="/finance/new-invoice" element={<NewInvoice />} />
+            <Route path="/kanban" element={<Kanban />} />
+            <Route path="/smart-quoter" element={<SmartQuoter />} />
+            <Route path="/timesheet" element={<Timesheet />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/team" element={<Team />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/tech-stack" element={<TechStack />} />
+          </Route>
         </Route>
 
         {/* 404 Route */}

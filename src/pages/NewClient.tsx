@@ -1,7 +1,8 @@
-import { ArrowLeft, Save, Building, Mail, Phone, MapPin, Globe } from 'lucide-react';
+import { ArrowLeft, Save, Building, Mail, Phone, MapPin, Globe, UserPlus, Trash2, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { sendNotification } from '../lib/notifications';
 
 export default function NewClient() {
   const navigate = useNavigate();
@@ -17,11 +18,15 @@ export default function NewClient() {
     contactRole: ''
   });
 
+  const [contactList, setContactList] = useState<Array<{first_name: string, last_name: string, email: string}>>([]);
+  const [newContact, setNewContact] = useState({ first_name: '', last_name: '', email: '' });
+  const [showContactForm, setShowContactForm] = useState(false);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
-      const { error } = await supabase
+      const { data: clientData, error: clientError } = await supabase
         .from('clients')
         .insert([{
           name: formData.name,
@@ -30,9 +35,30 @@ export default function NewClient() {
           phone: formData.phone,
           contact_person: formData.contactName,
           status: 'Activo'
-        }]);
+        }])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (clientError) throw clientError;
+
+      if (clientData && contactList.length > 0) {
+        const { error: contactsError } = await supabase
+          .from('client_contacts')
+          .insert(contactList.map(c => ({
+            client_id: clientData.id,
+            first_name: c.first_name,
+            last_name: c.last_name,
+            email: c.email
+          })));
+        if (contactsError) throw contactsError;
+      }
+
+      await sendNotification(
+        'Nuevo Cliente Registrado', 
+        `La empresa '${formData.name}' ha sido agregada con éxito al directorio.`,
+        'client'
+      );
+
       navigate('/clients');
     } catch (error) {
       console.error('Error creating client:', error);
@@ -113,16 +139,91 @@ export default function NewClient() {
         </div>
 
         <div className="flex flex-col gap-6 pt-6 border-t border-black/5">
-          <h4 className="text-lg font-medium text-[#1A1A1A]">Contacto Principal</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Nombre Completo</label>
-              <input required type="text" placeholder="Ej. María Rodríguez" value={formData.contactName} onChange={e => setFormData({...formData, contactName: e.target.value})} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Cargo</label>
-              <input required type="text" placeholder="Ej. Directora de Operaciones" value={formData.contactRole} onChange={e => setFormData({...formData, contactRole: e.target.value})} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" />
-            </div>
+          <h4 className="text-lg font-medium text-[#1A1A1A]">Personas de Contacto Adicionales</h4>
+          
+          <div className="flex flex-col gap-4">
+            {contactList.map((contact, index) => (
+              <div key={index} className="flex items-center justify-between bg-white/40 p-4 rounded-[20px] border border-black/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center font-bold text-xs">
+                    {contact.first_name[0]}{contact.last_name[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[#1A1A1A]">{contact.first_name} {contact.last_name}</p>
+                    <p className="text-xs text-[#666666]">{contact.email}</p>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setContactList(contactList.filter((_, i) => i !== index))}
+                  className="p-2 hover:bg-red-50 rounded-full text-red-500 transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+
+            {!showContactForm ? (
+              <button 
+                type="button"
+                onClick={() => setShowContactForm(true)}
+                className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-black/5 rounded-[20px] text-[#666666] hover:border-[#FFD166] hover:text-[#1A1A1A] transition-all"
+              >
+                <UserPlus size={18} />
+                <span className="text-sm font-medium">Agregar Persona de Contacto</span>
+              </button>
+            ) : (
+              <div className="bg-white/80 p-6 rounded-[24px] border border-[#FFD166]/50 shadow-sm flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-[#666666] uppercase">Nombre</label>
+                    <input 
+                      type="text" 
+                      placeholder="Juan"
+                      value={newContact.first_name}
+                      onChange={e => setNewContact({...newContact, first_name: e.target.value})}
+                      className="w-full h-11 rounded-xl border border-black/10 bg-white px-4 text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-[#666666] uppercase">Apellido</label>
+                    <input 
+                      type="text" 
+                      placeholder="Perez"
+                      value={newContact.last_name}
+                      onChange={e => setNewContact({...newContact, last_name: e.target.value})}
+                      className="w-full h-11 rounded-xl border border-black/10 bg-white px-4 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-[#666666] uppercase">Email</label>
+                  <input 
+                    type="email" 
+                    placeholder="email@empresa.com"
+                    value={newContact.email}
+                    onChange={e => setNewContact({...newContact, email: e.target.value})}
+                    className="w-full h-11 rounded-xl border border-black/10 bg-white px-4 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-2">
+                  <button type="button" onClick={() => setShowContactForm(false)} className="px-4 py-2 text-sm font-medium text-[#666666]">Cancelar</button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (newContact.first_name && newContact.last_name && newContact.email) {
+                        setContactList([...contactList, newContact]);
+                        setNewContact({ first_name: '', last_name: '', email: '' });
+                        setShowContactForm(false);
+                      }
+                    }}
+                    className="bg-[#1A1A1A] text-white px-6 py-2 rounded-full text-sm font-medium"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

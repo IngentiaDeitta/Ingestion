@@ -2,6 +2,7 @@ import { ArrowLeft, Save, Calendar, DollarSign, AlignLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { sendNotification } from '../lib/notifications';
 
 export default function NewProject() {
   const navigate = useNavigate();
@@ -42,6 +43,13 @@ export default function NewProject() {
         }]);
 
       if (error) throw error;
+
+      await sendNotification(
+        'Proyecto Iniciado',
+        `Se ha creado el proyecto '${formData.name}' para el cliente '${formData.client}'.`,
+        'project'
+      );
+
       navigate('/projects');
     } catch (error) {
       console.error('Error creating project:', error);

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useEffect, forwardRef } from 'react';
-import { mockClients, mockProjects } from '../data/mockData';
+import { forwardRef } from 'react';
 
 interface BudgetPDFTemplateProps {
   formData: any;
@@ -15,157 +14,388 @@ const BudgetPDFTemplate = forwardRef<HTMLDivElement, BudgetPDFTemplateProps>(
       day: 'numeric',
     });
 
-    const client = mockClients.find(c => c.id === formData.clientId) || {
-      name: formData.clientName || 'Cliente Potencial',
-      company: formData.clientName || 'Empresa',
-      email: 'contacto@cliente.com',
-      logo: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?w=100&h=100&fit=crop'
-    };
-
-    const project = mockProjects.find(p => p.id === formData.projectId) || {
-      name: formData.projectName || 'Proyecto de Consultoría IA',
-    };
-
-    // Cálculos de presupuesto
-    const getBasePrice = () => {
-        if (!result) return 0;
-        return result.module1.total;
-    };
-
-    const getImplementationPrice = () => {
-        if (!result) return 0;
-        return result.module2.total;
-    };
-
     const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('es-ES', {
-        style: 'currency',
-        currency: 'EUR',
-      }).format(amount);
+      const formatted = new Intl.NumberFormat('de-DE').format(amount);
+      return `U$S ${formatted}`;
     };
+
+    if (!result) return null;
+
+    const { selectedModules = ['module1'] } = result;
+    
+    // Filter modules based on selection
+    const modulesToRender = [];
+    if (selectedModules.includes('module1')) {
+      modulesToRender.push({
+        id: 'Módulo 1',
+        title: 'DIAGNÓSTICO RÁPIDO',
+        label: 'Consultoría',
+        desc: 'Análisis, diagnóstico y hoja de ruta operativa',
+        fullDesc: result.pricing.module1.description,
+        hours: result.hoursStage1,
+        price: result.pricing.module1.price,
+        type: 'one-time'
+      });
+    }
+    if (selectedModules.includes('module2') && result.pricing.module2.price > 0) {
+      modulesToRender.push({
+        id: 'Módulo 2',
+        title: 'IMPLEMENTACIÓN',
+        label: result.pricing.module2.pricingModel,
+        desc: 'Ejecución técnica e integración de soluciones',
+        fullDesc: result.pricing.module2.description,
+        hours: result.hoursStage2,
+        price: result.pricing.module2.price,
+        type: 'one-time'
+      });
+    }
+    if (selectedModules.includes('module3') && result.pricing.module3.monthlyPrice > 0) {
+      modulesToRender.push({
+        id: 'Módulo 3',
+        title: 'EVOLUCIÓN & SOPORTE',
+        label: 'Recurrente',
+        desc: 'Mantenimiento preventivo y mejora continua',
+        fullDesc: result.pricing.module3.description,
+        hours: '-',
+        price: result.pricing.module3.monthlyPrice,
+        type: 'monthly'
+      });
+    }
+
+    const totalOneTime = modulesToRender
+      .filter(m => m.type === 'one-time')
+      .reduce((sum, m) => sum + m.price, 0);
 
     return (
-      <div ref={ref} className="bg-white text-[#111111] font-sans selection:bg-red-500 selection:text-white" style={{ width: '860px', minHeight: '1100px', margin: '0 auto', boxSizing: 'border-box' }}>
+      <div ref={ref} className="bg-white text-[#333333] font-sans overflow-hidden" style={{ width: '794px', height: '1122px', margin: '0 auto', boxSizing: 'border-box', position: 'relative', border: '1px solid #f0f0f0' }}>
         <style>
           {`
-            @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap');
             
-            .pdf-page {
-              font-family: 'DM Sans', sans-serif;
-              color: #111111;
-              line-height: 1.5;
+            .pdf-container {
+              font-family: 'Inter', sans-serif;
+              color: #333333;
+              height: 100%;
+              display: flex;
+              flex-direction: column;
             }
-            .bebas { font-family: 'Bebas+Neue', cursive; }
-            h1, h2, h3 { font-family: 'Bebas+Neue', cursive; letter-spacing: 0.05em; }
-            .red-text { color: #ed382d; }
-            .bg-red { background: #ed382d; color: white; }
-            .border-red { border-color: #ed382d; }
+            .header-pattern {
+              background-color: #008CA4;
+              height: 160px;
+              width: 100%;
+              position: relative;
+              color: white;
+              padding: 25px 45px;
+              overflow: hidden;
+            }
+            .pattern-circles {
+              position: absolute;
+              top: -20px;
+              left: -20px;
+              width: 100px;
+              height: 100px;
+              background-image: radial-gradient(circle, white 1px, transparent 1px);
+              background-size: 10px 10px;
+              opacity: 0.2;
+              transform: rotate(45deg);
+            }
+            .header-title {
+              font-family: 'Montserrat', sans-serif;
+              font-size: 48px;
+              letter-spacing: 10px;
+              text-transform: uppercase;
+              margin-top: 25px;
+            }
+            .logo-area {
+              position: absolute;
+              top: 30px;
+              right: 45px;
+              text-align: right;
+            }
+            .logo-text {
+              font-weight: 800;
+              font-size: 22px;
+              display: flex;
+              align-items: center;
+              justify-content: flex-end;
+              gap: 8px;
+              color: white;
+            }
+            .logo-rect {
+              width: 6px;
+              height: 28px;
+              background-color: white;
+              order: -1;
+            }
+            .logo-subtitle {
+              font-size: 9px;
+              margin-top: 2px;
+              opacity: 0.9;
+              font-weight: 600;
+            }
+            .info-section {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              padding: 20px 45px;
+              font-size: 11px;
+              line-height: 1.4;
+            }
+            .module-block {
+              margin-bottom: 20px;
+            }
+            .module-pill {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              padding: 0 45px;
+              margin-bottom: 10px;
+            }
+            .pill-black {
+              background: black;
+              color: white;
+              padding: 4px 12px;
+              border-radius: 20px;
+              font-size: 9px;
+              font-weight: 700;
+              text-transform: uppercase;
+              white-space: nowrap;
+            }
+            .module-title {
+              font-weight: 700;
+              font-size: 12px;
+              color: #111;
+            }
+            .module-desc {
+              font-size: 10px;
+              color: #888;
+            }
+            .budget-table {
+              width: calc(100% - 90px);
+              margin: 0 45px 15px;
+              border-collapse: collapse;
+            }
+            .budget-table th {
+              background-color: #008CA4;
+              color: white;
+              text-align: left;
+              padding: 8px 12px;
+              font-size: 9px;
+              font-weight: 700;
+              letter-spacing: 1px;
+              text-transform: uppercase;
+            }
+            .budget-table td {
+              padding: 10px 12px;
+              border-bottom: 1px solid #eeeeee;
+              font-size: 10px;
+              vertical-align: top;
+            }
+            .summary-area {
+              margin-top: auto;
+              padding: 15px 45px;
+              display: flex;
+              flex-direction: column;
+              align-items: flex-end;
+              gap: 5px;
+            }
+            .summary-row {
+              display: flex;
+              justify-content: flex-end;
+              gap: 30px;
+              width: 350px;
+            }
+            .summary-label {
+              font-size: 9px;
+              font-weight: 700;
+              text-transform: uppercase;
+              text-align: right;
+            }
+            .summary-value {
+              width: 110px;
+              text-align: right;
+              font-weight: 700;
+              font-size: 12px;
+            }
+            .red-text {
+              color: #D0021B;
+            }
+            .footer-notes {
+              padding: 20px 45px 50px;
+              border-top: 1px solid #eee;
+            }
+            .notes-title {
+              font-weight: 700;
+              font-size: 12px;
+              margin-bottom: 8px;
+            }
+            .notes-list {
+              font-size: 9px;
+              color: #666;
+              padding-left: 15px;
+              max-width: 500px;
+            }
+            .notes-list li {
+              margin-bottom: 3px;
+            }
+            .signature-area {
+              position: absolute;
+              bottom: 40px;
+              right: 45px;
+              text-align: center;
+              width: 180px;
+            }
+            .signature-img {
+              max-height: 40px;
+              margin: 0 auto 5px;
+              mix-blend-mode: multiply;
+            }
+            .signature-name {
+              font-weight: 700;
+              font-size: 11px;
+              color: #111;
+            }
+            .signature-role {
+              font-size: 9px;
+              color: #D0021B;
+            }
+            .bottom-pattern {
+               position: absolute;
+               bottom: 0;
+               right: 0;
+               width: 80px;
+               height: 80px;
+               background-image: radial-gradient(circle, #333 1px, transparent 1px);
+               background-size: 10px 10px;
+               opacity: 0.1;
+               transform: rotate(-45deg);
+            }
+            
+            @media print {
+              body { margin: 0; padding: 0; }
+              .bg-white { border: none !important; }
+            }
           `}
         </style>
 
-        <div className="pdf-page p-12 flex flex-col gap-10">
+        <div className="pdf-container">
           {/* Header */}
-          <div className="flex justify-between items-start">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-black rounded-lg"></div>
-                <h1 className="text-4xl font-bold tracking-tighter">INGENT<span className="red-text">IA</span></h1>
+          <div className="header-pattern">
+            <div className="pattern-circles"></div>
+            <div className="logo-area">
+              <div className="logo-text">
+                INGENTIA
+                <div className="logo-rect"></div>
               </div>
-              <p className="text-[10px] font-bold text-gray-400 tracking-[0.2em] uppercase">Smart Business Solutions</p>
+              <p className="logo-subtitle">Ingeniería y Tech</p>
             </div>
-            
+            <h1 className="header-title">Presupuesto</h1>
+          </div>
+
+          {/* Client Info */}
+          <div className="info-section">
+            <div>
+              <p><strong>Para:</strong></p>
+              <p className="font-bold">{formData.clientName}</p>
+              <p className="text-[#666]">contacto@{formData.clientName.toLowerCase().replace(/\s/g, '')}.com</p>
+              <p className="text-[#666]">www.{formData.clientName.toLowerCase().replace(/\s/g, '')}.com</p>
+            </div>
             <div className="text-right">
-              <h2 className="text-5xl font-bold text-gray-100/10 -mt-4 bebas">PROPOSAL</h2>
-              <div className="mt-2 text-[11px] font-medium text-gray-500 uppercase tracking-widest">
-                Ref: PR-{new Date().getFullYear()}-042
-              </div>
+              <p><strong>No :</strong> ING-{new Date().getFullYear()}-012</p>
+              <p><strong>Fecha :</strong> {today}</p>
+              <p><strong>Email :</strong> ingentia.tech@gmail.com</p>
+              <p><strong>Phone :</strong> +1 16 129 8057</p>
             </div>
           </div>
 
-          {/* Main Info Box */}
-          <div className="grid grid-cols-2 gap-8 border-y-2 border-black/5 py-10">
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Preparado para:</p>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center border border-black/5">
-                  <span className="text-xl font-bold text-black">{client.name[0]}</span>
+          {modulesToRender.map((module, idx) => (
+            <div key={idx} className="module-block">
+              {/* Module Pill */}
+              <div className="module-pill">
+                <div className="pill-black">{module.id}</div>
+                <div>
+                    <div className="module-title">{module.title}</div>
+                    <div className="module-desc">{module.desc}</div>
+                </div>
+              </div>
+
+              {/* Table */}
+              <table className="budget-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '25%' }}>Concepto</th>
+                    <th style={{ width: '45%' }}>Descripción</th>
+                    <th style={{ width: '15%' }}>Horas</th>
+                    <th style={{ width: '15%' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="font-semibold">{module.label}</td>
+                    <td className="text-[#666] leading-tight">
+                      {module.fullDesc}
+                    </td>
+                    <td className="font-medium">{module.hours} {module.hours !== '-' ? 'hs' : ''}</td>
+                    <td className="font-semibold">{formatCurrency(module.price)} {module.type === 'monthly' ? '/mes' : ''}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ))}
+
+          {/* Totals */}
+          <div className="summary-area">
+            {selectedModules.length > 0 && (
+              <>
+                <div className="summary-row">
+                  <div className="summary-label">Subtotal Inversión Inicial</div>
+                  <div className="summary-value">{formatCurrency(totalOneTime)}</div>
+                </div>
+                <div className="summary-row">
+                  <div className="summary-label red-text">Impuestos (No incl.)</div>
+                  <div className="summary-value red-text">{formatCurrency(0)}</div>
+                </div>
+                <div className="summary-row mt-1">
+                  <div className="summary-label" style={{ fontSize: '14px' }}>Total Estimado</div>
+                  <div className="summary-value" style={{ fontSize: '16px' }}>{formatCurrency(totalOneTime)}</div>
+                </div>
+              </>
+            )}
+            <p className="text-[9px] text-[#888] mt-2 italic">¡Gracias por la oportunidad de trabajar juntos!</p>
+          </div>
+
+          {/* Notes */}
+          <div className="footer-notes">
+             <h4 className="notes-title">Notas y condiciones</h4>
+             <ul className="notes-list">
+                <li>Los precios están expresados en USD. Se tomará el TC oficial correspondiente al día de pago.</li>
+                <li>Forma de pago: 30% anticipo, 70% contra entrega de hitos.</li>
+                <li>La validez de esta propuesta es de 30 días corridos a partir de la fecha de emisión.</li>
+             </ul>
+
+             <div className="mt-4 flex items-center gap-3">
+                <div className="p-1.5 bg-orange-50 rounded-lg">
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-black m-0 leading-none">{client.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{client.company}</p>
+                   <p className="font-bold text-[10px]">Validez de Oferta</p>
+                   <p className="text-[9px] text-[#888]">30 días desde {today}</p>
                 </div>
-              </div>
-            </div>
-            <div className="text-right flex flex-col justify-end">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Fecha de Emisión</p>
-              <p className="text-lg font-bold text-black">{today}</p>
-              <p className="text-[11px] text-gray-400 mt-1">Válido por 30 días</p>
-            </div>
+             </div>
           </div>
 
-          {/* Project Title */}
-          <div className="bg-black text-white p-10 rounded-[32px] relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/20 blur-[80px] -mr-32 -mt-32"></div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 relative z-10">Propuesta de Proyecto</p>
-            <h2 className="text-4xl italic font-bold tracking-tight mb-4 relative z-10">{project.name}</h2>
-            <div className="flex gap-4 relative z-10">
-                <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest">Transformación Digital</span>
-                <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest">IA Generativa</span>
-            </div>
+          {/* Signature */}
+          <div className="signature-area">
+             <img 
+               src="/signature.png" 
+               alt="Firma" 
+               className="signature-img"
+             />
+             <p className="signature-name">Fernando Miceli</p>
+             <p className="signature-role">Socio Fundador</p>
           </div>
 
-          <div className="grid grid-cols-12 gap-10 pt-4">
-            {/* Left Column: Pricing */}
-            <div className="col-span-12">
-              <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white text-sm">01</span>
-                Desglose de la Inversión
-              </h3>
-
-              <div className="space-y-4">
-                {/* Module 1 */}
-                <div className="bg-gray-50 rounded-[24px] p-6 border border-black/5">
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <h4 className="font-bold text-lg text-black">Módulo 1: Análisis y Consultoría Estratégica</h4>
-                            <p className="text-sm text-gray-500 mt-1">Auditoría de procesos, detección de cuellos de botella y Roadmap de IA.</p>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-xl font-bold text-black">{result ? formatCurrency(result.module1.total) : '€0,00'}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Totals Box */}
-                <div className="bg-red-600 rounded-[32px] p-8 text-white mt-10 shadow-xl shadow-red-600/20 flex justify-between items-center">
-                    <div>
-                        <p className="text-[11px] font-bold uppercase tracking-widest opacity-80 mb-1">Inversión Total Estimada</p>
-                        <h2 className="text-5xl font-bold m-0 bebas tracking-normal">{result ? formatCurrency(result.module1.total) : '€0,00'}</h2>
-                        <p className="text-[10px] mt-2 opacity-60">* Los precios no incluyen impuestos (IVA 21%)</p>
-                    </div>
-                    <div className="text-right border-l border-white/20 pl-10">
-                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-3">Términos de Pago</p>
-                        <div className="space-y-1">
-                            <p className="text-xs font-bold">50% al inicio del proyecto</p>
-                            <p className="text-xs font-bold">50% a la entrega del informe final</p>
-                        </div>
-                    </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Info */}
-          <div className="mt-auto border-t border-black/5 pt-8 flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-            <div className="flex gap-6">
-                <span>ingentia.com</span>
-                <span>hola@ingentia.com</span>
-            </div>
-            <div className="flex gap-6">
-                 <span>Madrid, España</span>
-                 <span>+34 912 345 678</span>
-            </div>
-          </div>
+          <div className="bottom-pattern"></div>
         </div>
       </div>
     );

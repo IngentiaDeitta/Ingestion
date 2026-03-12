@@ -78,7 +78,7 @@ export default function Dashboard() {
       {/* Header Section */}
       <div className="flex flex-col gap-6">
         <h1 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">
-          Hola, {profile.firstName}!
+          Hola, {profile?.first_name || 'Usuario'}!
         </h1>
 
         <div className="flex flex-wrap items-center gap-x-12 gap-y-6">
@@ -167,12 +167,12 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="absolute bottom-4 right-4 bg-[#2A2A2A] text-white px-4 py-1.5 rounded-full text-sm font-medium border border-white/10">
-                {profile.role}
+                {profile?.role || 'Project Manager'}
               </div>
             </div>
             <div className="px-2 pb-2">
-              <h3 className="text-xl font-medium text-[#1A1A1A]">{profile.firstName} {profile.lastName}</h3>
-              <p className="text-[#666666] text-sm">{profile.role}</p>
+              <h3 className="text-xl font-medium text-[#1A1A1A]">{profile?.first_name || 'Usuario'} {profile?.last_name || ''}</h3>
+              <p className="text-[#666666] text-sm">{profile?.role || 'Project Manager'}</p>
             </div>
           </div>
 

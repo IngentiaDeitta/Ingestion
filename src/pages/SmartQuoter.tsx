@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
     Wand2, Database, Calculator, Microscope, Lightbulb, CheckCircle2,
     AlertTriangle, Copy, Plus, Loader2, DollarSign, Download, FileText,
-    Briefcase, TrendingUp, Link as LinkIcon, BookOpen, Clock, BarChart2
+    Briefcase, TrendingUp, Link as LinkIcon, BookOpen, Clock, BarChart2, Save
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { supabase } from "../lib/supabase";
 import { analyzeWithGemini } from "../lib/gemini";
 import BudgetPDFTemplate from "../components/BudgetPDFTemplate";
+import { sendNotification } from "../lib/notifications";
 
 type AppState = 'welcome' | 'loading' | 'results';
 type TabState = 'strategy' | 'budget';
@@ -51,34 +52,82 @@ export default function SmartQuoter() {
     const [copied, setCopied] = useState(false);
     const [dbClients, setDbClients] = useState<{id: string, name: string}[]>([]);
     const [dbProjects, setDbProjects] = useState<{id: string, name: string, client: string}[]>([]);
+    const [selectedModules, setSelectedModules] = useState<string[]>(['module1', 'module2', 'module3']);
+    
+    // Save Quote State
+    const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const [saveFormData, setSaveFormData] = useState({
+        title: '',
+        comments: '',
+        status: 'Generada',
+        sent_date: ''
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [searchParams] = useSearchParams();
+    const [isIdLoading, setIsIdLoading] = useState(false);
 
     const printRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: 'Propuesta_IngentIA' });
 
     useEffect(() => {
         fetchClientsAndProjects();
-        const savedQuote = localStorage.getItem("lastAdvancedQuote");
-        if (savedQuote) {
-            try {
-                const parsed = JSON.parse(savedQuote);
-                setResults(parsed.results);
-                setCompanySize(parsed.inputs.companySize || "Medium");
-                setServiceType(parsed.inputs.serviceType || "Consultancy");
-                setClientUrl(parsed.inputs.clientUrl || "");
-                setNotebookLmContext(parsed.inputs.notebookLmContext || "");
-                setTranscripts(parsed.inputs.transcripts || "");
-                setClientId(parsed.inputs.clientId || "");
-                setProjectId(parsed.inputs.projectId || "");
-                setAppState('results');
-            } catch (e) { console.error("Failed to load saved quote", e); }
+        
+        const quoteId = searchParams.get('quoteId');
+        if (quoteId) {
+            loadQuoteFromId(quoteId);
+        } else {
+            const savedQuote = localStorage.getItem("lastAdvancedQuote");
+            if (savedQuote) {
+                try {
+                    const parsed = JSON.parse(savedQuote);
+                    setResults(parsed.results);
+                    setCompanySize(parsed.inputs.companySize || "Medium");
+                    setServiceType(parsed.inputs.serviceType || "Consultancy");
+                    setClientUrl(parsed.inputs.clientUrl || "");
+                    setNotebookLmContext(parsed.inputs.notebookLmContext || "");
+                    setTranscripts(parsed.inputs.transcripts || "");
+                    setClientId(parsed.inputs.clientId || "");
+                    setProjectId(parsed.inputs.projectId || "");
+                    setAppState('results');
+                } catch (e) { console.error("Failed to load saved quote", e); }
+            }
         }
-    }, []);
+    }, [searchParams]);
 
     const fetchClientsAndProjects = async () => {
         const { data: clientsData } = await supabase.from('clients').select('id, name').order('name');
         setDbClients(clientsData || []);
         const { data: projectsData } = await supabase.from('projects').select('id, name, client').order('name');
         setDbProjects(projectsData || []);
+    };
+
+    const loadQuoteFromId = async (id: string) => {
+        try {
+            setIsIdLoading(true);
+            setAppState('loading');
+            
+            const { data, error } = await supabase
+                .from('quotes')
+                .select('*')
+                .eq('id', id)
+                .single();
+            
+            if (error) throw error;
+            if (data) {
+                setResults(data.content);
+                setSelectedModules(data.selected_modules || []);
+                setClientId(data.client_id);
+                setProjectId(data.project_id);
+                setAppState('results');
+                setActiveTab('budget');
+            }
+        } catch (error: any) {
+            console.error('Error loading quote:', error);
+            alert('No se pudo cargar la cotización anterior');
+            setAppState('welcome');
+        } finally {
+            setIsIdLoading(false);
+        }
     };
 
     const analyzeProject = async () => {
@@ -108,6 +157,12 @@ export default function SmartQuoter() {
             });
 
             setResults(geminiResult);
+            // Default select modules that have a price > 0
+            const initialModules = ['module1'];
+            if (geminiResult.pricing.module2.price > 0) initialModules.push('module2');
+            if (geminiResult.pricing.module3.monthlyPrice > 0) initialModules.push('module3');
+            setSelectedModules(initialModules);
+
             localStorage.setItem("lastAdvancedQuote", JSON.stringify({
                 inputs: { companySize, serviceType, clientUrl, notebookLmContext, transcripts, clientId, projectId },
                 results: geminiResult,
@@ -137,7 +192,47 @@ export default function SmartQuoter() {
         localStorage.removeItem("lastAdvancedQuote");
     };
 
+    const handleSaveQuote = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!results || !clientId || !projectId) return;
 
+        try {
+            setIsSaving(true);
+            const total = (selectedModules.includes('module1') ? results.pricing.module1.price : 0) +
+                          (selectedModules.includes('module2') ? results.pricing.module2.price : 0);
+
+            const { error } = await supabase.from('quotes').insert({
+                client_id: clientId,
+                project_id: projectId,
+                client_name: clientName,
+                project_name: projectName,
+                title: saveFormData.title || `Cotización Modular - ${projectName}`,
+                status: saveFormData.status,
+                content: results,
+                selected_modules: selectedModules,
+                comments: saveFormData.comments,
+                total_amount: total,
+                sent_date: saveFormData.sent_date ? new Date(saveFormData.sent_date).toISOString() : null,
+                generation_date: new Date().toISOString()
+            });
+
+            if (error) throw error;
+            
+            await sendNotification(
+                'Nueva Cotización Guardada',
+                `Se ha generado una nueva propuesta para '${clientName}' por un total de $${total.toLocaleString()}.`,
+                'quote'
+            );
+
+            alert('Cotización guardada exitosamente');
+            setIsSaveModalOpen(false);
+        } catch (error: any) {
+            console.error('Error saving quote:', error);
+            alert(`Error al guardar: ${error.message}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const clientName = dbClients.find(c => c.id === clientId)?.name || "Cliente";
     const projectName = dbProjects.find(p => p.id === projectId)?.name || "Proyecto";
@@ -147,9 +242,9 @@ export default function SmartQuoter() {
 
     const pdfFormData = { clientId, projectId, clientName, projectName };
     const pdfResult = results ? {
-        module1: { total: results.pricing.module1.price },
-        module2: { total: results.pricing.module2.price }
-    } : undefined;
+        ...results,
+        selectedModules
+    } : null;
 
     const inputClass = "w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all text-sm";
     const textareaClass = "w-full rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] p-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all text-sm resize-none";
@@ -159,7 +254,7 @@ export default function SmartQuoter() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Smart Quoter</h3>
+                    <h3 style={{ fontFamily: "system-ui, -apple-system, sans-serif" }} className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Smart Quoter</h3>
                     <p className="text-[#666666] mt-1">Analizador avanzado y cotización inteligente para tus proyectos.</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -345,7 +440,7 @@ export default function SmartQuoter() {
                             </div>
 
                             {/* Tabs Content */}
-                            <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden">
+                            <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden mt-2">
                                 <div className="flex border-b border-black/5">
                                     <button onClick={() => setActiveTab('strategy')}
                                         className={`px-8 py-4 text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'strategy'
@@ -433,71 +528,153 @@ export default function SmartQuoter() {
                                     )}
 
                                     {activeTab === 'budget' && (
-                                        <div className="flex flex-col gap-6">
-                                            <div className="flex justify-between items-center">
-                                                <h3 className="text-lg font-medium text-[#1A1A1A]">Cotización Modular IngentIA</h3>
-                                                <button onClick={() => handlePrint()}
-                                                    className="flex items-center gap-2 bg-white border border-black/10 hover:bg-black/5 text-[#1A1A1A] px-5 py-2.5 rounded-full text-sm font-medium transition-colors shadow-sm">
-                                                    <Download size={16} /> Exportar PDF
-                                                </button>
-                                            </div>
-
-                                            {/* Module Cards */}
-                                            <div className="flex flex-col gap-4">
-                                                {/* Module 1 */}
-                                                <div className="bg-white/80 border border-black/5 rounded-[24px] p-6">
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <div>
-                                                            <span className="text-[10px] text-[#666666] uppercase tracking-wider font-medium">Consultoría</span>
-                                                            <h4 className="font-medium text-[#1A1A1A] mt-1">Módulo 1: Auditoría de Procesos</h4>
-                                                        </div>
-                                                        <span className="text-xl font-light text-[#1A1A1A]">${results.pricing.module1.price.toLocaleString()} <span className="text-sm text-[#666666]">USD</span></span>
+                                            <div className="flex flex-col gap-8">
+                                                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-black/5 pb-6">
+                                                    <div>
+                                                        <h3 className="text-xl font-medium text-[#1A1A1A]">Cotización Modular IngentIA</h3>
+                                                        <p className="text-sm text-[#666666]">Configura los alcances de tu propuesta comercial</p>
                                                     </div>
-                                                    <p className="text-[#666666] text-sm">{results.pricing.module1.description}</p>
-                                                    <div className="flex items-center gap-2 text-xs text-[#666666] font-medium bg-black/5 px-3 py-2 rounded-xl mt-4 w-fit">
-                                                        <Clock size={12} /> Entrega: {results.pricing.module1.deliveryDays} días
+                                                    <div className="flex items-center gap-3">
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setSaveFormData({
+                                                                    ...saveFormData,
+                                                                    title: `Cotización Modular - ${projectName}`
+                                                                });
+                                                                setIsSaveModalOpen(true);
+                                                            }}
+                                                            className="flex items-center gap-2 bg-white border border-black/10 hover:bg-black/5 text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-all shadow-sm"
+                                                        >
+                                                            <Save size={16} /> 
+                                                            Guardar Registro
+                                                        </button>
+                                                        <button onClick={() => handlePrint()}
+                                                            className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-all shadow-md group">
+                                                            <Download size={16} className="group-hover:translate-y-0.5 transition-transform" /> 
+                                                            Exportar PDF
+                                                        </button>
                                                     </div>
                                                 </div>
 
-                                                {/* Module 2 */}
-                                                <div className={`bg-white/80 border border-black/5 rounded-[24px] p-6 ${results.pricing.module2.price === 0 ? 'opacity-50' : ''}`}>
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <div>
-                                                            <span className="text-[10px] text-[#666666] uppercase tracking-wider font-medium">{results.pricing.module2.pricingModel}</span>
-                                                            <h4 className="font-medium text-[#1A1A1A] mt-1">Módulo 2: Implementación</h4>
-                                                        </div>
-                                                        <span className="text-xl font-light text-[#1A1A1A]">
-                                                            {results.pricing.module2.price > 0 ? `$${results.pricing.module2.price.toLocaleString()} USD` : 'N/A'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[#666666] text-sm">{results.pricing.module2.description}</p>
+                                            {/* Indicador de Selección */}
+                                            <div className="bg-[#FFD166]/10 border border-[#FFD166]/20 p-4 rounded-2xl flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-sm text-[#1A1A1A] font-medium">
+                                                    <CheckCircle2 size={16} className="text-[#1A1A1A]" />
+                                                    Selecciona los módulos a incluir en el PDF
                                                 </div>
-
-                                                {/* Module 3 */}
-                                                <div className={`bg-white/80 border border-black/5 rounded-[24px] p-6 ${results.pricing.module3.monthlyPrice === 0 ? 'opacity-50' : ''}`}>
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <div>
-                                                            <span className="text-[10px] text-[#666666] uppercase tracking-wider font-medium">Recurrente</span>
-                                                            <h4 className="font-medium text-[#1A1A1A] mt-1">Módulo 3: Evolución & Soporte</h4>
-                                                        </div>
-                                                        <span className="text-xl font-light text-[#1A1A1A]">
-                                                            {results.pricing.module3.monthlyPrice > 0 ? `$${results.pricing.module3.monthlyPrice.toLocaleString()} USD/mes` : 'N/A'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[#666666] text-sm">{results.pricing.module3.description}</p>
+                                                <div className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">
+                                                    {selectedModules.length} Módulos seleccionados
                                                 </div>
                                             </div>
 
-                                            {/* Total */}
-                                            <div className="flex justify-end mt-4">
-                                                <div className="bg-[#222222] p-6 rounded-[24px] min-w-[340px] shadow-xl">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-sm font-medium text-white/60">Inversión Inicial Total</span>
-                                                        <span className="text-2xl font-light text-[#FFD166]">${results.pricing.totalInitialInvestment.toLocaleString()} <span className="text-sm text-white/50">USD</span></span>
+                                            {/* Grilla de Módulos */}
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {/* Módulo 1 */}
+                                                <div className={`bg-white border rounded-[28px] p-6 transition-all duration-300 ${!selectedModules.includes('module1') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5'}`}>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={selectedModules.includes('module1')}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) setSelectedModules([...selectedModules, 'module1']);
+                                                                    else setSelectedModules(selectedModules.filter(m => m !== 'module1'));
+                                                                }}
+                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer"
+                                                            />
+                                                            <div>
+                                                                <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">Módulo de Consultoría</span>
+                                                                <h4 className="font-semibold text-[#1A1A1A] text-lg">Módulo 1: Auditoría de Procesos</h4>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-2xl font-light text-[#1A1A1A]">${results.pricing.module1.price.toLocaleString()}</span>
+                                                            <span className="text-xs text-[#666666] ml-1 font-medium">USD</span>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-xs text-white/30 text-right mt-1">
-                                                        {results.pricing.module2.price === 0 ? "Módulo 1" : "Módulo 1 + Módulo 2"}
+                                                    <p className="text-[#666666] text-sm leading-relaxed mb-6 ml-10">{results.pricing.module1.description}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-[#666666] font-semibold bg-black/5 px-4 py-2.5 rounded-2xl w-fit ml-10">
+                                                        <Clock size={14} /> Tiempo de Entrega: {results.pricing.module1.deliveryDays} días
+                                                    </div>
+                                                </div>
+
+                                                {/* Módulo 2 */}
+                                                <div className={`bg-white border rounded-[28px] p-6 transition-all duration-300 ${results.pricing.module2.price === 0 ? 'hidden' : (!selectedModules.includes('module2') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5')}`}>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={selectedModules.includes('module2')}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) setSelectedModules([...selectedModules, 'module2']);
+                                                                    else setSelectedModules(selectedModules.filter(m => m !== 'module2'));
+                                                                }}
+                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer"
+                                                            />
+                                                            <div>
+                                                                <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">{results.pricing.module2.pricingModel}</span>
+                                                                <h4 className="font-semibold text-[#1A1A1A] text-lg">Módulo 2: Implementación</h4>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-2xl font-light text-[#1A1A1A]">
+                                                                {results.pricing.module2.price > 0 ? `$${results.pricing.module2.price.toLocaleString()}` : 'N/A'}
+                                                            </span>
+                                                            <span className="text-xs text-[#666666] ml-1 font-medium">USD</span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[#666666] text-sm leading-relaxed ml-10">{results.pricing.module2.description}</p>
+                                                </div>
+
+                                                {/* Módulo 3 */}
+                                                <div className={`bg-white border rounded-[28px] p-6 transition-all duration-300 ${results.pricing.module3.monthlyPrice === 0 ? 'hidden' : (!selectedModules.includes('module3') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5')}`}>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={selectedModules.includes('module3')}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) setSelectedModules([...selectedModules, 'module3']);
+                                                                    else setSelectedModules(selectedModules.filter(m => m !== 'module3'));
+                                                                }}
+                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer"
+                                                            />
+                                                            <div>
+                                                                <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">Módulo Recurrente</span>
+                                                                <h4 className="font-semibold text-[#1A1A1A] text-lg">Módulo 3: Evolución & Soporte</h4>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-2xl font-light text-[#1A1A1A]">
+                                                                {results.pricing.module3.monthlyPrice > 0 ? `$${results.pricing.module3.monthlyPrice.toLocaleString()}` : 'N/A'}
+                                                            </span>
+                                                            <span className="text-xs text-[#666666] ml-1 font-medium">USD/mes</span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[#666666] text-sm leading-relaxed ml-10">{results.pricing.module3.description}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Caja de Total Selección */}
+                                            <div className="bg-[#222222] p-8 rounded-[32px] shadow-2xl shadow-black/10 flex flex-col sm:flex-row justify-between items-center gap-6">
+                                                <div>
+                                                    <h4 className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Inversión Inicial Estimada</h4>
+                                                    <p className="text-white/40 text-[11px]">
+                                                        {selectedModules.length === 0 ? "Sin módulos seleccionados" : 
+                                                         `Módulos: ${selectedModules.map(m => m.replace('module', 'M')).join(', ')}`}
                                                     </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-[#FFD166] text-4xl font-light">
+                                                            ${(
+                                                                (selectedModules.includes('module1') ? results.pricing.module1.price : 0) +
+                                                                (selectedModules.includes('module2') ? results.pricing.module2.price : 0)
+                                                            ).toLocaleString()}
+                                                        </span>
+                                                        <span className="text-white/40 text-sm font-medium">USD</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -519,6 +696,96 @@ export default function SmartQuoter() {
                     />
                 )}
             </div>
+
+            {/* Save Modal */}
+            {isSaveModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+                    <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-6 border-b border-black/5 flex justify-between items-center">
+                            <h3 className="text-xl font-medium text-[#1A1A1A]">Guardar Cotización en Historial</h3>
+                            <button onClick={() => setIsSaveModalOpen(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+                                <Plus size={20} className="text-[#1A1A1A] rotate-45" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveQuote} className="p-8 flex flex-col gap-6">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-medium text-[#1A1A1A]">Título del Registro</label>
+                                    <input 
+                                        required 
+                                        type="text" 
+                                        value={saveFormData.title}
+                                        onChange={(e) => setSaveFormData({ ...saveFormData, title: e.target.value })}
+                                        className={inputClass}
+                                        placeholder="Ej: Propuesta Q1 - IoT Tableros"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-medium text-[#1A1A1A]">Estado</label>
+                                        <select 
+                                            value={saveFormData.status}
+                                            onChange={(e) => setSaveFormData({ ...saveFormData, status: e.target.value })}
+                                            className={inputClass}
+                                        >
+                                            <option value="Generada">Generada</option>
+                                            <option value="Enviada">Enviada</option>
+                                            <option value="Aceptada">Aceptada</option>
+                                            <option value="Rechazada">Rechazada</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-medium text-[#1A1A1A]">Fecha de Envío (opcional)</label>
+                                        <input 
+                                            type="date" 
+                                            value={saveFormData.sent_date}
+                                            onChange={(e) => setSaveFormData({ ...saveFormData, sent_date: e.target.value })}
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-medium text-[#1A1A1A]">Comentarios Internos</label>
+                                    <textarea 
+                                        value={saveFormData.comments}
+                                        onChange={(e) => setSaveFormData({ ...saveFormData, comments: e.target.value })}
+                                        rows={3}
+                                        className={textareaClass}
+                                        placeholder="Notas sobre lo discutido con el cliente..."
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <div className="bg-[#FFD166]/10 border border-[#FFD166]/20 p-4 rounded-2xl">
+                                <p className="text-xs text-[#1A1A1A] font-medium flex items-center gap-2">
+                                    <Database size={14} /> Se guardará vinculada a {clientName} / {projectName}
+                                </p>
+                            </div>
+
+                            <div className="flex justify-end gap-4 mt-2">
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsSaveModalOpen(false)}
+                                    className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:bg-black/5 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={isSaving}
+                                    className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg"
+                                >
+                                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                    {isSaving ? 'Guardando...' : 'Confirmar Guardado'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

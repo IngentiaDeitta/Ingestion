@@ -1,8 +1,9 @@
-import { ArrowLeft, X, Plus, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, X, Plus, Trash2 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
+import EditProjectModal from '../components/EditProjectModal';
 
 interface Project {
   id: string;
@@ -14,6 +15,7 @@ interface Project {
   status: string;
   progress: number;
   created_at: string;
+  outcome?: string;
 }
 
 interface TeamMember {
@@ -32,29 +34,12 @@ export default function ProjectDetail() {
   const [allTeam, setAllTeam] = useState<TeamMember[]>([]);
   const [assignedTeam, setAssignedTeam] = useState<TeamMember[]>([]);
   const [savingTeam, setSavingTeam] = useState(false);
-  const [savingProject, setSavingProject] = useState(false);
-  const [clients, setClients] = useState<{id: string, name: string}[]>([]);
-  const [editFormData, setEditFormData] = useState({
-    name: '',
-    client: '',
-    budget: '',
-    due_date: '',
-    status: '',
-    progress: 0,
-    description: ''
-  });
 
   useEffect(() => {
     if (id) {
       fetchProjectData();
-      fetchClients();
     }
   }, [id]);
-
-  const fetchClients = async () => {
-    const { data } = await supabase.from('clients').select('id, name').order('name');
-    setClients(data || []);
-  };
 
   const fetchProjectData = async () => {
     try {
@@ -69,16 +54,6 @@ export default function ProjectDetail() {
       if (projectError) throw projectError;
       setProject(projectData);
       
-      setEditFormData({
-        name: projectData.name,
-        client: projectData.client,
-        budget: projectData.budget.toString(),
-        due_date: projectData.due_date ? convertToInputDate(projectData.due_date) : '',
-        status: projectData.status,
-        progress: projectData.progress,
-        description: projectData.description || ''
-      });
-
       const { data: teamData } = await supabase
         .from('team')
         .select('*')
@@ -106,52 +81,6 @@ export default function ProjectDetail() {
       console.error('Error fetching project data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const convertToInputDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    if (dateStr.includes('/')) {
-      const [day, month, year] = dateStr.split('/');
-      return `${year}-${month}-${day}`;
-    }
-    return dateStr;
-  };
-
-  const formatDateForDb = (dateStr: string) => {
-    if (!dateStr) return '';
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
-  };
-
-  const handleUpdateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id) return;
-
-    try {
-      setSavingProject(true);
-      const { error } = await supabase
-        .from('projects')
-        .update({
-          name: editFormData.name,
-          client: editFormData.client,
-          budget: parseFloat(editFormData.budget) || 0,
-          due_date: editFormData.due_date ? formatDateForDb(editFormData.due_date) : '',
-          status: editFormData.status,
-          progress: editFormData.progress,
-          description: editFormData.description
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      await fetchProjectData();
-      setIsEditModalOpen(false);
-    } catch (error) {
-      console.error('Error updating project:', error);
-      alert('Error al actualizar el proyecto');
-    } finally {
-      setSavingProject(false);
     }
   };
 
@@ -191,128 +120,12 @@ export default function ProjectDetail() {
   if (loading) return <div className="p-20 text-center text-[#666666]">Cargando proyecto...</div>;
   if (!project) return <div className="p-20 text-center text-[#666666]">Proyecto no encontrado</div>;
 
-  // Edit modal rendered via Portal to escape overflow containers
-  const editModal = isEditModalOpen ? createPortal(
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-      <div 
-        className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-6 border-b border-black/5 flex justify-between items-center">
-          <h3 className="text-xl font-medium text-[#1A1A1A]">Editar Proyecto</h3>
-          <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-            <X size={20} className="text-[#1A1A1A]" />
-          </button>
-        </div>
-
-        <form onSubmit={handleUpdateProject} className="p-8 overflow-y-auto max-h-[80vh] flex flex-col gap-6">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="flex flex-col gap-2 col-span-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Nombre del Proyecto</label>
-              <input 
-                required 
-                type="text" 
-                value={editFormData.name}
-                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Cliente</label>
-              <select 
-                required 
-                value={editFormData.client}
-                onChange={(e) => setEditFormData({ ...editFormData, client: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all"
-              >
-                <option value="">Seleccionar...</option>
-                {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Estado</label>
-              <select 
-                required 
-                value={editFormData.status}
-                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all"
-              >
-                <option value="En Progreso">En Progreso</option>
-                <option value="Completado">Completado</option>
-                <option value="En Riesgo">En Riesgo</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Presupuesto ($)</label>
-              <input 
-                required 
-                type="number" 
-                value={editFormData.budget}
-                onChange={(e) => setEditFormData({ ...editFormData, budget: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Fecha Entrega</label>
-              <input 
-                type="date" 
-                value={editFormData.due_date}
-                onChange={(e) => setEditFormData({ ...editFormData, due_date: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
-              />
-            </div>
-
-            <div className="flex flex-col gap-2 col-span-2">
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-sm font-medium text-[#1A1A1A]">Progreso</label>
-                <span className="text-sm font-bold text-[#1A1A1A]">{editFormData.progress}%</span>
-              </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
-                value={editFormData.progress}
-                onChange={(e) => setEditFormData({ ...editFormData, progress: parseInt(e.target.value) })}
-                className="w-full accent-[#222222]" 
-              />
-            </div>
-
-            <div className="flex flex-col gap-2 col-span-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Descripción</label>
-              <textarea 
-                rows={4} 
-                value={editFormData.description}
-                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                className="w-full rounded-2xl border border-black/10 bg-white text-[#1A1A1A] p-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none resize-none transition-all"
-              ></textarea>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-4 mt-4">
-            <button 
-              type="button"
-              onClick={() => setIsEditModalOpen(false)}
-              className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:bg-black/5 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button 
-              type="submit" 
-              disabled={savingProject}
-              className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg"
-            >
-              <Save size={18} />
-              {savingProject ? 'Guardando...' : 'Guardar Cambios'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body
+  const editModal = isEditModalOpen && project ? (
+    <EditProjectModal 
+      project={project} 
+      onClose={() => setIsEditModalOpen(false)} 
+      onSuccess={fetchProjectData} 
+    />
   ) : null;
 
   // Team modal rendered via Portal
@@ -414,7 +227,6 @@ export default function ProjectDetail() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-6">
             <h4 className="text-xl font-medium text-[#1A1A1A]">Progreso General</h4>
@@ -470,7 +282,6 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        {/* Sidebar */}
         <div className="lg:col-span-1 flex flex-col gap-6">
           <div className="bg-[#222222] text-white rounded-[32px] p-8 shadow-xl flex flex-col gap-6">
             <h4 className="text-xl font-medium">Resumen Financiero</h4>

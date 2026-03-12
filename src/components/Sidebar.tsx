@@ -16,7 +16,7 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
-  const { profile } = useUser();
+  const { profile, signOut } = useUser();
 
   return (
     <aside className="w-[280px] bg-white border-r border-black/5 flex flex-col sticky top-0 h-screen z-50">
@@ -82,22 +82,25 @@ export default function Sidebar() {
         <div className="bg-black/5 rounded-[32px] p-4 flex flex-col gap-4">
            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-[#222222] flex items-center justify-center text-white text-xs font-bold overflow-hidden">
-                {profile.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  `${profile.firstName[0]}${profile.lastName[0]}`
+                  `${profile?.first_name?.[0] || 'U'}${profile?.last_name?.[0] || ''}`
                 )}
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-[#1A1A1A]">{profile.firstName} {profile.lastName}</span>
-                <span className="text-[10px] font-medium text-[#666666]">{profile.role}</span>
+                <span className="text-sm font-bold text-[#1A1A1A]">{profile?.first_name || 'Usuario'} {profile?.last_name || ''}</span>
+                <span className="text-[10px] font-medium text-[#666666]">{profile?.role || 'Project Manager'}</span>
               </div>
            </div>
            
-           <NavLink to="/login" className="flex items-center justify-center gap-2 w-full h-11 bg-white hover:bg-rose-50 border border-black/5 rounded-2xl text-rose-600 transition-all group">
-              <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
-              <span className="text-xs font-bold uppercase tracking-widest">Cerrar Sesión</span>
-           </NavLink>
+           <button 
+             onClick={() => signOut()}
+             className="flex items-center justify-center gap-2 w-full h-11 bg-white hover:bg-rose-50 border border-black/5 rounded-2xl text-rose-600 transition-all group"
+           >
+             <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+             <span className="text-xs font-bold uppercase tracking-widest">Cerrar Sesión</span>
+           </button>
         </div>
       </div>
     </aside>

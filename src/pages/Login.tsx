@@ -1,13 +1,35 @@
-import React from "react";
-import { EyeOff, ArrowRight } from "lucide-react";
+import React, { useState } from "react";
+import { EyeOff, Eye, ArrowRight, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/");
+    setError(null);
+    setLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      navigate("/");
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.message || "Error al iniciar sesión");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -26,11 +48,25 @@ export default function Login() {
           </div>
 
           <div className="px-8 pb-10">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl animate-in fade-in slide-in-from-top-2">
+                {error}
+              </div>
+            )}
+            
             <form className="flex flex-col gap-5" onSubmit={handleLogin}>
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-[#1A1A1A]" htmlFor="email">Correo electrónico</label>
                 <div className="relative">
-                  <input id="email" type="email" placeholder="usuario@empresa.com" required className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] placeholder-[#666666] focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] px-4 transition-all outline-none" />
+                  <input 
+                    id="email" 
+                    type="email" 
+                    placeholder="usuario@empresa.com" 
+                    required 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] placeholder-[#666666] focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] px-4 transition-all outline-none" 
+                  />
                 </div>
               </div>
 
@@ -39,9 +75,21 @@ export default function Login() {
                   <label className="text-sm font-medium text-[#1A1A1A]" htmlFor="password">Contraseña</label>
                 </div>
                 <div className="relative flex items-center">
-                  <input id="password" type="password" placeholder="••••••••" required className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] placeholder-[#666666] focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] px-4 pr-12 transition-all outline-none" />
-                  <button type="button" className="absolute right-4 text-[#666666] hover:text-[#1A1A1A] transition-colors">
-                    <EyeOff size={20} />
+                  <input 
+                    id="password" 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    required 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] placeholder-[#666666] focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] px-4 pr-12 transition-all outline-none" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 text-[#666666] hover:text-[#1A1A1A] transition-colors"
+                  >
+                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                   </button>
                 </div>
               </div>
@@ -52,16 +100,26 @@ export default function Login() {
                 </Link>
               </div>
 
-              <button type="submit" className="mt-2 w-full h-12 bg-[#222222] hover:bg-black text-white font-medium rounded-2xl shadow-lg shadow-black/10 transition-all flex items-center justify-center gap-2 group">
-                <span>Iniciar Sesión</span>
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="mt-2 w-full h-12 bg-[#222222] hover:bg-black text-white font-medium rounded-2xl shadow-lg shadow-black/10 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <>
+                    <span>Iniciar Sesión</span>
+                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
             </form>
 
             <div className="mt-8 pt-6 border-t border-black/5 text-center">
               <p className="text-sm text-[#666666]">
                 ¿Necesitas acceso?{" "}
-                <a href="#" className="font-medium text-[#1A1A1A] hover:underline transition-colors">Contactar soporte</a>
+                <a href="mailto:soporte@ingentia.com" className="font-medium text-[#1A1A1A] hover:underline transition-colors">Contactar soporte</a>
               </p>
             </div>
           </div>
