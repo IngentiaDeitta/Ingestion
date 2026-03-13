@@ -1,5 +1,5 @@
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 export interface GeminiQuoteInput {
   clientName: string;
@@ -12,6 +12,10 @@ export interface GeminiQuoteInput {
 }
 
 export async function analyzeWithGemini(input: GeminiQuoteInput) {
+  if (!GEMINI_API_KEY) {
+    throw new Error('SISTEMA: La VITE_GEMINI_API_KEY no está configurada en las variables de entorno (.env o Vercel).');
+  }
+
   const sizeLabel = input.companySize === 'SME' ? 'Pequeña/SME' : input.companySize === 'Medium' ? 'Mediana' : 'Corporación';
   const serviceLabel = input.serviceType === 'Consultancy' ? 'Consultoría' : 'Consultoría + Desarrollo de App/IA';
 
@@ -89,7 +93,13 @@ IMPORTANTE:
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    throw new Error(`Error de Gemini API: ${response.status} - ${errorData?.error?.message || response.statusText}`);
+    const apiErrorMessage = errorData?.error?.message || response.statusText;
+    
+    if (response.status === 400 && apiErrorMessage.includes('API key not valid')) {
+      throw new Error(`La API Key de Gemini es inválida. Por favor, verificá que VITE_GEMINI_API_KEY en tu .env o en Vercel sea correcta.`);
+    }
+
+    throw new Error(`Error de Gemini API: ${response.status} - ${apiErrorMessage}`);
   }
 
   const data = await response.json();
