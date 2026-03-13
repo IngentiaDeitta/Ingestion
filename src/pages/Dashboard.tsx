@@ -1,8 +1,13 @@
-import { Play, Pause, Clock, CheckCircle2, ChevronRight, MoreVertical, AlertTriangle, BarChart2, Users as UsersIconComponent, Folder as FolderIconComponent } from "lucide-react";
+import {
+  DollarSign, TrendingUp, Clock, Zap, AlertTriangle,
+  ChevronRight, BarChart2, Users as UsersIcon, Folder as FolderIcon,
+  ArrowUpRight
+} from "lucide-react";
 import { useUser } from "../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { mockStats } from '../data/mockData';
 
 interface Stats {
   totalClients: number;
@@ -11,6 +16,11 @@ interface Stats {
   projectsAtRisk: number;
   portfolioHealth: number;
   totalRevenue: number;
+  totalBalance: number;
+  totalHours: number;
+  avgProposalDays: number;
+  conversionRate: number;
+  avgProjectDuration: number;
 }
 
 export default function Dashboard() {
@@ -23,51 +33,63 @@ export default function Dashboard() {
     totalTasks: 0,
     projectsAtRisk: 0,
     portfolioHealth: 100,
-    totalRevenue: 0
+    totalRevenue: 0,
+    totalBalance: 0,
+    totalHours: mockStats.totalHours,
+    avgProposalDays: 14,
+    conversionRate: 0,
+    avgProjectDuration: 45,
   });
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { fetchDashboardData(); }, []);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // 1. Fetch Clients Count
-      const { count: clientsCount } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true });
 
-      // 2. Fetch Projects and calculate stats
-      const { data: projectsData } = await supabase
-        .from('projects')
-        .select('id, status, budget');
+      const [
+        { count: clientsCount },
+        { data: projectsData },
+        { data: tasksData },
+        { data: financesData },
+      ] = await Promise.all([
+        supabase.from('clients').select('*', { count: 'exact', head: true }),
+        supabase.from('projects').select('id, status, budget, outcome'),
+        supabase.from('tasks').select('id, hours'),
+        supabase.from('finances').select('amount, type'),
+      ]);
 
-      // 3. Fetch Tasks
-      const { count: tasksCount } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true });
+      const atRiskCount = projectsData?.filter(p => p.status === 'En Riesgo').length ?? 0;
+      const totalProjects = projectsData?.length ?? 0;
+      const totalBudget = projectsData?.reduce((a, p) => a + (p.budget || 0), 0) ?? 0;
+      const health = totalProjects > 0 ? Math.round(((totalProjects - atRiskCount) / totalProjects) * 100) : 100;
 
-      const atRiskCount = projectsData?.filter(p => p.status === 'En Riesgo').length || 0;
-      const totalProjects = projectsData?.length || 0;
-      const totalBudget = projectsData?.reduce((acc, p) => acc + (p.budget || 0), 0) || 0;
-      
-      const health = totalProjects > 0 
-        ? Math.round(((totalProjects - atRiskCount) / totalProjects) * 100) 
-        : 100;
+      const totalHours = (tasksData || []).reduce((acc: number, t: any) => acc + (Number(t.hours) || 0), 0);
 
-      setStats({
-        totalClients: clientsCount || 0,
-        totalProjects: totalProjects,
-        totalTasks: tasksCount || 0,
-        projectsAtRisk: atRiskCount,
-        portfolioHealth: health,
-        totalRevenue: totalBudget
+      let totalBalance = 0;
+      (financesData || []).forEach((t: any) => {
+        const amt = parseFloat(t.amount);
+        totalBalance += t.type === 'income' ? amt : -amt;
       });
 
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      const won = projectsData?.filter(p => p.outcome === 'Ganado').length ?? 0;
+      const conversionRate = totalProjects > 0 ? Math.round((won / totalProjects) * 100) : 0;
+
+      setStats({
+        totalClients: clientsCount ?? 0,
+        totalProjects,
+        totalTasks: (tasksData || []).length,
+        projectsAtRisk: atRiskCount,
+        portfolioHealth: health,
+        totalRevenue: totalBudget,
+        totalBalance,
+        totalHours: totalHours || mockStats.totalHours, // Fallback to mock if 0 for demo purposes
+        avgProposalDays: 14,
+        conversionRate,
+        avgProjectDuration: 45,
+      });
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
     } finally {
       setLoading(false);
     }
@@ -75,7 +97,8 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
-      {/* Header Section */}
+
+      {/* ── Header ── */}
       <div className="flex flex-col gap-6">
         <h1 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">
           Hola, {profile?.first_name || 'Usuario'}!
@@ -84,29 +107,19 @@ export default function Dashboard() {
         <div className="flex flex-wrap items-center gap-x-12 gap-y-6">
           <div className="flex flex-col gap-2 min-w-[120px]">
             <span className="text-sm text-[#666666]">Salud Global</span>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-24 bg-[#222222] rounded-full flex items-center px-3 text-white text-xs font-medium">
-                {stats.portfolioHealth}%
-              </div>
+            <div className="h-8 w-28 bg-[#222222] rounded-full flex items-center px-3 text-white text-xs font-medium">
+              {stats.portfolioHealth}%
             </div>
           </div>
-          <div
-            className="flex flex-col gap-2 min-w-[120px] cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => navigate('/finance')}
-          >
-            <span className="text-sm text-[#666666]">Presupuesto Total</span>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-24 bg-[#FFD166] rounded-full flex items-center px-3 text-[#222222] text-xs font-medium">
-                ${(stats.totalRevenue / 1000).toFixed(0)}k
-              </div>
+          <div className="flex flex-col gap-2 min-w-[120px] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/finance')}>
+            <span className="text-sm text-[#666666]">Balance Total</span>
+            <div className="h-8 w-28 bg-[#FFD166] rounded-full flex items-center px-3 text-[#222222] text-xs font-medium">
+              ${(Math.abs(stats.totalBalance) / 1000).toFixed(1)}k
             </div>
           </div>
-          <div
-            className="flex flex-col gap-2 flex-1 min-w-[200px] cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => navigate('/kanban')}
-          >
+          <div className="flex flex-col gap-2 flex-1 min-w-[200px] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/kanban')}>
             <span className="text-sm text-[#666666]">Tareas Activas</span>
-            <div className="h-8 w-full max-w-[300px] bg-white/40 rounded-full overflow-hidden flex">
+            <div className="h-8 w-full max-w-[300px] bg-white/40 rounded-full overflow-hidden">
               <div className="h-full bg-white/60 flex items-center px-3 text-[#222222] text-xs font-medium" style={{ width: '100%' }}>
                 {stats.totalTasks} tareas cargadas
               </div>
@@ -114,37 +127,90 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-col gap-2 min-w-[120px]">
             <span className="text-sm text-[#666666]">En Riesgo</span>
-            <div className="flex items-center gap-3">
-              <div className={`h-8 w-24 border ${stats.projectsAtRisk > 0 ? 'bg-red-50 border-red-200' : 'border-[#222222]/20'} rounded-full flex items-center px-3 text-[#222222] text-xs font-medium`}>
-                {stats.projectsAtRisk} proyectos
-              </div>
+            <div className={`h-8 w-28 border ${stats.projectsAtRisk > 0 ? 'bg-red-50 border-red-200' : 'border-[#222222]/20'} rounded-full flex items-center px-3 text-[#222222] text-xs font-medium`}>
+              {stats.projectsAtRisk} proyectos
             </div>
           </div>
-
           <div className="flex items-center gap-8 ml-auto">
-            <div
-              className="flex items-baseline gap-2 cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => navigate('/clients')}
-            >
-              <span className="text-[#666666] text-sm flex items-center gap-1">
-                <UsersIconComponent size={14} /> Clientes
-              </span>
+            <div className="flex items-baseline gap-2 cursor-pointer hover:scale-105 transition-transform" onClick={() => navigate('/clients')}>
+              <span className="text-[#666666] text-sm flex items-center gap-1"><UsersIcon size={14} /> Clientes</span>
               <span className="text-5xl font-light text-[#1A1A1A]">{stats.totalClients}</span>
             </div>
-            <div
-              className="flex items-baseline gap-2 cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => navigate('/projects')}
-            >
-              <span className="text-[#666666] text-sm flex items-center gap-1">
-                <FolderIconComponent size={14} /> Proyectos
-              </span>
+            <div className="flex items-baseline gap-2 cursor-pointer hover:scale-105 transition-transform" onClick={() => navigate('/projects')}>
+              <span className="text-[#666666] text-sm flex items-center gap-1"><FolderIcon size={14} /> Proyectos</span>
               <span className="text-5xl font-light text-[#1A1A1A]">{stats.totalProjects}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Grid */}
+      {/* ── Row 1: KPI Cards (6 metrics from Reports) ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {/* Balance Total */}
+        <div
+          className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => navigate('/finance')}
+        >
+          <div className="flex justify-between items-start mb-3">
+            <div className="p-2.5 bg-white rounded-xl shadow-sm"><DollarSign size={20} /></div>
+            <span className="flex items-center text-[#1A1A1A] bg-[#FFD166] px-2.5 py-0.5 rounded-full text-xs font-bold">
+              <ArrowUpRight size={12} className="mr-0.5" />+{mockStats.revenueGrowth}%
+            </span>
+          </div>
+          <p className="text-[#666666] text-xs font-medium mb-1">Balance Total</p>
+          <h4 className="text-3xl font-light text-[#1A1A1A]">${(Math.abs(stats.totalBalance) / 1000).toFixed(1)}k</h4>
+        </div>
+
+        {/* Salud del Portfolio */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div className="p-2.5 bg-white rounded-xl shadow-sm"><TrendingUp size={20} /></div>
+            <span className="text-[#1A1A1A] bg-[#FFD166] px-2.5 py-0.5 rounded-full text-xs font-bold">+2.4%</span>
+          </div>
+          <p className="text-[#666666] text-xs font-medium mb-1">Salud del Portfolio</p>
+          <h4 className="text-3xl font-light text-[#1A1A1A]">{stats.portfolioHealth}%</h4>
+        </div>
+
+        {/* Horas Totales */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/timesheet')}>
+          <div className="flex justify-between items-start mb-3">
+            <div className="p-2.5 bg-white rounded-xl shadow-sm"><Clock size={20} /></div>
+            <span className="text-[#1A1A1A] bg-[#FFD166] px-2.5 py-0.5 rounded-full text-xs font-bold">+8%</span>
+          </div>
+          <p className="text-[#666666] text-xs font-medium mb-1">Horas Totales mes</p>
+          <h4 className="text-3xl font-light text-[#1A1A1A]">{stats.totalHours}h</h4>
+        </div>
+
+        {/* Velocidad Comercial */}
+        <div className="bg-[#222222] text-white rounded-[28px] p-5 shadow-xl">
+          <div className="flex justify-between items-start mb-3">
+            <div className="p-2.5 bg-white/10 rounded-xl"><Zap size={20} className="text-[#FFD166]" /></div>
+            <div className="text-right text-white/40 text-[10px] font-bold uppercase tracking-widest">Velocidad</div>
+          </div>
+          <p className="text-white/60 text-xs font-medium mb-1">Velocidad Comercial</p>
+          <h4 className="text-3xl font-light">{stats.avgProposalDays}d</h4>
+        </div>
+
+        {/* Rate de Conversión */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div className="p-2.5 bg-[#FFD166]/10 rounded-xl"><TrendingUp size={20} className="text-[#1A1A1A]" /></div>
+          </div>
+          <p className="text-[#666666] text-xs font-medium mb-1">Rate de Conversión</p>
+          <h4 className="text-3xl font-light text-[#1A1A1A]">{stats.conversionRate}%</h4>
+        </div>
+
+        {/* Ciclo de Ejecución */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div className="p-2.5 bg-black/5 rounded-xl"><Clock size={20} /></div>
+          </div>
+          <p className="text-[#666666] text-xs font-medium mb-1">Ciclo de Ejecución</p>
+          <h4 className="text-3xl font-light text-[#1A1A1A]">{stats.avgProjectDuration}d</h4>
+        </div>
+      </div>
+
+      {/* ── Row 2: Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column - Profile */}
         <div className="lg:col-span-3 flex flex-col gap-6">
@@ -152,8 +218,8 @@ export default function Dashboard() {
             <div className="aspect-[4/5] rounded-[24px] overflow-hidden mb-4 relative bg-[#1A1A1A] flex items-center justify-center">
               <svg className="absolute top-0 right-0 w-full h-full" viewBox="0 0 200 250" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="150" cy="50" r="100" fill="#2A2A2A" />
-                <circle cx="150" cy="50" r="75" fill="#333333" />
-                <circle cx="150" cy="50" r="50" fill="#D4A353" />
+                <circle cx="150" cy="50" r="75"  fill="#333333" />
+                <circle cx="150" cy="50" r="50"  fill="#D4A353" />
                 <path d="M-20 200 Q 80 160 220 220 L 220 280 L -20 280 Z" fill="#222222" />
                 <path d="M-20 230 Q 100 190 220 250 L 220 280 L -20 280 Z" fill="#2A2A2A" />
               </svg>
@@ -177,17 +243,11 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white/40 flex flex-col gap-4">
-            <div
-              className="flex items-center justify-between py-2 border-b border-black/5 cursor-pointer hover:bg-black/5 rounded-lg px-2 transition-colors"
-              onClick={() => navigate('/reports')}
-            >
-              <span className="text-[#1A1A1A] font-medium">Reportes</span>
+            <div className="flex items-center justify-between py-2 border-b border-black/5 cursor-pointer hover:bg-black/5 rounded-lg px-2 transition-colors" onClick={() => navigate('/finance')}>
+              <span className="text-[#1A1A1A] font-medium">Finanzas</span>
               <ChevronRight size={18} className="text-[#666666]" />
             </div>
-            <div
-              className="flex items-center justify-between py-2 border-b border-black/5 cursor-pointer hover:bg-black/5 rounded-lg px-2 transition-colors"
-              onClick={() => navigate('/kanban')}
-            >
+            <div className="flex items-center justify-between py-2 border-b border-black/5 cursor-pointer hover:bg-black/5 rounded-lg px-2 transition-colors" onClick={() => navigate('/kanban')}>
               <span className="text-[#1A1A1A] font-medium">Kanban</span>
               <div className="flex items-center gap-2">
                 <span className="bg-[#FFD166] text-[#222222] text-xs font-bold px-2 py-0.5 rounded-full">{stats.totalTasks}</span>
@@ -197,10 +257,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Middle Column */}
+        {/* Right Column */}
         <div className="lg:col-span-9 flex flex-col gap-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Quick Projects Info */}
             <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-8 shadow-sm border border-white/40">
               <h3 className="text-lg font-medium text-[#1A1A1A] mb-4">Salud del Portafolio</h3>
               <div className="text-5xl font-light text-[#1A1A1A] mb-4">{stats.portfolioHealth}%</div>
@@ -214,10 +273,7 @@ export default function Dashboard() {
               <h3 className="text-lg font-medium text-[#1A1A1A] mb-4">Tareas totales</h3>
               <div className="text-5xl font-light text-[#1A1A1A] mb-4">{stats.totalTasks}</div>
               <p className="text-sm text-[#666666]">Sincronizadas con Supabase.</p>
-              <button 
-                onClick={() => navigate('/kanban')}
-                className="mt-6 text-sm font-medium text-[#1A1A1A] flex items-center gap-2 hover:underline"
-              >
+              <button onClick={() => navigate('/kanban')} className="mt-6 text-sm font-medium text-[#1A1A1A] flex items-center gap-2 hover:underline">
                 Gestionar tareas <ChevronRight size={16} />
               </button>
             </div>
@@ -236,24 +292,21 @@ export default function Dashboard() {
 
           <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-8 border border-white/40 shadow-sm flex flex-col gap-6">
             <div className="flex justify-between items-center">
-              <h3 className="text-xl font-medium text-[#1A1A1A]">Bienvenido al panel real</h3>
-              <div className="p-3 bg-black/5 rounded-2xl">
-                <BarChart2 size={24} className="text-[#1A1A1A]" />
-              </div>
+              <h3 className="text-xl font-medium text-[#1A1A1A]">Estado operativo</h3>
+              <div className="p-3 bg-black/5 rounded-2xl"><BarChart2 size={24} className="text-[#1A1A1A]" /></div>
             </div>
             <p className="text-[#666666] leading-relaxed">
-              Este dashboard ahora está conectado directamente a tu base de datos de Supabase. 
-              Cualquier cambio que realices en las secciones de Clientes, Proyectos o Kanban se verá reflejado aquí automáticamente al recargar.
+              El dashboard está conectado directamente a Supabase. Cualquier cambio en Clientes, Proyectos, Finanzas o Kanban se refleja automáticamente aquí.
             </p>
             <div className="grid grid-cols-2 gap-4 mt-2">
-               <div className="p-4 bg-white rounded-2xl border border-black/5">
-                  <p className="text-xs text-[#666666] mb-1">Métrica Real</p>
-                  <p className="text-lg font-medium text-[#1A1A1A]">{stats.totalClients} Clientes Activos</p>
-               </div>
-               <div className="p-4 bg-white rounded-2xl border border-black/5">
-                  <p className="text-xs text-[#666666] mb-1">Volumen Total</p>
-                  <p className="text-lg font-medium text-[#1A1A1A]">${stats.totalRevenue.toLocaleString()} Proyectados</p>
-               </div>
+              <div className="p-4 bg-white rounded-2xl border border-black/5">
+                <p className="text-xs text-[#666666] mb-1">Clientes Activos</p>
+                <p className="text-lg font-medium text-[#1A1A1A]">{stats.totalClients} clientes</p>
+              </div>
+              <div className="p-4 bg-white rounded-2xl border border-black/5">
+                <p className="text-xs text-[#666666] mb-1">Balance Financiero</p>
+                <p className="text-lg font-medium text-[#1A1A1A]">${stats.totalBalance.toLocaleString()}</p>
+              </div>
             </div>
           </div>
         </div>

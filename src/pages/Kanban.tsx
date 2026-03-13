@@ -20,6 +20,7 @@ interface Task {
   assignees: string[];
   tags: string[];
   description: string;
+  hours: number;
 }
 
 interface Column {
@@ -86,6 +87,7 @@ export default function Kanban() {
           assignees: t.assignees || (t.assignee ? [t.assignee] : []),
           tags: t.tags || [],
           description: t.description || '',
+          hours: Number(t.hours || 0),
         };
         tasks[task.id] = task;
         const columnId = STATUS_MAP[t.status] || 'col-1';
@@ -108,6 +110,7 @@ export default function Kanban() {
     if (updates.project !== undefined) dbUpdates.project = updates.project;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+    if (updates.hours !== undefined) dbUpdates.hours = updates.hours;
     if (updates.assignees !== undefined) {
       dbUpdates.assignees = updates.assignees;
       dbUpdates.assignee = updates.assignees.length > 0 ? updates.assignees[0] : null;
@@ -168,7 +171,7 @@ export default function Kanban() {
     }
   };
 
-  const handleSaveNewTask = async (taskData: Partial<Task>) => {
+  const handleSaveNewTask = async (taskData: any) => {
     try {
       const { error } = await supabase.from('tasks').insert([{
         title: taskData.title,
@@ -176,7 +179,8 @@ export default function Kanban() {
         priority: taskData.priority || 'Media',
         status: 'todo',
         assignees: taskData.assignees || [],
-        due_date: taskData.dueDate || 'Sin fecha'
+        due_date: taskData.dueDate || 'Sin fecha',
+        hours: taskData.hours || 0
       }]);
       if (error) throw error;
       fetchTasks();
@@ -289,7 +293,7 @@ function MultiAssigneeSelector({ selectedNames, teamMembers, onChange }: { selec
 }
 
 function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onSave: (task: any) => void }) {
-  const [newTask, setNewTask] = useState({ title: '', project: availableProjects[0]?.name || 'General', priority: 'Media' as const, assignees: [] as string[], dueDate: '' });
+  const [newTask, setNewTask] = useState({ title: '', project: availableProjects[0]?.name || 'General', priority: 'Media' as const, assignees: [] as string[], dueDate: '', hours: 0 });
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden p-6 flex flex-col gap-4">
@@ -300,6 +304,10 @@ function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { tea
           <select value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4"><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select>
         </div>
         <MultiAssigneeSelector selectedNames={newTask.assignees} teamMembers={teamMembers} onChange={(names) => setNewTask({ ...newTask, assignees: names })} />
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-bold text-[#666666] uppercase">Horas Estimadas</label>
+          <input type="number" placeholder="0" value={newTask.hours || ''} onChange={(e) => setNewTask({ ...newTask, hours: parseFloat(e.target.value) || 0 })} className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 px-4" />
+        </div>
         <div className="flex justify-end gap-3 pt-4"><button onClick={onClose} className="px-6 py-3 rounded-full text-[#666666]">Cancelar</button><button disabled={!newTask.title} onClick={() => onSave(newTask)} className="bg-[#222222] text-white px-6 py-3 rounded-full">Crear Tarea</button></div>
       </div>
     </div>
@@ -313,10 +321,12 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
   const [priority, setPriority] = useState(task.priority);
   const [assignees, setAssignees] = useState(task.assignees);
   const [dueDate, setDueDate] = useState(task.dueDate);
+  const [hours, setHours] = useState(task.hours);
 
   // Sincronizar cambios individuales solo al perder el foco para evitar saturar DB
   const saveTitle = () => { if (title !== task.title) onUpdate(task.id, { title }); };
   const saveDesc = () => { if (desc !== task.description) onUpdate(task.id, { description: desc }); };
+  const saveHours = () => { if (hours !== task.hours) onUpdate(task.id, { hours }); };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -337,6 +347,10 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
           <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Asignado a (múltiple)</span><MultiAssigneeSelector selectedNames={assignees} teamMembers={teamMembers} onChange={(names) => { setAssignees(names); onUpdate(task.id, { assignees: names }); }} /></div>
           <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Proyecto</span><select value={project} onChange={(e) => { setProject(e.target.value); onUpdate(task.id, { project: e.target.value }); }} className="w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none"><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
           <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Descripción</span><textarea rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} onBlur={saveDesc} placeholder="Añade detalles aquí..." className="w-full rounded-2xl border border-black/10 bg-black/5 p-4 outline-none resize-none focus:ring-2 focus:ring-[#FFD166] transition-all"></textarea></div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-[#1A1A1A]">Horas Estimadas</span>
+            <input type="number" value={hours} onChange={(e) => setHours(parseFloat(e.target.value) || 0)} onBlur={saveHours} className="w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none focus:ring-2 focus:ring-[#FFD166] transition-all" />
+          </div>
         </div>
         <div className="p-8 border-t border-black/5 flex justify-end"><button onClick={onClose} className="bg-[#1A1A1A] hover:bg-black text-white px-10 py-3.5 rounded-full text-sm font-medium transition-all shadow-lg active:scale-95">Listo</button></div>
       </div>

@@ -12,7 +12,7 @@ import NewInvoice from './pages/NewInvoice';
 import Kanban from './pages/Kanban';
 import SmartQuoter from './pages/SmartQuoter';
 import Timesheet from './pages/Timesheet';
-import Reports from './pages/Reports';
+// Reports section removed — content merged into Finance
 import Team from './pages/Team';
 import Settings from './pages/Settings';
 import TechStack from './pages/TechStack';
@@ -47,7 +47,7 @@ function App() {
             <Route path="/kanban" element={<Kanban />} />
             <Route path="/smart-quoter" element={<SmartQuoter />} />
             <Route path="/timesheet" element={<Timesheet />} />
-            <Route path="/reports" element={<Reports />} />
+            <Route path="/reports" element={<Navigate to="/finance" replace />} />
             <Route path="/team" element={<Team />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/tech-stack" element={<TechStack />} />

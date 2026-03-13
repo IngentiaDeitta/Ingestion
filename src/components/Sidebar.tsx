@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FolderKanban, FileText, PieChart, Calculator, Settings, Clock, LogOut, ChevronRight, Zap, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, FileText, Calculator, Settings, Clock, LogOut, ChevronRight, Zap, CheckSquare } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
@@ -11,8 +11,7 @@ const menuItems = [
   { icon: Users, label: 'Equipo', path: '/team' },
   { icon: Users, label: 'Clientes', path: '/clients' },
   { icon: Clock, label: 'Timesheet', path: '/timesheet' },
-  {icon: PieChart, label: 'Reportes', path: '/reports' },
-  {icon: Zap, label: 'Tech Stack', path: '/tech-stack' },
+  { icon: Zap, label: 'Tech Stack', path: '/tech-stack' },
 ];
 
 export default function Sidebar() {

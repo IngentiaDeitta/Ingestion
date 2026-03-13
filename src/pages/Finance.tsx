@@ -1,7 +1,17 @@
-import { DollarSign, Download, Filter, ArrowUpRight, ArrowDownRight, MoreVertical, Trash2, X } from 'lucide-react';
+import {
+  DollarSign, Download, Filter, ArrowUpRight, ArrowDownRight,
+  MoreVertical, Trash2, Tag, TrendingUp, Clock, Zap
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar, Legend
+} from 'recharts';
+import { mockStats } from '../data/mockData';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Transaction {
   id: string;
@@ -10,72 +20,86 @@ interface Transaction {
   amount: number;
   type: 'income' | 'expense';
   status: string;
+  currency: string;
+  tag?: string;
   project_id?: string;
+  client_id?: string;
 }
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const EXPENSE_TAGS = [
+  { value: 'operational', label: 'Costos Operativos', color: 'bg-blue-100 text-blue-800' },
+  { value: 'salaries',    label: 'Sueldos',           color: 'bg-purple-100 text-purple-800' },
+  { value: 'travel',      label: 'Viáticos',          color: 'bg-orange-100 text-orange-800' },
+  { value: 'software',    label: 'Licencias',         color: 'bg-cyan-100 text-cyan-800' },
+  { value: 'other',       label: 'Otros',             color: 'bg-gray-100 text-gray-600' },
+];
+
+const CURRENCIES = [
+  { code: 'USD', label: 'Dólar',  symbol: '$',  color: 'bg-green-100 text-green-800',  badge: 'bg-green-100 text-green-700' },
+  { code: 'ARS', label: 'Peso',   symbol: '$',  color: 'bg-yellow-100 text-yellow-800', badge: 'bg-yellow-100 text-yellow-700' },
+  { code: 'EUR', label: 'Euro',   symbol: '€',  color: 'bg-blue-100 text-blue-800',   badge: 'bg-blue-100 text-blue-700' },
+];
+
+const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const getTagInfo = (value?: string) => EXPENSE_TAGS.find(t => t.value === value) ?? null;
+const getCurrencyInfo = (code: string) => CURRENCIES.find(c => c.code === code) ?? CURRENCIES[0];
+
+function buildMonthlyChartData(transactions: Transaction[]) {
+  const now = new Date();
+  const data = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const m = d.getMonth(), y = d.getFullYear();
+    let ingresos = 0, gastos = 0;
+    transactions.forEach(t => {
+      const td = new Date(t.date);
+      if (td.getMonth() === m && td.getFullYear() === y) {
+        const amt = parseFloat(t.amount as any);
+        if (t.type === 'income') ingresos += amt; else gastos += amt;
+      }
+    });
+    data.push({ name: MONTHS[m], ingresos, gastos });
+  }
+  return data;
+}
+
+const hoursData = [
+  { name: 'Ene', facturables: 800,  noFacturables: 200 },
+  { name: 'Feb', facturables: 750,  noFacturables: 150 },
+  { name: 'Mar', facturables: 600,  noFacturables: 300 },
+  { name: 'Abr', facturables: 850,  noFacturables: 100 },
+  { name: 'May', facturables: 700,  noFacturables: 250 },
+  { name: 'Jun', facturables: 900,  noFacturables: 150 },
+  { name: 'Jul', facturables: 1100, noFacturables: 100 },
+  { name: 'Ago', facturables: 1050, noFacturables: 150 },
+  { name: 'Sep', facturables: 1240, noFacturables: 200 },
+  { name: 'Oct', facturables: mockStats.totalHours, noFacturables: 180 },
+];
 
 export default function Finance() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
-  const [stats, setStats] = useState({
-    balance: 0,
-    monthlyRevenue: 0,
-    monthlyExpenses: 0,
-    revenueGrowth: 0
-  });
+  const [filterCurrency, setFilterCurrency] = useState('all');
+  const [filterTag, setFilterTag] = useState('all');
+  const [filterType, setFilterType] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('finances')
-        .select('*')
-        .order('date', { ascending: false });
-
+      const { data, error } = await supabase.from('finances').select('*').order('date', { ascending: false });
       if (error) throw error;
-      
-      const trans = data || [];
-      setTransactions(trans);
-
-      // Calcular estadísticas
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-
-      let balance = 0;
-      let monthlyRevenue = 0;
-      let monthlyExpenses = 0;
-
-      trans.forEach((t: any) => {
-        const amount = parseFloat(t.amount);
-        const tDate = new Date(t.date);
-        
-        if (t.type === 'income') {
-          balance += amount;
-          if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-            monthlyRevenue += amount;
-          }
-        } else {
-          balance -= amount;
-          if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-            monthlyExpenses += amount;
-          }
-        }
-      });
-
-      setStats({
-        balance,
-        monthlyRevenue,
-        monthlyExpenses,
-        revenueGrowth: 5 
-      });
-
-    } catch (error) {
-      console.error('Error fetching finance data:', error);
+      setTransactions((data || []).map((t: any) => ({ ...t, currency: t.currency ?? 'USD' })));
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -84,180 +108,212 @@ export default function Finance() {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm('¿Estás seguro de eliminar esta transacción?')) return;
-    try {
-      const { error } = await supabase.from('finances').delete().eq('id', id);
-      if (error) throw error;
-      fetchData();
-      setOpenActionId(null);
-    } catch (error) {
-      console.error('Error deleting transaction:', error);
-    }
+    await supabase.from('finances').delete().eq('id', id);
+    fetchData(); setOpenActionId(null);
   };
 
-  const handleToggleStatus = async (transaction: Transaction, e: React.MouseEvent) => {
+  const handleToggleStatus = async (t: Transaction, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newStatus = transaction.status === 'Paid' ? 'Pending' : 'Paid';
-    try {
-      const { error } = await supabase
-        .from('finances')
-        .update({ status: newStatus })
-        .eq('id', transaction.id);
-      if (error) throw error;
-      fetchData();
-      setOpenActionId(null);
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
+    await supabase.from('finances').update({ status: t.status === 'Paid' ? 'Pending' : 'Paid' }).eq('id', t.id);
+    fetchData(); setOpenActionId(null);
   };
+
+  const filtered = transactions.filter(t => {
+    if (filterCurrency !== 'all' && t.currency !== filterCurrency) return false;
+    if (filterTag !== 'all' && t.tag !== filterTag) return false;
+    if (filterType !== 'all' && t.type !== filterType) return false;
+    return true;
+  });
+
+  const currencyBalances = CURRENCIES.map(c => {
+    const inc = transactions.filter(t => t.type === 'income'  && t.currency === c.code).reduce((a, t) => a + parseFloat(t.amount as any), 0);
+    const exp = transactions.filter(t => t.type === 'expense' && t.currency === c.code).reduce((a, t) => a + parseFloat(t.amount as any), 0);
+    return { ...c, income: inc, expenses: exp, net: inc - exp };
+  });
+
+  const totalBalanceUSD = currencyBalances.find(c => c.code === 'USD')?.net ?? 0;
+  const monthlyChart = buildMonthlyChartData(transactions);
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto" onClick={() => setOpenActionId(null)}>
+    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-12" onClick={() => setOpenActionId(null)}>
+
+      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Finanzas</h3>
-          <p className="text-[#666666] mt-1">Control de ingresos, gastos y facturación real.</p>
+          <p className="text-[#666666] mt-1">Gestión integral de ingresos, egresos y analíticas financieras.</p>
         </div>
         <div className="flex items-center gap-3">
           <button className="flex items-center justify-center gap-2 bg-white/50 border border-black/10 hover:bg-white/80 text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-sm">
-            <Download size={20} />
-            Exportar CSV
+            <Download size={20} /> Exportar
           </button>
           <Link to="/finance/new-invoice" className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10">
-            <DollarSign size={20} />
-            Nueva Transacción
+            <DollarSign size={20} /> Nueva Transacción
           </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="bg-[#222222] text-white rounded-[32px] p-6 shadow-xl relative overflow-hidden group">
-          <div className="flex justify-between items-start mb-4 relative z-10">
-            <div className="p-3 bg-white/10 rounded-2xl">
-              <DollarSign size={24} />
-            </div>
-            <span className="flex items-center text-[#222222] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">
-              <ArrowUpRight size={14} className="mr-1" /> Balance Total
-            </span>
+      {/* ── Balance Row ── */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-[#222222] text-white rounded-[32px] p-6 shadow-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-white/10 rounded-2xl"><DollarSign size={24} /></div>
+            <span className="flex items-center text-[#222222] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">Total USD</span>
           </div>
-          <div className="relative z-10">
-            <p className="text-white/70 text-sm font-medium mb-1">Balance Actual</p>
-            <h4 className="text-4xl font-light">${stats.balance.toLocaleString()}</h4>
+          <p className="text-white/70 text-sm font-medium mb-1">Balance Consolidado</p>
+          <h4 className="text-4xl font-light">${totalBalanceUSD.toLocaleString()}</h4>
+        </div>
+
+        {currencyBalances.map(c => (
+          <div key={c.code} className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 border border-white/40 shadow-sm transition-transform hover:scale-[1.02]">
+            <div className="flex justify-between items-start mb-4">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.badge}`}>{c.code}</span>
+              <span className={`flex items-center text-[10px] font-bold uppercase tracking-wider ${c.net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                {c.net >= 0 ? <ArrowUpRight size={12} className="mr-0.5" /> : <ArrowDownRight size={12} className="mr-0.5" />}
+                {c.label}
+              </span>
+            </div>
+            <p className="text-[#666666] text-xs font-medium mb-1">Saldo en {c.code}</p>
+            <h4 className={`text-3xl font-light ${c.net >= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
+              {c.symbol}{c.net.toLocaleString()}
+            </h4>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Analytics Row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
+          <div className="flex justify-between items-center mb-6">
+             <h4 className="text-xl font-medium text-[#1A1A1A]">Facturación vs Costes</h4>
+             <TrendingUp size={20} className="text-[#666]" />
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyChart}>
+                <defs>
+                  <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#222222" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#222222" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#666', fontSize:12}} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={v => `$${v/1000}k`} tick={{fill:'#999', fontSize:11}} />
+                <Tooltip formatter={(v: any) => [`$${v.toLocaleString()}`, '']} contentStyle={{borderRadius:'16px', border:'none'}} />
+                <Area type="monotone" dataKey="ingresos" stroke="#1A1A1A" strokeWidth={3} fillOpacity={1} fill="url(#colorIngresos)" />
+                <Area type="monotone" dataKey="gastos" stroke="#FFD166" strokeWidth={3} fill="none" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 border border-white/40 shadow-sm relative overflow-hidden group">
-          <div className="flex justify-between items-start mb-4 relative z-10">
-            <div className="p-3 bg-white rounded-2xl shadow-sm text-[#1A1A1A]">
-              <ArrowUpRight size={24} />
-            </div>
-            <span className="flex items-center text-[#1A1A1A] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">
-              Mes Actual
-            </span>
+        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
+          <div className="flex justify-between items-center mb-6">
+             <h4 className="text-xl font-medium text-[#1A1A1A]">Distribución de Horas</h4>
+             <Clock size={20} className="text-[#666]" />
           </div>
-          <div className="relative z-10">
-            <p className="text-[#666666] text-sm font-medium mb-1">Ingresos (Mes)</p>
-            <h4 className="text-4xl font-light text-[#1A1A1A]">${stats.monthlyRevenue.toLocaleString()}</h4>
-          </div>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 border border-white/40 shadow-sm relative overflow-hidden group">
-          <div className="flex justify-between items-start mb-4 relative z-10">
-            <div className="p-3 bg-white rounded-2xl shadow-sm text-[#1A1A1A]">
-              <ArrowDownRight size={24} />
-            </div>
-            <span className="flex items-center text-[#666666] bg-black/5 px-3 py-1 rounded-full text-xs font-bold">
-              Mes Actual
-            </span>
-          </div>
-          <div className="relative z-10">
-            <p className="text-[#666666] text-sm font-medium mb-1">Gastos (Mes)</p>
-            <h4 className="text-4xl font-light text-[#1A1A1A]">${stats.monthlyExpenses.toLocaleString()}</h4>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hoursData}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#666', fontSize:12}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill:'#999', fontSize:11}} />
+                <Tooltip contentStyle={{borderRadius:'16px', border:'none'}} />
+                <Bar dataKey="facturables" stackId="a" fill="#1A1A1A" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="noFacturables" stackId="a" fill="#FFD166" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <h4 className="text-xl font-medium text-[#1A1A1A]">Flujo de Caja</h4>
-          <button className="flex items-center justify-center gap-2 bg-white/50 border border-black/10 hover:bg-white/80 text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-colors w-full sm:w-auto">
-            <Filter size={18} />
-            Filtros
+      {/* ── Transactions Table ── */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden">
+        <div className="p-8 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+          <div>
+            <h4 className="text-xl font-medium text-[#1A1A1A]">Registro de Operaciones</h4>
+            <p className="text-sm text-[#666]">Últimos movimientos registrados en el sistema.</p>
+          </div>
+          <button onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 bg-white/50 border border-black/10 hover:bg-white text-[#1A1A1A] px-6 py-2.5 rounded-full text-sm font-medium transition-all">
+            <Filter size={18} /> Filtros {showFilters ? '▲' : '▼'}
           </button>
         </div>
 
+        {showFilters && (
+          <div className="px-8 py-6 border-b border-black/5 flex flex-wrap gap-6 bg-black/[0.02]">
+            {[
+              { label: 'Tipo', value: filterType, setter: setFilterType, options: [['all','Todos'],['income','Ingresos'],['expense','Gastos']] },
+              { label: 'Moneda', value: filterCurrency, setter: setFilterCurrency, options: [['all','Todas'],['USD','USD'],['ARS','ARS'],['EUR','EUR']] },
+              { label: 'Categoría', value: filterTag, setter: setFilterTag, options: [['all','Todas'], ...EXPENSE_TAGS.map(t => [t.value, t.label])] },
+            ].map(f => (
+              <div key={f.label} className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#999] uppercase tracking-widest">{f.label}</label>
+                <select value={f.value} onChange={e => f.setter(e.target.value)}
+                  className="h-10 rounded-xl border border-black/10 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-black/5 transition-all">
+                  {(f.options as [string, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            ))}
+            <button onClick={() => { setFilterType('all'); setFilterCurrency('all'); setFilterTag('all'); }}
+              className="self-end h-10 px-6 rounded-xl text-sm font-medium text-[#666] hover:text-[#1A1A1A] transition-colors">
+              Limpiar filtros
+            </button>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
-          {loading ? (
-            <div className="p-20 text-center text-[#666666]">Cargando transacciones...</div>
-          ) : (
-            <table className="w-full text-left border-collapse">
+          {loading ? <div className="p-20 text-center text-[#666] font-medium">Sincronizando con Supabase...</div> : (
+            <table className="w-full text-left border-separate border-spacing-0">
               <thead>
-                <tr className="border-b border-black/5">
-                  <th className="px-6 py-4 text-xs font-medium text-[#666666] uppercase tracking-wider">Fecha</th>
-                  <th className="px-6 py-4 text-xs font-medium text-[#666666] uppercase tracking-wider">Descripción</th>
-                  <th className="px-6 py-4 text-xs font-medium text-[#666666] uppercase tracking-wider text-center">Estado</th>
-                  <th className="px-6 py-4 text-xs font-medium text-[#666666] uppercase tracking-wider text-right">Importe</th>
-                  <th className="px-6 py-4 text-xs font-medium text-[#666666] uppercase tracking-wider text-right">Acciones</th>
+                <tr className="bg-black/[0.01]">
+                  {['Fecha','Descripción','Categoría','Moneda','Importe',''].map((h, i) => (
+                    <th key={i} className={`px-8 py-5 text-[10px] font-bold text-[#999] uppercase tracking-wider ${i === 4 ? 'text-right' : ''}`}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5">
-                {transactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-white/40 transition-colors group">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-[#1A1A1A]">{new Date(transaction.date).toLocaleDateString()}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-[#1A1A1A]">{transaction.description}</span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${transaction.status === 'Paid' || transaction.status === 'Completado'
-                        ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50'
-                        : 'bg-black/5 text-[#666666] border-black/10'
-                        }`}>
-                        {transaction.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`text-sm font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                        {transaction.type === 'income' ? '+' : '-'}${Math.abs(transaction.amount).toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right relative">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenActionId(openActionId === transaction.id ? null : transaction.id);
-                        }}
-                        className="text-[#666666] hover:text-[#1A1A1A] transition-colors p-2 rounded-full hover:bg-black/5"
-                      >
-                        <MoreVertical size={20} />
-                      </button>
-                      
-                      {openActionId === transaction.id && (
-                        <div className="absolute right-12 top-0 w-48 bg-white rounded-2xl shadow-xl border border-black/5 flex flex-col p-2 z-[9999]" onClick={(e) => e.stopPropagation()}>
-                          <button 
-                            onClick={(e) => handleToggleStatus(transaction, e)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#1A1A1A] hover:bg-black/5 rounded-xl transition-colors text-left"
-                          >
-                            <DollarSign size={16} />
-                            {transaction.status === 'Paid' ? 'Marcar Pendiente' : 'Marcar Pagado'}
-                          </button>
-                          <button 
-                            onClick={(e) => handleDelete(transaction.id, e)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors text-left"
-                          >
-                            <Trash2 size={16} />
-                            Eliminar
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {transactions.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-[#666666]">No hay transacciones registradas.</td>
-                  </tr>
-                )}
+              <tbody className="divide-y divide-black/[0.04]">
+                {filtered.map(t => {
+                  const tagInfo = getTagInfo(t.tag);
+                  const curr = getCurrencyInfo(t.currency);
+                  return (
+                    <tr key={t.id} className="group hover:bg-black/[0.01] transition-colors">
+                      <td className="px-8 py-5 whitespace-nowrap text-sm text-[#1A1A1A] font-medium">{new Date(t.date).toLocaleDateString()}</td>
+                      <td className="px-8 py-5">
+                         <div className="text-sm text-[#1A1A1A] font-medium">{t.description}</div>
+                         <div className="text-[10px] text-[#999] uppercase tracking-tighter">{t.status}</div>
+                      </td>
+                      <td className="px-8 py-5">
+                        {tagInfo
+                          ? <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${tagInfo.color}`}><Tag size={10} />{tagInfo.label}</span>
+                          : <span className="text-xs text-[#999]">S/C</span>}
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${curr.badge}`}>{t.currency}</span>
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                        <span className={`text-sm font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
+                          {t.type === 'income' ? '+' : '-'}{curr.symbol}{Math.abs(t.amount).toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 text-right relative">
+                        <button onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === t.id ? null : t.id); }}
+                          className="text-[#DDD] group-hover:text-[#1A1A1A] p-2 rounded-full hover:bg-white transition-all shadow-sm">
+                          <MoreVertical size={18} />
+                        </button>
+                        {openActionId === t.id && (
+                          <div className="absolute right-12 top-10 w-48 bg-white rounded-2xl shadow-2xl border border-black/5 flex flex-col p-2 z-[9999]">
+                            <button onClick={(e) => handleToggleStatus(t, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
+                              <DollarSign size={16} />{t.status === 'Paid' ? 'Pendiente' : 'Pagado'}
+                            </button>
+                            <button onClick={(e) => handleDelete(t.id, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-red-500 font-medium hover:bg-red-50 rounded-xl transition-colors text-left">
+                              <Trash2 size={16} />Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
