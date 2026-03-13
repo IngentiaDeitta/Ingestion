@@ -18,6 +18,8 @@ interface UserContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  isAdmin: boolean;
+  isReadOnly: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -123,8 +125,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  // Role flags robustos
+  const userRole = profile?.role?.trim().toLowerCase();
+  const isAdmin = userRole === 'administrador';
+  const isReadOnly = userRole === 'lector' || !userRole;
+
   return (
-    <UserContext.Provider value={{ user, profile, setProfile, loading, signOut, refreshProfile }}>
+    <UserContext.Provider value={{ 
+      user, 
+      profile, 
+      setProfile, 
+      loading, 
+      signOut, 
+      refreshProfile,
+      isAdmin,
+      isReadOnly
+    }}>
       {children}
     </UserContext.Provider>
   );

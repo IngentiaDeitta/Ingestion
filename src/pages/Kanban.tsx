@@ -1,5 +1,6 @@
 import { Plus, MoreHorizontal, Calendar, MessageSquare, Paperclip, X, Save, User, Tag, Check, Loader2 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import { useUser } from '../context/UserContext';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '../lib/supabase';
 
@@ -46,6 +47,7 @@ const STATUS_MAP: Record<string, string> = { 'todo': 'col-1', 'in-progress': 'co
 const COLUMN_TO_STATUS: Record<string, string> = { 'col-1': 'todo', 'col-2': 'in-progress', 'col-3': 'review', 'col-4': 'done' };
 
 export default function Kanban() {
+  const { isAdmin } = useUser();
   const [data, setData] = useState<BoardData>({ tasks: {}, columns: INITIAL_COLUMNS, columnOrder: ['col-1', 'col-2', 'col-3', 'col-4'] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -138,6 +140,7 @@ export default function Kanban() {
   };
 
   const onDragEnd = async (result: DropResult) => {
+    if (!isAdmin) return; // Si no es admin, no puede mover tareas
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
@@ -200,9 +203,11 @@ export default function Kanban() {
           </div>
           {saving && <div className="flex items-center gap-2 text-xs text-[#666666] bg-black/5 px-3 py-1.5 rounded-full animate-pulse"><Loader2 size={12} className="animate-spin" /> Guardando...</div>}
         </div>
-        <button onClick={() => setIsNewTaskOpen(true)} className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-lg">
-          <Plus size={20} /> Nueva Tarea
-        </button>
+        {isAdmin && (
+          <button onClick={() => setIsNewTaskOpen(true)} className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-lg">
+            <Plus size={20} /> Nueva Tarea
+          </button>
+        )}
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
@@ -253,7 +258,7 @@ export default function Kanban() {
       </DragDropContext>
 
       {selectedTask && (
-        <TaskDetailModal key={selectedTask.id} task={selectedTask} columns={data.columns} teamMembers={team} availableProjects={projects} onClose={() => setSelectedTask(null)} onUpdate={handleUpdateTask} />
+        <TaskDetailModal key={selectedTask.id} task={selectedTask} columns={data.columns} teamMembers={team} availableProjects={projects} onClose={() => setSelectedTask(null)} onUpdate={handleUpdateTask} isAdmin={isAdmin} />
       )}
       {isNewTaskOpen && (
         <NewTaskModal teamMembers={team} availableProjects={projects} onClose={() => setIsNewTaskOpen(false)} onSave={handleSaveNewTask} />
@@ -314,7 +319,7 @@ function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { tea
   );
 }
 
-function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClose, onUpdate }: { task: Task, columns: any, teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onUpdate: (id: string, updates: any) => void }) {
+function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClose, onUpdate, isAdmin }: { task: Task, columns: any, teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onUpdate: (id: string, updates: any) => void, isAdmin: boolean }) {
   const [title, setTitle] = useState(task.title);
   const [desc, setDesc] = useState(task.description);
   const [project, setProject] = useState(task.project);
@@ -334,22 +339,38 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
         <div className="p-8 border-b border-black/5 flex justify-between items-start">
           <div className="flex-1 mr-4">
             <span className="text-[10px] uppercase tracking-wider font-bold text-[#666666] block mb-1">Título de la Tarea</span>
-            <input className="text-2xl font-medium text-[#1A1A1A] bg-transparent border-none outline-none w-full focus:bg-black/5 rounded-lg px-1 transition-colors" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={saveTitle} />
+            <input 
+              className={`text-2xl font-medium text-[#1A1A1A] bg-transparent border-none outline-none w-full rounded-lg px-1 transition-colors ${isAdmin ? 'focus:bg-black/5' : 'cursor-not-allowed'}`} 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
+              onBlur={saveTitle} 
+              disabled={!isAdmin}
+            />
           </div>
           <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors"><X size={20} /></button>
         </div>
         <div className="p-8 overflow-y-auto flex flex-col gap-8">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
             <div className="flex flex-col gap-2"><span className="text-xs font-bold text-[#666666] uppercase">Estado</span><span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium border bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50">{(Object.values(columns) as Column[]).find(c => c.taskIds.includes(task.id))?.title}</span></div>
-            <div className="flex flex-col gap-2"><span className="text-xs font-bold text-[#666666] uppercase">Prioridad</span><select value={priority} onChange={(e) => { const v = e.target.value as any; setPriority(v); onUpdate(task.id, { priority: v }); }} className="h-10 rounded-xl border border-black/10 bg-black/5 px-3 outline-none"><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select></div>
-            <div className="flex flex-col gap-2"><span className="text-xs font-bold text-[#666666] uppercase">Vencimiento</span><input type="text" value={dueDate} onChange={(e) => { setDueDate(e.target.value); onUpdate(task.id, { dueDate: e.target.value }); }} className="h-10 rounded-xl border border-black/10 bg-black/5 px-3 outline-none" placeholder="DD/MM/YYYY" /></div>
+            <div className="flex flex-col gap-2"><span className="text-xs font-bold text-[#666666] uppercase">Prioridad</span><select disabled={!isAdmin} value={priority} onChange={(e) => { const v = e.target.value as any; setPriority(v); onUpdate(task.id, { priority: v }); }} className={`h-10 rounded-xl border border-black/10 bg-black/5 px-3 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`}><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select></div>
+            <div className="flex flex-col gap-2"><span className="text-xs font-bold text-[#666666] uppercase">Vencimiento</span><input disabled={!isAdmin} type="text" value={dueDate} onChange={(e) => { setDueDate(e.target.value); onUpdate(task.id, { dueDate: e.target.value }); }} className={`h-10 rounded-xl border border-black/10 bg-black/5 px-3 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`} placeholder="DD/MM/YYYY" /></div>
           </div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Asignado a (múltiple)</span><MultiAssigneeSelector selectedNames={assignees} teamMembers={teamMembers} onChange={(names) => { setAssignees(names); onUpdate(task.id, { assignees: names }); }} /></div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Proyecto</span><select value={project} onChange={(e) => { setProject(e.target.value); onUpdate(task.id, { project: e.target.value }); }} className="w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none"><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Descripción</span><textarea rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} onBlur={saveDesc} placeholder="Añade detalles aquí..." className="w-full rounded-2xl border border-black/10 bg-black/5 p-4 outline-none resize-none focus:ring-2 focus:ring-[#FFD166] transition-all"></textarea></div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-[#1A1A1A]">Asignado a (múltiple)</span>
+            {isAdmin ? (
+              <MultiAssigneeSelector selectedNames={assignees} teamMembers={teamMembers} onChange={(names) => { setAssignees(names); onUpdate(task.id, { assignees: names }); }} />
+            ) : (
+              <div className="flex flex-wrap gap-2 p-2 bg-black/5 rounded-2xl min-h-[48px] items-center">
+                {assignees.map(name => <span key={name} className="bg-[#222222] text-white text-xs font-medium px-3 py-1 rounded-full">{name}</span>)}
+                {assignees.length === 0 && <span className="text-sm text-[#666666] ml-2">Sin asignar</span>}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Proyecto</span><select disabled={!isAdmin} value={project} onChange={(e) => { setProject(e.target.value); onUpdate(task.id, { project: e.target.value }); }} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`}><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
+          <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Descripción</span><textarea disabled={!isAdmin} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} onBlur={saveDesc} placeholder="Añade detalles aquí..." className={`w-full rounded-2xl border border-black/10 bg-black/5 p-4 outline-none resize-none transition-all ${isAdmin ? 'focus:ring-2 focus:ring-[#FFD166]' : 'cursor-not-allowed'}`}></textarea></div>
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-[#1A1A1A]">Horas Estimadas</span>
-            <input type="number" value={hours} onChange={(e) => setHours(parseFloat(e.target.value) || 0)} onBlur={saveHours} className="w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none focus:ring-2 focus:ring-[#FFD166] transition-all" />
+            <input disabled={!isAdmin} type="number" value={hours} onChange={(e) => setHours(parseFloat(e.target.value) || 0)} onBlur={saveHours} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none transition-all ${isAdmin ? 'focus:ring-2 focus:ring-[#FFD166]' : 'cursor-not-allowed'}`} />
           </div>
         </div>
         <div className="p-8 border-t border-black/5 flex justify-end"><button onClick={onClose} className="bg-[#1A1A1A] hover:bg-black text-white px-10 py-3.5 rounded-full text-sm font-medium transition-all shadow-lg active:scale-95">Listo</button></div>

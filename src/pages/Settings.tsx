@@ -15,7 +15,7 @@ import { useUser } from '../context/UserContext';
 type TabType = 'perfil' | 'empresa' | 'notificaciones' | 'seguridad';
 
 export default function Settings() {
-  const { user, profile, setProfile } = useUser();
+  const { user, profile, setProfile, isAdmin } = useUser();
   const [activeTab, setActiveTab] = useState<TabType>('perfil');
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -245,7 +245,14 @@ export default function Settings() {
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <label className="text-sm font-medium text-[#1A1A1A]">Cargo</label>
-                  <input type="text" value={role} onChange={(e) => setRole(e.target.value)} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]" />
+                  <input 
+                    type="text" 
+                    value={role} 
+                    onChange={(e) => setRole(e.target.value)} 
+                    disabled={!isAdmin}
+                    className={`w-full h-12 rounded-2xl border border-black/10 text-[#1A1A1A] px-4 outline-none transition-all ${!isAdmin ? 'bg-black/5 text-[#666666] cursor-not-allowed' : 'bg-white/50 focus:ring-2 focus:ring-[#FFD166]'}`} 
+                  />
+                  {!isAdmin && <p className="text-[10px] text-[#666666] mt-1 ml-1">Solo un administrador puede cambiar los roles.</p>}
                 </div>
               </div>
 
@@ -264,23 +271,45 @@ export default function Settings() {
               <div className="grid grid-cols-1 gap-6">
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-[#1A1A1A]">Nombre de la Empresa</label>
-                  <input type="text" value={companyData.name} onChange={(e) => setCompanyData({...companyData, name: e.target.value})} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]" />
+                  <input 
+                    type="text" 
+                    value={companyData.name} 
+                    onChange={(e) => setCompanyData({...companyData, name: e.target.value})} 
+                    disabled={!isAdmin}
+                    className={`w-full h-12 rounded-2xl border border-black/10 text-[#1A1A1A] px-4 outline-none transition-all ${!isAdmin ? 'bg-black/5 text-[#666666] cursor-not-allowed' : 'bg-white/50 focus:ring-2 focus:ring-[#FFD166]'}`} 
+                  />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-[#1A1A1A]">NIF / CIF</label>
-                  <input type="text" value={companyData.nif} onChange={(e) => setCompanyData({...companyData, nif: e.target.value})} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]" />
+                  <input 
+                    type="text" 
+                    value={companyData.nif} 
+                    onChange={(e) => setCompanyData({...companyData, nif: e.target.value})} 
+                    disabled={!isAdmin}
+                    className={`w-full h-12 rounded-2xl border border-black/10 text-[#1A1A1A] px-4 outline-none transition-all ${!isAdmin ? 'bg-black/5 text-[#666666] cursor-not-allowed' : 'bg-white/50 focus:ring-2 focus:ring-[#FFD166]'}`} 
+                  />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-[#1A1A1A]">Dirección Fiscal</label>
-                  <input type="text" value={companyData.address} onChange={(e) => setCompanyData({...companyData, address: e.target.value})} className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none focus:ring-2 focus:ring-[#FFD166]" />
+                  <input 
+                    type="text" 
+                    value={companyData.address} 
+                    onChange={(e) => setCompanyData({...companyData, address: e.target.value})} 
+                    disabled={!isAdmin}
+                    className={`w-full h-12 rounded-2xl border border-black/10 text-[#1A1A1A] px-4 outline-none transition-all ${!isAdmin ? 'bg-black/5 text-[#666666] cursor-not-allowed' : 'bg-white/50 focus:ring-2 focus:ring-[#FFD166]'}`} 
+                  />
                 </div>
               </div>
               <div className="flex justify-end mt-4 pt-6 border-t border-black/5 items-center gap-4">
                 {companySuccess && <span className="text-emerald-600 text-sm font-medium flex items-center gap-1"><CheckCircle2 size={16} /> Guardado</span>}
-                <button onClick={handleSaveCompany} disabled={companyLoading} className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-8 py-3 rounded-full text-sm font-medium transition-colors disabled:opacity-50">
-                  {companyLoading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                  {companyLoading ? 'Guardando...' : 'Guardar Empresa'}
-                </button>
+                {isAdmin ? (
+                  <button onClick={handleSaveCompany} disabled={companyLoading} className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-8 py-3 rounded-full text-sm font-medium transition-colors disabled:opacity-50">
+                    {companyLoading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    {companyLoading ? 'Guardando...' : 'Guardar Empresa'}
+                  </button>
+                ) : (
+                  <p className="text-sm italic text-[#666666]">Se requieren privilegios de administrador para editar la empresa.</p>
+                )}
               </div>
             </div>
           )}

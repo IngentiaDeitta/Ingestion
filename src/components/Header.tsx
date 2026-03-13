@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export default function Header() {
-  const { profile, signOut } = useUser();
+  const { profile, signOut, isAdmin } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
   const isAuthPage = ['/login', '/forgot-password', '/register'].includes(location.pathname);
@@ -138,29 +138,30 @@ export default function Header() {
       {/* Right Actions */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
-          {/* Create Button */}
-          <div className="relative group mr-2">
-            <button className="h-11 bg-[#222222] hover:bg-black text-white px-6 rounded-full flex items-center gap-2 transition-all shadow-lg shadow-black/10 active:scale-95 group">
-              <Plus size={18} className="transition-transform group-hover:rotate-90" />
-              <span className="text-sm font-medium">Crear</span>
-            </button>
-            
-            {/* Quick Actions Dropdown */}
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-black/5 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                <Link to="/projects/new" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
-                   <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">P</div>
-                   Nuevo Proyecto
-                </Link>
-                <Link to="/clients/new" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
-                   <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">C</div>
-                   Nuevo Cliente
-                </Link>
-                <Link to="/finance/new-invoice" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
-                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">F</div>
-                   Nueva Factura
-                </Link>
+          {isAdmin && (
+            <div className="relative group mr-2">
+              <button className="h-11 bg-[#222222] hover:bg-black text-white px-6 rounded-full flex items-center gap-2 transition-all shadow-lg shadow-black/10 active:scale-95 group">
+                <Plus size={18} className="transition-transform group-hover:rotate-90" />
+                <span className="text-sm font-medium">Crear</span>
+              </button>
+              
+              {/* Quick Actions Dropdown */}
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-black/5 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                  <Link to="/projects/new" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">P</div>
+                    Nuevo Proyecto
+                  </Link>
+                  <Link to="/clients/new" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">C</div>
+                    Nuevo Cliente
+                  </Link>
+                  <Link to="/finance/new-invoice" className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">F</div>
+                    Nueva Factura
+                  </Link>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Notifications */}
           <div className="relative">

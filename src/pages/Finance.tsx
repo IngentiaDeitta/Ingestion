@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useUser } from '../context/UserContext';
 import { supabase } from '../lib/supabase';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -82,6 +83,7 @@ const hoursData = [
 ];
 
 export default function Finance() {
+  const { isAdmin } = useUser();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
@@ -143,13 +145,15 @@ export default function Finance() {
           <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Finanzas</h3>
           <p className="text-[#666666] mt-1">Gestión integral de ingresos, egresos y analíticas financieras.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center justify-center gap-2 bg-white/50 border border-black/10 hover:bg-white/80 text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-sm">
-            <Download size={20} /> Exportar
+        <div className="flex items-center gap-4">
+          <button className="flex items-center gap-2 px-6 py-3 rounded-full border border-black/10 text-sm font-medium hover:bg-black/5 transition-colors">
+            <Download size={18} /> Exportar
           </button>
-          <Link to="/finance/new-invoice" className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10">
-            <DollarSign size={20} /> Nueva Transacción
-          </Link>
+          {isAdmin && (
+            <Link to="/finance/new-invoice" className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg">
+              Nueva Transacción
+            </Link>
+          )}
         </div>
       </div>
 
@@ -295,19 +299,25 @@ export default function Finance() {
                           {t.type === 'income' ? '+' : '-'}{curr.symbol}{Math.abs(t.amount).toLocaleString()}
                         </span>
                       </td>
-                      <td className="px-8 py-5 text-right relative">
-                        <button onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === t.id ? null : t.id); }}
-                          className="text-[#DDD] group-hover:text-[#1A1A1A] p-2 rounded-full hover:bg-white transition-all shadow-sm">
-                          <MoreVertical size={18} />
-                        </button>
-                        {openActionId === t.id && (
-                          <div className="absolute right-12 top-10 w-48 bg-white rounded-2xl shadow-2xl border border-black/5 flex flex-col p-2 z-[9999]">
-                            <button onClick={(e) => handleToggleStatus(t, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
-                              <DollarSign size={16} />{t.status === 'Paid' ? 'Pendiente' : 'Pagado'}
+                      <td className="px-8 py-5 text-right">
+                        {isAdmin && (
+                          <div className="relative inline-block text-left">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === t.id ? null : t.id); }}
+                              className="p-1.5 rounded-full hover:bg-black/5 text-[#666666] transition-colors"
+                            >
+                              <MoreVertical size={18} />
                             </button>
-                            <button onClick={(e) => handleDelete(t.id, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-red-500 font-medium hover:bg-red-50 rounded-xl transition-colors text-left">
-                              <Trash2 size={16} />Eliminar
-                            </button>
+                            {openActionId === t.id && (
+                              <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white shadow-2xl border border-black/5 z-20 overflow-hidden py-1">
+                                <button onClick={(e) => handleToggleStatus(t, e)} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] hover:bg-black/5 transition-colors">
+                                  <Zap size={16} /> Marcar como {t.status === 'Paid' ? 'Pendiente' : 'Pagado'}
+                                </button>
+                                <button onClick={(e) => handleDelete(t.id, e)} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-black/5">
+                                  <Trash2 size={16} /> Eliminar
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </td>

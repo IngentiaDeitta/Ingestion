@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import EditProjectModal from '../components/EditProjectModal';
+import { useUser } from '../context/UserContext';
 
 interface Project {
   id: string;
@@ -23,6 +24,7 @@ interface Project {
 }
 
 export default function Projects() {
+  const { isAdmin } = useUser();
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -192,44 +194,46 @@ export default function Projects() {
                         {project.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                       <div className="relative inline-block text-left">
-                         <button 
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setActiveMenu(activeMenu === project.id ? null : project.id);
-                            }}
-                            className="text-[#666666] hover:text-[#1A1A1A] p-2 rounded-full hover:bg-black/5"
-                          >
-                            <MoreVertical size={20} />
-                          </button>
-
-                          {activeMenu === project.id && (
-                            <>
-                              <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)}></div>
-                              <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white shadow-2xl border border-black/5 z-20 overflow-hidden py-1">
-                                <button 
-                                  onClick={(e) => {
-                                    e.preventDefault(); e.stopPropagation();
-                                    setEditingProject(project);
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] hover:bg-black/5 transition-colors"
-                                >
-                                  <Edit size={16} /> Editar
-                                </button>
-                                <button 
-                                  onClick={(e) => handleDelete(project.id, e)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-black/5"
-                                >
-                                  <Trash2 size={16} /> Eliminar
-                                </button>
-                              </div>
-                            </>
-                          )}
-                       </div>
-                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 text-right">
+                         <div className="relative inline-block text-left">
+                           <button 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setActiveMenu(activeMenu === project.id ? null : project.id);
+                              }}
+                              className="text-[#666666] hover:text-[#1A1A1A] p-2 rounded-full hover:bg-black/5"
+                            >
+                              <MoreVertical size={20} />
+                            </button>
+  
+                            {activeMenu === project.id && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)}></div>
+                                <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white shadow-2xl border border-black/5 z-20 overflow-hidden py-1">
+                                  <button 
+                                    onClick={(e) => {
+                                      e.preventDefault(); e.stopPropagation();
+                                      setEditingProject(project);
+                                      setActiveMenu(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] hover:bg-black/5 transition-colors"
+                                  >
+                                    <Edit size={16} /> Editar
+                                  </button>
+                                  <button 
+                                    onClick={(e) => handleDelete(project.id, e)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-black/5"
+                                  >
+                                    <Trash2 size={16} /> Eliminar
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                         </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

@@ -1,5 +1,6 @@
 import { X, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useUser } from '../context/UserContext';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 
@@ -22,6 +23,7 @@ interface EditProjectModalProps {
 }
 
 export default function EditProjectModal({ project, onClose, onSuccess }: EditProjectModalProps) {
+  const { isAdmin } = useUser(); // Added isAdmin from useUser
   const [savingProject, setSavingProject] = useState(false);
   const [clients, setClients] = useState<{id: string, name: string}[]>([]);
   const [editFormData, setEditFormData] = useState({
@@ -178,7 +180,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
                 type="text" 
                 value={editFormData.name}
                 onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
+                disabled={!isAdmin}
+                className={`w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all ${!isAdmin ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`} 
               />
             </div>
 
@@ -188,7 +191,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
                 required 
                 value={editFormData.client}
                 onChange={(e) => setEditFormData({ ...editFormData, client: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all"
+                disabled={!isAdmin}
+                className={`w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all ${!isAdmin ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
               >
                 <option value="">Seleccionar...</option>
                 {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -201,7 +205,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
                 required 
                 value={editFormData.outcome}
                 onChange={(e) => setEditFormData({ ...editFormData, outcome: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all"
+                disabled={!isAdmin}
+                className={`w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all ${!isAdmin ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
               >
                 <option value="Propuesta">Propuesta</option>
                 <option value="Ganado">Ganado</option>
@@ -213,10 +218,10 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
               <label className="text-sm font-medium text-[#1A1A1A]">Estado Operativo</label>
               <select 
                 required 
-                disabled={editFormData.outcome !== 'Ganado'}
+                disabled={!isAdmin || editFormData.outcome !== 'Ganado'}
                 value={editFormData.outcome !== 'Ganado' ? 'Pendiente' : editFormData.status}
                 onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
-                className={`w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all ${editFormData.outcome !== 'Ganado' ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                className={`w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all ${(!isAdmin || editFormData.outcome !== 'Ganado') ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
               >
                 <option value="Pendiente">Pendiente (Sin Ejecución)</option>
                 <option value="En Progreso">En Progreso</option>
@@ -233,7 +238,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
                 type="number" 
                 value={editFormData.budget}
                 onChange={(e) => setEditFormData({ ...editFormData, budget: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
+                disabled={!isAdmin}
+                className={`w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all ${!isAdmin ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`} 
               />
             </div>
 
@@ -243,7 +249,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
                 type="date" 
                 value={editFormData.due_date}
                 onChange={(e) => setEditFormData({ ...editFormData, due_date: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
+                disabled={!isAdmin}
+                className={`w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all ${!isAdmin ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`} 
               />
             </div>
 
@@ -258,7 +265,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
                 max="100" 
                 value={editFormData.progress}
                 onChange={(e) => setEditFormData({ ...editFormData, progress: parseInt(e.target.value) })}
-                className="w-full accent-[#222222]" 
+                disabled={!isAdmin}
+                className={`w-full accent-[#222222] ${!isAdmin ? 'cursor-not-allowed opacity-50' : ''}`} 
               />
             </div>
 
@@ -268,7 +276,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
                 rows={4} 
                 value={editFormData.description}
                 onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                className="w-full rounded-2xl border border-black/10 bg-white text-[#1A1A1A] p-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none resize-none transition-all"
+                disabled={!isAdmin}
+                className={`w-full rounded-2xl border border-black/10 bg-white text-[#1A1A1A] p-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none resize-none transition-all ${!isAdmin ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
               ></textarea>
             </div>
           </div>
@@ -279,16 +288,22 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
               onClick={onClose}
               className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:bg-black/5 transition-colors"
             >
-              Cancelar
+              Cerrar
             </button>
-            <button 
-              type="submit" 
-              disabled={savingProject}
-              className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg"
-            >
-              <Save size={18} />
-              {savingProject ? 'Guardando...' : 'Guardar Cambios'}
-            </button>
+            {isAdmin ? (
+              <button 
+                type="submit" 
+                disabled={savingProject}
+                className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg"
+              >
+                <Save size={18} />
+                {savingProject ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 bg-black/5 text-[#666666] px-6 py-3 rounded-full text-sm font-medium italic border border-black/5">
+                Vista de solo lectura
+              </div>
+            )}
           </div>
         </form>
       </div>

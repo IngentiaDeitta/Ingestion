@@ -1,6 +1,7 @@
 import { Plus, Search, Filter, MoreVertical, Building2, Mail, Trash2, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useUser } from '../context/UserContext';
 import { supabase } from '../lib/supabase';
 
 interface Client {
@@ -13,6 +14,7 @@ interface Client {
 }
 
 export default function Clients() {
+  const { isAdmin } = useUser();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -131,48 +133,47 @@ export default function Clients() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="relative inline-block text-left">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenu(activeMenu === client.id ? null : client.id);
-                          }}
-                          className="text-[#666666] hover:text-[#1A1A1A] transition-colors p-2 rounded-full hover:bg-black/5 relative z-30"
-                        >
-                          <MoreVertical size={20} />
-                        </button>
-                        
-                        {activeMenu === client.id && (
-                          <>
-                            <div 
-                              className="fixed inset-0 z-10" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMenu(null);
-                              }}
-                            ></div>
-                            <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white shadow-2xl border border-black/5 z-[100] overflow-hidden py-1">
-                              <Link 
-                                to={`/clients/${client.id}`}
-                                className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] hover:bg-black/5 transition-colors"
-                              >
-                                <Edit size={16} />
-                                Editar / Ver
-                              </Link>
-                              <button 
-                                onClick={() => {
-                                  handleDelete(client.id);
+                      {isAdmin && (
+                        <div className="relative inline-block text-left">
+                          <button 
+                            onClick={() => setActiveMenu(activeMenu === client.id ? null : client.id)}
+                            className="text-[#666666] hover:text-[#1A1A1A] p-2 rounded-full hover:bg-black/5"
+                          >
+                            <MoreVertical size={20} />
+                          </button>
+  
+                          {activeMenu === client.id && (
+                            <>
+                              <div 
+                                className="fixed inset-0 z-[90]" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setActiveMenu(null);
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-black/5"
-                              >
-                                <Trash2 size={16} />
-                                Eliminar
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                              ></div>
+                              <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white shadow-2xl border border-black/5 z-[100] overflow-hidden py-1">
+                                <Link 
+                                  to={`/clients/${client.id}`}
+                                  className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] hover:bg-black/5 transition-colors"
+                                >
+                                  <Edit size={16} />
+                                  Editar / Ver
+                                </Link>
+                                <button 
+                                  onClick={() => {
+                                    handleDelete(client.id);
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-black/5"
+                                >
+                                  <Trash2 size={16} />
+                                  Eliminar
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
