@@ -40,6 +40,8 @@ export default function Dashboard() {
     conversionRate: 0,
     avgProjectDuration: 45,
   });
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+  const [team, setTeam] = useState<any[]>([]);
 
   useEffect(() => { fetchDashboardData(); }, []);
 
@@ -52,11 +54,13 @@ export default function Dashboard() {
         { data: projectsData },
         { data: tasksData },
         { data: financesData },
+        { data: teamData },
       ] = await Promise.all([
         supabase.from('clients').select('*', { count: 'exact', head: true }),
         supabase.from('projects').select('id, status, budget, outcome'),
-        supabase.from('tasks').select('id, hours'),
+        supabase.from('tasks').select('id, title, due_date, status, assignees, hours'),
         supabase.from('finances').select('amount, type'),
+        supabase.from('team').select('*'),
       ]);
 
       const atRiskCount = projectsData?.filter(p => p.status === 'En Riesgo').length ?? 0;
@@ -65,6 +69,8 @@ export default function Dashboard() {
       const health = totalProjects > 0 ? Math.round(((totalProjects - atRiskCount) / totalProjects) * 100) : 100;
 
       const totalHours = (tasksData || []).reduce((acc: number, t: any) => acc + (Number(t.hours) || 0), 0);
+      setAllTasks(tasksData || []);
+      setTeam(teamData || []);
 
       let totalBalance = 0;
       (financesData || []).forEach((t: any) => {
@@ -291,9 +297,9 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-8 border border-white/40 shadow-sm flex flex-col gap-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-medium text-[#1A1A1A]">Estado operativo</h3>
-              <div className="p-3 bg-black/5 rounded-2xl"><BarChart2 size={24} className="text-[#1A1A1A]" /></div>
+            <div className="flex justify-between items-center text-[#1A1A1A]">
+              <h3 className="text-xl font-medium">Estado operativo</h3>
+              <div className="p-3 bg-black/5 rounded-2xl"><BarChart2 size={24} /></div>
             </div>
             <p className="text-[#666666] leading-relaxed">
               El dashboard está conectado directamente a Supabase. Cualquier cambio en Clientes, Proyectos, Finanzas o Kanban se refleja automáticamente aquí.
@@ -309,7 +315,93 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* ── Calendar Section ── */}
+          <DashboardCalendar tasks={allTasks} teamMembers={team} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardCalendar({ tasks, teamMembers }: { tasks: any[], teamMembers: any[] }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const numDays = daysInMonth(year, month);
+  const startDay = firstDayOfMonth(year, month);
+  
+  const monthName = currentDate.toLocaleString('es-ES', { month: 'long' });
+  const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1));
+
+  const calendarDays = [];
+  for (let i = 0; i < startDay; i++) calendarDays.push(null);
+  for (let d = 1; d <= numDays; d++) calendarDays.push(d);
+
+  return (
+    <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-8 border border-white/40 shadow-sm flex flex-col gap-6 overflow-hidden">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-xl font-medium text-[#1A1A1A]">Calendario de Tareas</h3>
+          <p className="text-sm text-[#666666]">{capitalizedMonth} {year}</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={prevMonth} className="p-2 hover:bg-black/5 rounded-full transition-colors"><ChevronRight size={20} className="rotate-180" /></button>
+          <button onClick={nextMonth} className="p-2 hover:bg-black/5 rounded-full transition-colors"><ChevronRight size={20} /></button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-px bg-black/5 rounded-2xl overflow-hidden border border-black/5">
+        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
+          <div key={d} className="bg-white/50 py-3 text-center text-[10px] font-bold text-[#666666] uppercase tracking-wider">{d}</div>
+        ))}
+        {calendarDays.map((date, i) => {
+          if (date === null) return <div key={`empty-${i}`} className="bg-white/30 h-32" />;
+          
+          const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+          const dayTasks = tasks.filter(t => t.due_date === dayStr);
+          
+          return (
+            <div key={date} className="bg-white h-32 p-2 flex flex-col gap-1 border border-black/[0.02] hover:bg-black/[0.01] transition-colors relative">
+              <span className={`text-xs font-medium ${new Date().getDate() === date && new Date().getMonth() === month ? 'bg-[#FFD166] text-[#222222] w-6 h-6 flex items-center justify-center rounded-full shadow-sm' : 'text-[#666666]'}`}>{date}</span>
+              <div className="flex flex-col gap-1 overflow-y-auto custom-scrollbar">
+                {dayTasks.map(t => {
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  const due = new Date(t.due_date);
+                  const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                  const critColor = diff <= 0 ? 'bg-rose-500' : diff <= 3 ? 'bg-amber-500' : 'bg-emerald-500';
+
+                  return (
+                    <div key={t.id} className="text-[9px] p-1.5 rounded-lg border border-black/5 bg-white shadow-sm flex items-start gap-1.5 group hover:border-[#FFD166] transition-all">
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${critColor}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[#1A1A1A] truncate">{t.title}</p>
+                        <div className="flex -space-x-1 mt-1">
+                          {(t.assignees || []).slice(0, 2).map((name: string, idx: number) => {
+                            const member = teamMembers.find(m => m.name === name);
+                            return (
+                              <div key={idx} className="w-4 h-4 rounded-full border border-white flex items-center justify-center text-[6px] text-white" style={{ backgroundColor: member?.avatar_color || '#222222' }}>
+                                {name[0]}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

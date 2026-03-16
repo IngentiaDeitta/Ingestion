@@ -1,4 +1,4 @@
-import { Plus, MoreHorizontal, Calendar, MessageSquare, Paperclip, X, Save, User, Tag, Check, Loader2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Calendar, MessageSquare, Paperclip, X, Save, User, Tag, Check, Loader2, Trash2 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -139,6 +139,36 @@ export default function Kanban() {
     }
   };
 
+  const handleDeleteTask = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('¿Estás seguro de eliminar esta tarea?')) return;
+    
+    try {
+      setSaving(true);
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (error) throw error;
+
+      setData(prev => {
+        const newTasks = { ...prev.tasks };
+        delete newTasks[id];
+        
+        const newColumns = { ...prev.columns };
+        Object.keys(newColumns).forEach(colId => {
+          newColumns[colId].taskIds = newColumns[colId].taskIds.filter(taskId => taskId !== id);
+        });
+
+        return { ...prev, tasks: newTasks, columns: newColumns };
+      });
+
+      if (selectedTask?.id === id) setSelectedTask(null);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Error al eliminar la tarea');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const onDragEnd = async (result: DropResult) => {
     if (!isAdmin) return; // Si no es admin, no puede mover tareas
     const { destination, source, draggableId } = result;
@@ -176,20 +206,27 @@ export default function Kanban() {
 
   const handleSaveNewTask = async (taskData: any) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('tasks').insert([{
         title: taskData.title,
         project: taskData.project || 'General',
         priority: taskData.priority || 'Media',
         status: 'todo',
         assignees: taskData.assignees || [],
-        due_date: taskData.dueDate || 'Sin fecha',
-        hours: taskData.hours || 0
+        assignee: taskData.assignees?.length > 0 ? taskData.assignees[0] : null,
+        due_date: taskData.dueDate || null,
+        hours: taskData.hours || 0,
+        tags: [],
+        description: ''
       }]);
+      
       if (error) throw error;
-      fetchTasks();
+      
+      await fetchTasks();
       setIsNewTaskOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating task:', error);
+      alert('Error al crear tarea: ' + (error.message || 'Error desconocido'));
     }
   };
 
@@ -228,20 +265,47 @@ export default function Kanban() {
                         {tasks.map((task, index) => (
                           <Draggable key={task.id} draggableId={task.id} index={index}>
                             {(provided) => (
-                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} onClick={() => setSelectedTask(task)} className="bg-white/60 backdrop-blur-xl p-5 rounded-[24px] border border-white/40 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing">
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold border mb-3 ${task.priority === 'Alta' ? 'bg-[#FFD166] text-[#222222] border-[#FFD166]' : 'bg-black/5 text-[#1A1A1A] border-black/10'}`}>{task.priority}</span>
+                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} onClick={() => setSelectedTask(task)} className="group bg-white/60 backdrop-blur-xl p-5 rounded-[24px] border border-white/40 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing">
+                                <div className="flex justify-between items-start mb-3">
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold border ${task.priority === 'Alta' ? 'bg-[#FFD166] text-[#222222] border-[#FFD166]' : 'bg-black/5 text-[#1A1A1A] border-black/10'}`}>{task.priority}</span>
+                                  <button 
+                                    onClick={(e) => handleDeleteTask(task.id, e)}
+                                    className="p-1.5 text-[#DDD] hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                    title="Eliminar tarea"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
                                 <h5 className="font-medium text-[#1A1A1A] mb-1 leading-tight">{task.title}</h5>
                                 <p className="text-xs text-[#666666] mb-5">{task.project}</p>
-                                <div className="flex items-center justify-between pt-4 border-t border-black/5">
-                                  <div className="flex -space-x-2">
-                                    {task.assignees.map((name, i) => {
-                                      const member = team.find(m => m.name === name);
-                                      return <div key={i} className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white text-white" style={{ backgroundColor: member?.avatar_color || '#222222' }} title={name}>{name.split(' ').map(n => n[0]).join('')}</div>
-                                    })}
-                                    {task.assignees.length === 0 && <User size={14} className="text-[#666666]" />}
+                                  <div className="flex items-center justify-between pt-4 border-t border-black/5">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex -space-x-2">
+                                        {task.assignees.map((name, i) => {
+                                          const member = team.find(m => m.name === name);
+                                          return <div key={i} className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white text-white" style={{ backgroundColor: member?.avatar_color || '#222222' }} title={name}>{name.split(' ').map(n => n[0]).join('')}</div>
+                                        })}
+                                        {task.assignees.length === 0 && <User size={14} className="text-[#666666]" />}
+                                      </div>
+                                      {/* Semáforo de criticidad */}
+                                      {task.dueDate !== 'Sin fecha' && (
+                                        <div className="flex items-center gap-1.5 ml-1">
+                                          <div className={`w-2 h-2 rounded-full ${
+                                            (() => {
+                                              const today = new Date();
+                                              today.setHours(0, 0, 0, 0);
+                                              const due = new Date(task.dueDate);
+                                              const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                              if (diff <= 0) return 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]';
+                                              if (diff <= 3) return 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]';
+                                              return 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]';
+                                            })()
+                                          }`} />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-xs font-medium text-[#666666]"><Calendar size={12} /><span>{task.dueDate}</span></div>
                                   </div>
-                                  <div className="flex items-center gap-1 text-xs font-medium text-[#666666]"><Calendar size={12} /><span>{task.dueDate}</span></div>
-                                </div>
                               </div>
                             )}
                           </Draggable>
@@ -309,11 +373,20 @@ function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { tea
           <select value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4"><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select>
         </div>
         <MultiAssigneeSelector selectedNames={newTask.assignees} teamMembers={teamMembers} onChange={(names) => setNewTask({ ...newTask, assignees: names })} />
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold text-[#666666] uppercase">Horas Estimadas</label>
-          <input type="number" placeholder="0" value={newTask.hours || ''} onChange={(e) => setNewTask({ ...newTask, hours: parseFloat(e.target.value) || 0 })} className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 px-4" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-[#666666] uppercase pl-1">Horas Estimadas</label>
+            <input type="number" placeholder="0" value={newTask.hours || ''} onChange={(e) => setNewTask({ ...newTask, hours: parseFloat(e.target.value) || 0 })} className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 px-4" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-[#666666] uppercase pl-1">Fecha Vencimiento</label>
+            <input type="date" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 px-4" />
+          </div>
         </div>
-        <div className="flex justify-end gap-3 pt-4"><button onClick={onClose} className="px-6 py-3 rounded-full text-[#666666]">Cancelar</button><button disabled={!newTask.title} onClick={() => onSave(newTask)} className="bg-[#222222] text-white px-6 py-3 rounded-full">Crear Tarea</button></div>
+        <div className="flex justify-end gap-3 pt-4">
+          <button onClick={onClose} className="px-6 py-3 rounded-full text-[#666666] hover:bg-black/5 transition-colors">Cancelar</button>
+          <button disabled={!newTask.title} onClick={() => onSave(newTask)} className="bg-[#222222] hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-full font-medium transition-all shadow-lg active:scale-95">Crear</button>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import {
   DollarSign, Download, Filter, ArrowUpRight, ArrowDownRight,
-  MoreVertical, Trash2, Tag, TrendingUp, Clock, Zap
+  MoreVertical, Trash2, Tag, TrendingUp, Clock, Zap, CheckCircle2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -31,19 +31,19 @@ interface Transaction {
 
 const EXPENSE_TAGS = [
   { value: 'operational', label: 'Costos Operativos', color: 'bg-blue-100 text-blue-800' },
-  { value: 'salaries',    label: 'Sueldos',           color: 'bg-purple-100 text-purple-800' },
-  { value: 'travel',      label: 'Viáticos',          color: 'bg-orange-100 text-orange-800' },
-  { value: 'software',    label: 'Licencias',         color: 'bg-cyan-100 text-cyan-800' },
-  { value: 'other',       label: 'Otros',             color: 'bg-gray-100 text-gray-600' },
+  { value: 'salaries', label: 'Sueldos', color: 'bg-purple-100 text-purple-800' },
+  { value: 'travel', label: 'Viáticos', color: 'bg-orange-100 text-orange-800' },
+  { value: 'software', label: 'Licencias', color: 'bg-cyan-100 text-cyan-800' },
+  { value: 'other', label: 'Otros', color: 'bg-gray-100 text-gray-600' },
 ];
 
 const CURRENCIES = [
-  { code: 'USD', label: 'Dólar',  symbol: '$',  color: 'bg-green-100 text-green-800',  badge: 'bg-green-100 text-green-700' },
-  { code: 'ARS', label: 'Peso',   symbol: '$',  color: 'bg-yellow-100 text-yellow-800', badge: 'bg-yellow-100 text-yellow-700' },
-  { code: 'EUR', label: 'Euro',   symbol: '€',  color: 'bg-blue-100 text-blue-800',   badge: 'bg-blue-100 text-blue-700' },
+  { code: 'USD', label: 'Dólar', symbol: '$', color: 'bg-green-100 text-green-800', badge: 'bg-green-100 text-green-700' },
+  { code: 'ARS', label: 'Peso', symbol: '$', color: 'bg-yellow-100 text-yellow-800', badge: 'bg-yellow-100 text-yellow-700' },
+  { code: 'EUR', label: 'Euro', symbol: '€', color: 'bg-blue-100 text-blue-800', badge: 'bg-blue-100 text-blue-700' },
 ];
 
-const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -70,12 +70,12 @@ function buildMonthlyChartData(transactions: Transaction[]) {
 }
 
 const hoursData = [
-  { name: 'Ene', facturables: 800,  noFacturables: 200 },
-  { name: 'Feb', facturables: 750,  noFacturables: 150 },
-  { name: 'Mar', facturables: 600,  noFacturables: 300 },
-  { name: 'Abr', facturables: 850,  noFacturables: 100 },
-  { name: 'May', facturables: 700,  noFacturables: 250 },
-  { name: 'Jun', facturables: 900,  noFacturables: 150 },
+  { name: 'Ene', facturables: 800, noFacturables: 200 },
+  { name: 'Feb', facturables: 750, noFacturables: 150 },
+  { name: 'Mar', facturables: 600, noFacturables: 300 },
+  { name: 'Abr', facturables: 850, noFacturables: 100 },
+  { name: 'May', facturables: 700, noFacturables: 250 },
+  { name: 'Jun', facturables: 900, noFacturables: 150 },
   { name: 'Jul', facturables: 1100, noFacturables: 100 },
   { name: 'Ago', facturables: 1050, noFacturables: 150 },
   { name: 'Sep', facturables: 1240, noFacturables: 200 },
@@ -128,7 +128,7 @@ export default function Finance() {
   });
 
   const currencyBalances = CURRENCIES.map(c => {
-    const inc = transactions.filter(t => t.type === 'income'  && t.currency === c.code).reduce((a, t) => a + parseFloat(t.amount as any), 0);
+    const inc = transactions.filter(t => t.type === 'income' && t.currency === c.code).reduce((a, t) => a + parseFloat(t.amount as any), 0);
     const exp = transactions.filter(t => t.type === 'expense' && t.currency === c.code).reduce((a, t) => a + parseFloat(t.amount as any), 0);
     return { ...c, income: inc, expenses: exp, net: inc - exp };
   });
@@ -189,21 +189,21 @@ export default function Finance() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
           <div className="flex justify-between items-center mb-6">
-             <h4 className="text-xl font-medium text-[#1A1A1A]">Facturación vs Costes</h4>
-             <TrendingUp size={20} className="text-[#666]" />
+            <h4 className="text-xl font-medium text-[#1A1A1A]">Facturación vs Costes</h4>
+            <TrendingUp size={20} className="text-[#666]" />
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={monthlyChart}>
                 <defs>
                   <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#222222" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#222222" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#222222" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#222222" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#666', fontSize:12}} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={v => `$${v/1000}k`} tick={{fill:'#999', fontSize:11}} />
-                <Tooltip formatter={(v: any) => [`$${v.toLocaleString()}`, '']} contentStyle={{borderRadius:'16px', border:'none'}} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} tick={{ fill: '#999', fontSize: 11 }} />
+                <Tooltip formatter={(v: any) => [`$${v.toLocaleString()}`, '']} contentStyle={{ borderRadius: '16px', border: 'none' }} />
                 <Area type="monotone" dataKey="ingresos" stroke="#1A1A1A" strokeWidth={3} fillOpacity={1} fill="url(#colorIngresos)" />
                 <Area type="monotone" dataKey="gastos" stroke="#FFD166" strokeWidth={3} fill="none" />
               </AreaChart>
@@ -213,15 +213,15 @@ export default function Finance() {
 
         <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
           <div className="flex justify-between items-center mb-6">
-             <h4 className="text-xl font-medium text-[#1A1A1A]">Distribución de Horas</h4>
-             <Clock size={20} className="text-[#666]" />
+            <h4 className="text-xl font-medium text-[#1A1A1A]">Distribución de Horas</h4>
+            <Clock size={20} className="text-[#666]" />
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={hoursData}>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#666', fontSize:12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill:'#999', fontSize:11}} />
-                <Tooltip contentStyle={{borderRadius:'16px', border:'none'}} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#999', fontSize: 11 }} />
+                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none' }} />
                 <Bar dataKey="facturables" stackId="a" fill="#1A1A1A" radius={[0, 0, 0, 0]} />
                 <Bar dataKey="noFacturables" stackId="a" fill="#FFD166" radius={[6, 6, 0, 0]} />
               </BarChart>
@@ -231,7 +231,7 @@ export default function Finance() {
       </div>
 
       {/* ── Transactions Table ── */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm min-h-[500px]">
         <div className="p-8 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
           <div>
             <h4 className="text-xl font-medium text-[#1A1A1A]">Registro de Operaciones</h4>
@@ -246,9 +246,9 @@ export default function Finance() {
         {showFilters && (
           <div className="px-8 py-6 border-b border-black/5 flex flex-wrap gap-6 bg-black/[0.02]">
             {[
-              { label: 'Tipo', value: filterType, setter: setFilterType, options: [['all','Todos'],['income','Ingresos'],['expense','Gastos']] },
-              { label: 'Moneda', value: filterCurrency, setter: setFilterCurrency, options: [['all','Todas'],['USD','USD'],['ARS','ARS'],['EUR','EUR']] },
-              { label: 'Categoría', value: filterTag, setter: setFilterTag, options: [['all','Todas'], ...EXPENSE_TAGS.map(t => [t.value, t.label])] },
+              { label: 'Tipo', value: filterType, setter: setFilterType, options: [['all', 'Todos'], ['income', 'Ingresos'], ['expense', 'Gastos']] },
+              { label: 'Moneda', value: filterCurrency, setter: setFilterCurrency, options: [['all', 'Todas'], ['USD', 'USD'], ['ARS', 'ARS'], ['EUR', 'EUR']] },
+              { label: 'Categoría', value: filterTag, setter: setFilterTag, options: [['all', 'Todas'], ...EXPENSE_TAGS.map(t => [t.value, t.label])] },
             ].map(f => (
               <div key={f.label} className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-[#999] uppercase tracking-widest">{f.label}</label>
@@ -265,13 +265,13 @@ export default function Finance() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           {loading ? <div className="p-20 text-center text-[#666] font-medium">Sincronizando con Supabase...</div> : (
             <table className="w-full text-left border-separate border-spacing-0">
               <thead>
                 <tr className="bg-black/[0.01]">
-                  {['Fecha','Descripción','Categoría','Moneda','Importe',''].map((h, i) => (
-                    <th key={i} className={`px-8 py-5 text-[10px] font-bold text-[#999] uppercase tracking-wider ${i === 4 ? 'text-right' : ''}`}>{h}</th>
+                  {['Fecha', 'Descripción', 'Categoría', 'Moneda', 'Importe', ''].map((h, i) => (
+                    <th key={i} className={`px-8 py-6 text-[11px] font-bold text-[#999] uppercase tracking-widest ${i === 4 ? 'text-right' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -283,8 +283,8 @@ export default function Finance() {
                     <tr key={t.id} className="group hover:bg-black/[0.01] transition-colors">
                       <td className="px-8 py-5 whitespace-nowrap text-sm text-[#1A1A1A] font-medium">{new Date(t.date).toLocaleDateString()}</td>
                       <td className="px-8 py-5">
-                         <div className="text-sm text-[#1A1A1A] font-medium">{t.description}</div>
-                         <div className="text-[10px] text-[#999] uppercase tracking-tighter">{t.status}</div>
+                        <div className="text-sm text-[#1A1A1A] font-medium">{t.description}</div>
+                        <div className="text-[10px] text-[#999] uppercase tracking-tighter">{t.status}</div>
                       </td>
                       <td className="px-8 py-5">
                         {tagInfo
@@ -299,25 +299,19 @@ export default function Finance() {
                           {t.type === 'income' ? '+' : '-'}{curr.symbol}{Math.abs(t.amount).toLocaleString()}
                         </span>
                       </td>
-                      <td className="px-8 py-5 text-right">
-                        {isAdmin && (
-                          <div className="relative inline-block text-left">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === t.id ? null : t.id); }}
-                              className="p-1.5 rounded-full hover:bg-black/5 text-[#666666] transition-colors"
-                            >
-                              <MoreVertical size={18} />
+                      <td className="px-8 py-5 text-right relative">
+                        <button onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === t.id ? null : t.id); }}
+                          className="text-[#DDD] group-hover:text-[#1A1A1A] p-2 rounded-full hover:bg-white transition-all shadow-sm">
+                          <MoreVertical size={18} />
+                        </button>
+                        {openActionId === t.id && (
+                          <div className="absolute right-12 top-10 w-48 bg-white rounded-2xl shadow-2xl border border-black/5 flex flex-col p-2 z-[9999]">
+                            <button onClick={(e) => handleToggleStatus(t, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
+                              <DollarSign size={16} />{t.status === 'Paid' ? 'Pendiente' : 'Pagado'}
                             </button>
-                            {openActionId === t.id && (
-                              <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white shadow-2xl border border-black/5 z-20 overflow-hidden py-1">
-                                <button onClick={(e) => handleToggleStatus(t, e)} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] hover:bg-black/5 transition-colors">
-                                  <Zap size={16} /> Marcar como {t.status === 'Paid' ? 'Pendiente' : 'Pagado'}
-                                </button>
-                                <button onClick={(e) => handleDelete(t.id, e)} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-black/5">
-                                  <Trash2 size={16} /> Eliminar
-                                </button>
-                              </div>
-                            )}
+                            <button onClick={(e) => handleDelete(t.id, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-red-500 font-medium hover:bg-red-50 rounded-xl transition-colors text-left">
+                              <Trash2 size={16} />Eliminar
+                            </button>
                           </div>
                         )}
                       </td>

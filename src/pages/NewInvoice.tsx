@@ -1,5 +1,5 @@
 import { ArrowLeft, Save, Plus, Trash2, FileText, Building2, Tag } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
@@ -20,6 +20,9 @@ const CURRENCIES = [
 
 export default function NewInvoice() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = !!id;
+
   const [type, setType] = useState<'income' | 'expense'>('income');
   const [items, setItems] = useState([{ id: 1, description: '', quantity: 1, price: 0 }]);
   const [clients, setClients] = useState<{id: string, name: string}[]>([]);
@@ -30,13 +33,42 @@ export default function NewInvoice() {
     clientId: '',
     projectId: '',
     date: new Date().toISOString().split('T')[0],
-    invNumber: `F-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
+    invNumber: '',
     status: 'Pending',
     currency: 'USD',
     tag: '',
   });
 
-  useEffect(() => { fetchClientsAndProjects(); }, []);
+  useEffect(() => { 
+    fetchClientsAndProjects(); 
+    if (isEditing) fetchTransactionToEdit();
+  }, [id]);
+
+  const fetchTransactionToEdit = async () => {
+    const { data, error } = await supabase.from('finances').select('*').eq('id', id).single();
+    if (error) {
+      console.error('Error fetching transaction:', error);
+      return;
+    }
+    
+    setType(data.type);
+    setFormData({
+      clientId: data.client_id || '',
+      projectId: data.project_id || '',
+      date: data.date,
+      invNumber: data.description || '', 
+      status: data.status || 'Pending',
+      currency: data.currency || 'USD',
+      tag: data.tag || '',
+    });
+    
+    // If it's an income, the amount in DB includes IVA. We must reverse it to avoid double taxing when editing.
+    const dbAmount = parseFloat(data.amount || '0');
+    const initialPrice = data.type === 'income' ? dbAmount / 1.21 : dbAmount;
+
+    setItems([{ id: 1, description: data.description || '', quantity: 1, price: initialPrice }]);
+    if (!data.client_id && !data.project_id && data.type === 'expense') setIsIngentia(true);
+  };
 
   const fetchClientsAndProjects = async () => {
     const { data: cData } = await supabase.from('clients').select('id, name').order('name');
@@ -57,7 +89,7 @@ export default function NewInvoice() {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
-  const subtotal = items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+  const subtotal = items.reduce((acc, item: any) => acc + (item.quantity * item.price), 0);
   const tax = type === 'income' ? subtotal * 0.21 : 0;
   const total = subtotal + tax;
 
@@ -68,9 +100,9 @@ export default function NewInvoice() {
     try {
       const payload: Record<string, any> = {
         description: items.map(i => i.description).join(', ') || (type === 'income' ? 'Nueva Factura' : 'Nuevo Gasto'),
-        amount: total,
+        amount: Number(total.toFixed(2)),
         type: type,
-        status: 'Pending',
+        status: (isEditing ? formData.status : 'Pending') || 'Pending',
         date: formData.date,
         currency: formData.currency,
         tag: type === 'expense' && formData.tag ? formData.tag : null,
@@ -78,19 +110,22 @@ export default function NewInvoice() {
         project_id: (!isIngentia && formData.projectId) ? formData.projectId : null,
       };
 
-      const { error } = await supabase.from('finances').insert([payload]);
+      const { error } = isEditing 
+        ? await supabase.from('finances').update(payload).eq('id', id)
+        : await supabase.from('finances').insert([payload]);
+      
       if (error) throw error;
 
       await sendNotification(
-        type === 'income' ? 'Nueva Factura Generada' : 'Nuevo Gasto Registrado',
-        `Se ha registrado un monto de ${currencySymbol}${total.toLocaleString()} (${type === 'income' ? 'Ingreso' : 'Egreso'}).`,
+        isEditing ? 'Transacción Actualizada' : (type === 'income' ? 'Nueva Factura Generada' : 'Nuevo Gasto Registrado'),
+        `Se ha ${isEditing ? 'modificado' : 'registrado'} un monto de ${currencySymbol}${total.toLocaleString()} (${type === 'income' ? 'Ingreso' : 'Egreso'}).`,
         'invoice'
       );
 
       navigate('/finance');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving transaction:', error);
-      alert('Error al guardar la transacción');
+      alert(`Error al guardar la transacción: ${error.message || 'Error desconocido'}`);
     }
   };
 
@@ -103,28 +138,30 @@ export default function NewInvoice() {
             <ArrowLeft size={20} className="text-[#1A1A1A]" />
           </Link>
           <div>
-            <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Nueva Transacción</h3>
-            <p className="text-[#666666] mt-1">Registra un nuevo {type === 'income' ? 'ingreso' : 'gasto'} en el sistema.</p>
+            <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">{isEditing ? 'Editar Transacción' : 'Nueva Transacción'}</h3>
+            <p className="text-[#666666] mt-1">{isEditing ? 'Modifica los detalles de la entrada seleccionada.' : `Registra un nuevo ${type === 'income' ? 'ingreso' : 'gasto'} en el sistema.`}</p>
           </div>
         </div>
 
         {/* Type toggle */}
-        <div className="flex bg-white/50 p-1 rounded-2xl border border-black/5">
-          <button
-            type="button"
-            onClick={() => { setType('income'); setIsIngentia(false); }}
-            className={`px-6 py-2 rounded-xl text-sm font-medium transition-all ${type === 'income' ? 'bg-[#222222] text-white shadow-lg' : 'text-[#666666] hover:bg-black/5'}`}
-          >
-            Ingreso
-          </button>
-          <button
-            type="button"
-            onClick={() => setType('expense')}
-            className={`px-6 py-2 rounded-xl text-sm font-medium transition-all ${type === 'expense' ? 'bg-[#222222] text-white shadow-lg' : 'text-[#666666] hover:bg-black/5'}`}
-          >
-            Gasto
-          </button>
-        </div>
+        {!isEditing && (
+          <div className="flex bg-white/50 p-1 rounded-2xl border border-black/5">
+            <button
+              type="button"
+              onClick={() => { setType('income'); setIsIngentia(false); }}
+              className={`px-6 py-2 rounded-xl text-sm font-medium transition-all ${type === 'income' ? 'bg-[#222222] text-white shadow-lg' : 'text-[#666666] hover:bg-black/5'}`}
+            >
+              Ingreso
+            </button>
+            <button
+              type="button"
+              onClick={() => setType('expense')}
+              className={`px-6 py-2 rounded-xl text-sm font-medium transition-all ${type === 'expense' ? 'bg-[#222222] text-white shadow-lg' : 'text-[#666666] hover:bg-black/5'}`}
+            >
+              Gasto
+            </button>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSave} className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-8">
@@ -375,7 +412,7 @@ export default function NewInvoice() {
             className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10"
           >
             <Save size={18} />
-            {type === 'income' ? 'Emitir Factura' : 'Guardar Gasto'}
+            {isEditing ? 'Actualizar Transacción' : (type === 'income' ? 'Emitir Factura' : 'Guardar Gasto')}
           </button>
         </div>
       </form>

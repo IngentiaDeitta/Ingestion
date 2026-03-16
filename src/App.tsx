@@ -44,6 +44,7 @@ function App() {
             <Route path="/clients/:id" element={<ClientDetail />} />
             <Route path="/finance" element={<Finance />} />
             <Route path="/finance/new-invoice" element={<NewInvoice />} />
+            <Route path="/finance/edit/:id" element={<NewInvoice />} />
             <Route path="/kanban" element={<Kanban />} />
             <Route path="/smart-quoter" element={<SmartQuoter />} />
             <Route path="/timesheet" element={<Timesheet />} />
