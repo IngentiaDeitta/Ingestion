@@ -314,7 +314,16 @@ export default function Kanban() {
                                             (() => {
                                               const today = new Date();
                                               today.setHours(0, 0, 0, 0);
-                                              const due = new Date(task.dueDate);
+                                              
+                                              let due: Date;
+                                              if (task.dueDate.includes('/')) {
+                                                const [d, m, y] = task.dueDate.split('/');
+                                                due = new Date(Number(y), Number(m) - 1, Number(d));
+                                              } else {
+                                                const [y, m, d] = task.dueDate.split('T')[0].split('-').map(Number);
+                                                due = new Date(y, m - 1, d);
+                                              }
+                                              
                                               const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                               if (diff <= 0) return 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]';
                                               if (diff <= 3) return 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]';
@@ -324,7 +333,26 @@ export default function Kanban() {
                                         </div>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-1 text-xs font-medium text-[#666666]"><Calendar size={12} /><span>{task.dueDate}</span></div>
+                                    <div className="flex items-center gap-1 text-xs font-medium text-[#666666] shadow-sm bg-black/5 px-2 py-1 rounded-full border border-black/5">
+                                      <Calendar size={12} className="text-[#666666]" />
+                                      <span>{(() => {
+                                        if (!task.dueDate || task.dueDate === 'Sin fecha') return 'venc. s/f';
+                                        
+                                        // Si la fecha ya está en DD/MM/YYYY, la mostramos tal cual
+                                        if (task.dueDate.includes('/')) return task.dueDate;
+                                        
+                                        // Si es ISO (YYYY-MM-DD), la formateamos a DD/MM/YYYY manualmente para evitar desfase de zona horaria
+                                        if (task.dueDate.includes('-')) {
+                                          const parts = task.dueDate.split('T')[0].split('-');
+                                          if (parts.length === 3) {
+                                            const [y, m, d] = parts;
+                                            return `${d}/${m}/${y}`;
+                                          }
+                                        }
+
+                                        return task.dueDate;
+                                      })()}</span>
+                                    </div>
                                   </div>
                               </div>
                             )}
@@ -452,7 +480,28 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
           <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
             <div className="flex flex-col gap-2"><span className="text-xs font-bold text-[#666666] uppercase">Estado</span><span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium border bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50">{(Object.values(columns) as Column[]).find(c => c.taskIds.includes(task.id))?.title}</span></div>
             <div className="flex flex-col gap-2"><span className="text-xs font-bold text-[#666666] uppercase">Prioridad</span><select disabled={!isAdmin} value={priority} onChange={(e) => { const v = e.target.value as any; setPriority(v); onUpdate(task.id, { priority: v }); }} className={`h-10 rounded-xl border border-black/10 bg-black/5 px-3 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`}><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select></div>
-            <div className="flex flex-col gap-2"><span className="text-xs font-bold text-[#666666] uppercase">Vencimiento</span><input disabled={!isAdmin} type="text" value={dueDate} onChange={(e) => { setDueDate(e.target.value); onUpdate(task.id, { dueDate: e.target.value }); }} className={`h-10 rounded-xl border border-black/10 bg-black/5 px-3 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`} placeholder="DD/MM/YYYY" /></div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-bold text-[#666666] uppercase">Vencimiento</span>
+              <input 
+                disabled={!isAdmin} 
+                type="date" 
+                value={(() => {
+                  if (!dueDate || dueDate === 'Sin fecha') return '';
+                  // Si es DD/MM/YYYY, convertir a YYYY-MM-DD para el input[type=date]
+                  if (dueDate.includes('/')) {
+                    const [d, m, y] = dueDate.split('/');
+                    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                  }
+                  return dueDate.split('T')[0];
+                })()} 
+                onChange={(e) => { 
+                  const val = e.target.value;
+                  setDueDate(val); 
+                  onUpdate(task.id, { dueDate: val }); 
+                }} 
+                className={`h-10 rounded-xl border border-black/10 bg-black/5 px-3 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`} 
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-[#1A1A1A]">Asignado a (múltiple)</span>

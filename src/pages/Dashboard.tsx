@@ -104,7 +104,8 @@ export default function Dashboard() {
           if (task.status === 'done' || !task.due_date) continue;
           
           const taskDateStr = task.due_date.split('T')[0];
-          const dueDate = new Date(taskDateStr);
+          const [y, m, d] = taskDateStr.split('-').map(Number);
+          const dueDate = new Date(y, m - 1, d);
           const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
           let alertTitle = '';
@@ -434,7 +435,16 @@ function DashboardCalendar({ tasks, teamMembers }: { tasks: any[], teamMembers: 
           if (date === null) return <div key={`empty-${i}`} className="bg-white/30 min-h-[120px]" />;
           
           const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
-          const dayTasks = tasks.filter(t => t.due_date && t.due_date.split('T')[0] === dayStr);
+          const dayTasks = tasks.filter(t => {
+            if (!t.due_date || t.due_date === 'Sin fecha') return false;
+            
+            let normalized = t.due_date;
+            if (t.due_date.includes('/')) {
+              const [d, m, y] = t.due_date.split('/');
+              normalized = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+            }
+            return normalized.split('T')[0] === dayStr;
+          });
           
           return (
             <div key={date} className="bg-white min-h-[120px] p-2 flex flex-col gap-1 border border-black/[0.02] hover:bg-black/[0.01] transition-colors relative">
