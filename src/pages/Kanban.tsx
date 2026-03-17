@@ -22,6 +22,8 @@ interface Task {
   tags: string[];
   description: string;
   hours: number;
+  started_at?: string;
+  actual_hours?: number;
 }
 
 interface Column {
@@ -90,6 +92,8 @@ export default function Kanban() {
           tags: t.tags || [],
           description: t.description || '',
           hours: Number(t.hours || 0),
+          started_at: t.started_at,
+          actual_hours: t.actual_hours ? Number(t.actual_hours) : undefined,
         };
         tasks[task.id] = task;
         const columnId = STATUS_MAP[t.status] || 'col-1';
@@ -197,7 +201,23 @@ export default function Kanban() {
     setData(newData);
 
     try {
-      await supabase.from('tasks').update({ status: COLUMN_TO_STATUS[destination.droppableId] }).eq('id', draggableId);
+      const newStatus = COLUMN_TO_STATUS[destination.droppableId];
+      const updates: any = { status: newStatus };
+      
+      const task = data.tasks[draggableId];
+      
+      if (newStatus === 'in-progress' && !task.started_at) {
+        updates.started_at = new Date().toISOString();
+      } else if (newStatus === 'done' && task.started_at) {
+        const started = new Date(task.started_at);
+        const now = new Date();
+        const diffMs = now.getTime() - started.getTime();
+        // Calculamos la diferencia en días (mínimo 1 si se empezó y terminó el mismo día)
+        const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        updates.actual_hours = diffDays;
+      }
+      
+      await supabase.from('tasks').update(updates).eq('id', draggableId);
     } catch (error) {
       console.error('Error updating status:', error);
       fetchTasks();
@@ -231,7 +251,7 @@ export default function Kanban() {
   };
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto h-[calc(100vh-8rem)]">
+    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto min-h-[calc(100vh-8rem)]">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-4">
           <div>
@@ -248,20 +268,20 @@ export default function Kanban() {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 overflow-x-auto pb-4">
-          <div className="flex gap-6 h-full min-w-max">
+        <div className="flex-1 overflow-x-auto pb-4 custom-scrollbar">
+          <div className="flex gap-6 h-full pb-8">
             {data.columnOrder.map((columnId) => {
               const column = data.columns[columnId];
               const tasks = column.taskIds.map(taskId => data.tasks[taskId]);
               return (
-                <div key={column.id} className="w-80 flex flex-col gap-4">
+                <div key={column.id} className="flex-1 min-w-[280px] flex flex-col gap-4">
                   <div className="flex items-center gap-2 pb-3 border-b border-black/5">
                     <h4 className="font-medium text-[#1A1A1A]">{column.title}</h4>
                     <span className="bg-white/50 border border-black/5 text-[#1A1A1A] text-xs font-medium px-2.5 py-0.5 rounded-full">{tasks.length}</span>
                   </div>
                   <Droppable droppableId={column.id}>
                     {(provided) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps} className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="flex-1 flex flex-col gap-4 pr-2">
                         {tasks.map((task, index) => (
                           <Draggable key={task.id} draggableId={task.id} index={index}>
                             {(provided) => (
@@ -385,7 +405,13 @@ function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { tea
         </div>
         <div className="flex justify-end gap-3 pt-4">
           <button onClick={onClose} className="px-6 py-3 rounded-full text-[#666666] hover:bg-black/5 transition-colors">Cancelar</button>
-          <button disabled={!newTask.title} onClick={() => onSave(newTask)} className="bg-[#222222] hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-full font-medium transition-all shadow-lg active:scale-95">Crear</button>
+          <button 
+            disabled={!newTask.title || !newTask.dueDate || newTask.hours <= 0} 
+            onClick={() => onSave(newTask)} 
+            className="bg-[#222222] hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-full font-medium transition-all shadow-lg active:scale-95"
+          >
+            Crear
+          </button>
         </div>
       </div>
     </div>

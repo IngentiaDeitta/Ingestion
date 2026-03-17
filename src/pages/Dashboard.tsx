@@ -18,6 +18,8 @@ interface Stats {
   totalRevenue: number;
   totalBalance: number;
   totalHours: number;
+  billableHours: number;
+  nonBillableHours: number;
   avgProposalDays: number;
   conversionRate: number;
   avgProjectDuration: number;
@@ -35,7 +37,9 @@ export default function Dashboard() {
     portfolioHealth: 100,
     totalRevenue: 0,
     totalBalance: 0,
-    totalHours: mockStats.totalHours,
+    totalHours: 0,
+    billableHours: 0,
+    nonBillableHours: 0,
     avgProposalDays: 14,
     conversionRate: 0,
     avgProjectDuration: 45,
@@ -57,8 +61,8 @@ export default function Dashboard() {
         { data: teamData },
       ] = await Promise.all([
         supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('projects').select('id, status, budget, outcome'),
-        supabase.from('tasks').select('id, title, due_date, status, assignees, hours'),
+        supabase.from('projects').select('id, name, status, budget, outcome'),
+        supabase.from('tasks').select('*'),
         supabase.from('finances').select('amount, type'),
         supabase.from('team').select('*'),
       ]);
@@ -68,9 +72,73 @@ export default function Dashboard() {
       const totalBudget = projectsData?.reduce((a, p) => a + (p.budget || 0), 0) ?? 0;
       const health = totalProjects > 0 ? Math.round(((totalProjects - atRiskCount) / totalProjects) * 100) : 100;
 
-      const totalHours = (tasksData || []).reduce((acc: number, t: any) => acc + (Number(t.hours) || 0), 0);
+      let billableHours = 0;
+      let nonBillableHours = 0;
+
+      (tasksData || []).forEach((t: any) => {
+        const project = projectsData?.find(p => p.name?.trim().toLowerCase() === t.project?.trim().toLowerCase());
+        const isBillable = project?.outcome === 'Ganado';
+        
+        // Sumamos las horas estimadas siempre para el total, 
+        // pero usamos actual_hours si ya está finalizada para el análisis de tiempo real
+        const currentHours = t.status === 'done' 
+          ? (Number(t.actual_hours) || Number(t.hours) || 0) 
+          : (Number(t.hours) || 0);
+        
+        if (isBillable) billableHours += currentHours;
+        else nonBillableHours += currentHours;
+      });
+
+      const totalHours = Number((billableHours + nonBillableHours).toFixed(1));
+
       setAllTasks(tasksData || []);
       setTeam(teamData || []);
+
+      //── Notificaciones para Tareas Próximas a Vencer ──
+      const checkTaskAlerts = async () => {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const todayStr = today.toISOString().split('T')[0];
+        
+        for (const task of (tasksData || [])) {
+          if (task.status === 'done' || !task.due_date) continue;
+          
+          const taskDateStr = task.due_date.split('T')[0];
+          const dueDate = new Date(taskDateStr);
+          const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          
+          let alertTitle = '';
+          let alertContent = '';
+
+          if (taskDateStr === todayStr) {
+            alertTitle = '🚨 Tarea vence HOY';
+            alertContent = `Atención: La tarea "${task.title}" vence hoy mismo.`;
+          } else if (diffDays > 0 && diffDays <= 3) {
+            alertTitle = 'Tarea próxima a vencer';
+            alertContent = `La tarea "${task.title}" vence en ${diffDays} días.`;
+          }
+
+          if (alertTitle) {
+            // Verificar si ya existe una notificación para esta tarea con este título hoy
+            const { data: existing } = await supabase
+              .from('system_notifications')
+              .select('id')
+              .eq('title', alertTitle)
+              .ilike('content', `%${task.title}%`)
+              .limit(1);
+
+            if (!existing || existing.length === 0) {
+              await supabase.from('system_notifications').insert([{
+                title: alertTitle,
+                content: alertContent,
+                type: 'info',
+                is_read: false
+              }]);
+            }
+          }
+        }
+      };
+      checkTaskAlerts();
 
       let totalBalance = 0;
       (financesData || []).forEach((t: any) => {
@@ -89,7 +157,9 @@ export default function Dashboard() {
         portfolioHealth: health,
         totalRevenue: totalBudget,
         totalBalance,
-        totalHours: totalHours || mockStats.totalHours, // Fallback to mock if 0 for demo purposes
+        totalHours,
+        billableHours,
+        nonBillableHours,
         avgProposalDays: 14,
         conversionRate,
         avgProjectDuration: 45,
@@ -178,12 +248,15 @@ export default function Dashboard() {
         </div>
 
         {/* Horas Totales */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/timesheet')}>
+        <div className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/kanban')}>
           <div className="flex justify-between items-start mb-3">
             <div className="p-2.5 bg-white rounded-xl shadow-sm"><Clock size={20} /></div>
-            <span className="text-[#1A1A1A] bg-[#FFD166] px-2.5 py-0.5 rounded-full text-xs font-bold">+8%</span>
+            <div className="flex flex-col items-end">
+              <span className="text-[#008fcd] text-[10px] font-bold">Facturable: {stats.billableHours}h</span>
+              <span className="text-[#666666] text-[10px] font-bold">No Fact.: {stats.nonBillableHours}h</span>
+            </div>
           </div>
-          <p className="text-[#666666] text-xs font-medium mb-1">Horas Totales mes</p>
+          <p className="text-[#666666] text-xs font-medium mb-1">Horas Totales</p>
           <h4 className="text-3xl font-light text-[#1A1A1A]">{stats.totalHours}h</h4>
         </div>
 
@@ -275,14 +348,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-8 shadow-sm border border-white/40">
-              <h3 className="text-lg font-medium text-[#1A1A1A] mb-4">Tareas totales</h3>
-              <div className="text-5xl font-light text-[#1A1A1A] mb-4">{stats.totalTasks}</div>
-              <p className="text-sm text-[#666666]">Sincronizadas con Supabase.</p>
-              <button onClick={() => navigate('/kanban')} className="mt-6 text-sm font-medium text-[#1A1A1A] flex items-center gap-2 hover:underline">
-                Gestionar tareas <ChevronRight size={16} />
-              </button>
-            </div>
+
 
             <div className="bg-[#222222] text-white rounded-[32px] p-8 shadow-xl">
               <h3 className="text-lg font-medium mb-4">Proyectos en Riesgo</h3>
@@ -358,30 +424,34 @@ function DashboardCalendar({ tasks, teamMembers }: { tasks: any[], teamMembers: 
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-black/5 rounded-2xl overflow-hidden border border-black/5">
+      <div className="grid grid-cols-7 gap-px bg-black/5 rounded-2xl border border-black/5 mb-2">
         {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
           <div key={d} className="bg-white/50 py-3 text-center text-[10px] font-bold text-[#666666] uppercase tracking-wider">{d}</div>
         ))}
+      </div>
+      <div className="grid grid-cols-7 gap-px bg-black/5 rounded-2xl border border-black/5 overflow-hidden">
         {calendarDays.map((date, i) => {
-          if (date === null) return <div key={`empty-${i}`} className="bg-white/30 h-32" />;
+          if (date === null) return <div key={`empty-${i}`} className="bg-white/30 min-h-[120px]" />;
           
           const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
-          const dayTasks = tasks.filter(t => t.due_date === dayStr);
+          const dayTasks = tasks.filter(t => t.due_date && t.due_date.split('T')[0] === dayStr);
           
           return (
-            <div key={date} className="bg-white h-32 p-2 flex flex-col gap-1 border border-black/[0.02] hover:bg-black/[0.01] transition-colors relative">
-              <span className={`text-xs font-medium ${new Date().getDate() === date && new Date().getMonth() === month ? 'bg-[#FFD166] text-[#222222] w-6 h-6 flex items-center justify-center rounded-full shadow-sm' : 'text-[#666666]'}`}>{date}</span>
-              <div className="flex flex-col gap-1 overflow-y-auto custom-scrollbar">
+            <div key={date} className="bg-white min-h-[120px] p-2 flex flex-col gap-1 border border-black/[0.02] hover:bg-black/[0.01] transition-colors relative">
+              <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${new Date().getDate() === date && new Date().getMonth() === month && new Date().getFullYear() === year ? 'bg-[#FFD166] text-[#222222] shadow-sm' : 'text-[#666666]'}`}>{date}</span>
+              <div className="flex flex-col gap-1 overflow-y-auto max-h-[100px] custom-scrollbar">
                 {dayTasks.map(t => {
-                  const today = new Date();
-                  today.setHours(0,0,0,0);
-                  const due = new Date(t.due_date);
-                  const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                  const critColor = diff <= 0 ? 'bg-rose-500' : diff <= 3 ? 'bg-amber-500' : 'bg-emerald-500';
+                  const statusColors: Record<string, string> = {
+                    'todo': 'bg-gray-400',
+                    'in-progress': 'bg-amber-500',
+                    'review': 'bg-purple-500',
+                    'done': 'bg-emerald-500'
+                  };
+                  const statusColor = statusColors[t.status as keyof typeof statusColors] || 'bg-gray-400';
 
                   return (
                     <div key={t.id} className="text-[9px] p-1.5 rounded-lg border border-black/5 bg-white shadow-sm flex items-start gap-1.5 group hover:border-[#FFD166] transition-all">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${critColor}`} />
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${statusColor}`} />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-[#1A1A1A] truncate">{t.title}</p>
                         <div className="flex -space-x-1 mt-1">

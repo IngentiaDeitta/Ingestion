@@ -10,7 +10,6 @@ const menuItems = [
   { icon: FileText, label: 'Finanzas', path: '/finance' },
   { icon: Users, label: 'Equipo', path: '/team' },
   { icon: Users, label: 'Clientes', path: '/clients' },
-  { icon: Clock, label: 'Timesheet', path: '/timesheet' },
   { icon: Zap, label: 'Tech Stack', path: '/tech-stack' },
 ];
 
