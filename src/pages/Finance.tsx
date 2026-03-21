@@ -71,18 +71,7 @@ function buildMonthlyChartData(transactions: Transaction[]) {
   return data;
 }
 
-const hoursData = [
-  { name: 'Ene', facturables: 800, noFacturables: 200 },
-  { name: 'Feb', facturables: 750, noFacturables: 150 },
-  { name: 'Mar', facturables: 600, noFacturables: 300 },
-  { name: 'Abr', facturables: 850, noFacturables: 100 },
-  { name: 'May', facturables: 700, noFacturables: 250 },
-  { name: 'Jun', facturables: 900, noFacturables: 150 },
-  { name: 'Jul', facturables: 1100, noFacturables: 100 },
-  { name: 'Ago', facturables: 1050, noFacturables: 150 },
-  { name: 'Sep', facturables: 1240, noFacturables: 200 },
-  { name: 'Oct', facturables: mockStats.totalHours, noFacturables: 180 },
-];
+
 
 export default function Finance() {
   const { isAdmin } = useUser();
@@ -94,14 +83,60 @@ export default function Finance() {
   const [filterType, setFilterType] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
+  const [hoursChartData, setHoursChartData] = useState<any[]>([]);
+
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('finances').select('*').order('date', { ascending: false });
-      if (error) throw error;
-      setTransactions((data || []).map((t: any) => ({ ...t, currency: t.currency ?? 'USD' })));
+      
+      const [finResponse, projectsResponse, tasksResponse] = await Promise.all([
+        supabase.from('finances').select('*').order('date', { ascending: false }),
+        supabase.from('projects').select('id, name, outcome'),
+        supabase.from('tasks').select('id, project, hours, actual_hours, status, created_at')
+      ]);
+
+      if (finResponse.error) throw finResponse.error;
+      const trans = (finResponse.data || []).map((t: any) => ({ ...t, currency: t.currency ?? 'USD' }));
+      setTransactions(trans);
+
+      const projs = projectsResponse.data || [];
+      const tasks = tasksResponse.data || [];
+
+      // Process Hours Distribution Data
+      const now = new Date();
+      const hData = [];
+      const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+      // Generate last 12 months including current
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const m = d.getMonth();
+        const y = d.getFullYear();
+        
+        let facturables = 0;
+        let noFacturables = 0;
+        
+        tasks.forEach((t: any) => {
+          const td = new Date(t.created_at);
+          if (td.getMonth() === m && td.getFullYear() === y) {
+            const project = projs.find(p => p.name?.trim().toLowerCase() === t.project?.trim().toLowerCase());
+            const isBillable = project?.outcome === 'Ganado';
+            
+            // Logic similar to Dashboard: use actual_hours if done, otherwise hours
+            const h = t.status === 'done' 
+              ? (Number(t.actual_hours) || Number(t.hours) || 0) 
+              : (Number(t.hours) || 0);
+              
+            if (isBillable) facturables += h; else noFacturables += h;
+          }
+        });
+        
+        hData.push({ name: months[m], facturables, noFacturables });
+      }
+      setHoursChartData(hData);
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -220,12 +255,13 @@ export default function Finance() {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hoursData}>
+              <BarChart data={hoursChartData}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#999', fontSize: 11 }} />
-                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none' }} />
-                <Bar dataKey="facturables" stackId="a" fill="#1A1A1A" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="noFacturables" stackId="a" fill="#FFD166" radius={[6, 6, 0, 0]} />
+                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none' }} formatter={(v: any) => [`${v}h`, '']} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
+                <Bar name="Facturables" dataKey="facturables" stackId="a" fill="#1A1A1A" radius={[0, 0, 0, 0]} />
+                <Bar name="No Facturables" dataKey="noFacturables" stackId="a" fill="#FFD166" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
