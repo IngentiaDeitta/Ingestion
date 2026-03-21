@@ -254,11 +254,13 @@ export default function Kanban() {
       
       const { error } = await supabase.from('tasks').update(updates).eq('id', draggableId);
       if (error) {
-        // We catch if 'position' column doesn't exist to avoid breakage
-        if (error.code === '42703') { // undefined_column
-          console.warn('DB missing position column. Updating only status.');
-          delete updates.position;
-          await supabase.from('tasks').update(updates).eq('id', draggableId);
+        // Fallback robusto: si alguna columna no existe (como position, started_at o actual_hours),
+        // intentamos guardar solo lo básico (status) para no bloquear al usuario.
+        if (error.code === '42703') { 
+          console.warn('DB missing some columns. Retrying basic update.');
+          const basicUpdates = { status: newStatus };
+          const { error: retryError } = await supabase.from('tasks').update(basicUpdates).eq('id', draggableId);
+          if (retryError) throw retryError;
         } else {
           throw error;
         }
