@@ -173,7 +173,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
+    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-10">
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-6">

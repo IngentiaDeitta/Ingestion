@@ -25,15 +25,17 @@ interface Transaction {
   tag?: string;
   project_id?: string;
   client_id?: string;
+  fund_source?: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const EXPENSE_TAGS = [
+const TRANSACTION_TAGS = [
   { value: 'operational', label: 'Costos Operativos', color: 'bg-blue-100 text-blue-800' },
   { value: 'salaries', label: 'Sueldos', color: 'bg-purple-100 text-purple-800' },
   { value: 'travel', label: 'Viáticos', color: 'bg-orange-100 text-orange-800' },
   { value: 'software', label: 'Licencias', color: 'bg-cyan-100 text-cyan-800' },
+  { value: 'capital', label: 'Ajuste de Capital / Inversión', color: 'bg-emerald-100 text-emerald-800' },
   { value: 'other', label: 'Otros', color: 'bg-gray-100 text-gray-600' },
 ];
 
@@ -47,7 +49,7 @@ const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', '
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const getTagInfo = (value?: string) => EXPENSE_TAGS.find(t => t.value === value) ?? null;
+const getTagInfo = (value?: string) => TRANSACTION_TAGS.find(t => t.value === value) ?? null;
 const getCurrencyInfo = (code: string) => CURRENCIES.find(c => c.code === code) ?? CURRENCIES[0];
 
 function buildMonthlyChartData(transactions: Transaction[]) {
@@ -137,7 +139,7 @@ export default function Finance() {
   const monthlyChart = buildMonthlyChartData(transactions);
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-12" onClick={() => setOpenActionId(null)}>
+    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-12" onClick={() => setOpenActionId(null)}>
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -231,7 +233,7 @@ export default function Finance() {
       </div>
 
       {/* ── Transactions Table ── */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm min-h-[500px]">
+      <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm min-h-[500px]">
         <div className="p-8 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
           <div>
             <h4 className="text-xl font-medium text-[#1A1A1A]">Registro de Operaciones</h4>
@@ -248,7 +250,7 @@ export default function Finance() {
             {[
               { label: 'Tipo', value: filterType, setter: setFilterType, options: [['all', 'Todos'], ['income', 'Ingresos'], ['expense', 'Gastos']] },
               { label: 'Moneda', value: filterCurrency, setter: setFilterCurrency, options: [['all', 'Todas'], ['USD', 'USD'], ['ARS', 'ARS'], ['EUR', 'EUR']] },
-              { label: 'Categoría', value: filterTag, setter: setFilterTag, options: [['all', 'Todas'], ...EXPENSE_TAGS.map(t => [t.value, t.label])] },
+              { label: 'Categoría', value: filterTag, setter: setFilterTag, options: [['all', 'Todas'], ...TRANSACTION_TAGS.map(t => [t.value, t.label])] },
             ].map(f => (
               <div key={f.label} className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-[#999] uppercase tracking-widest">{f.label}</label>
@@ -270,8 +272,8 @@ export default function Finance() {
             <table className="w-full text-left border-separate border-spacing-0">
               <thead>
                 <tr className="bg-black/[0.01]">
-                  {['Fecha', 'Descripción', 'Categoría', 'Moneda', 'Importe', ''].map((h, i) => (
-                    <th key={i} className={`px-8 py-6 text-[11px] font-bold text-[#999] uppercase tracking-widest ${i === 4 ? 'text-right' : ''}`}>{h}</th>
+                  {['Fecha', 'Descripción', 'Categoría', 'Origen', 'Moneda', 'Importe', ''].map((h, i) => (
+                    <th key={i} className={`px-8 py-6 text-[11px] font-bold text-[#999] uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -289,7 +291,10 @@ export default function Finance() {
                       <td className="px-8 py-5">
                         {tagInfo
                           ? <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${tagInfo.color}`}><Tag size={10} />{tagInfo.label}</span>
-                          : <span className="text-xs text-[#999]">S/C</span>}
+                          : <span className="text-xs text-[#999] uppercase font-bold tracking-tighter opacity-50">{t.type === 'income' ? 'Ingreso' : 'Egreso'}</span>}
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className="text-xs font-medium text-[#666666]">{t.fund_source || '-'}</span>
                       </td>
                       <td className="px-8 py-5">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${curr.badge}`}>{t.currency}</span>

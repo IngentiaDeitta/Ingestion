@@ -100,7 +100,7 @@ export default function TechStack() {
   const selectedTech = techData.find(t => t.id === selectedTechId);
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
+    <div className="flex-1 flex flex-col max-w-6xl mx-auto pb-12 w-full">
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
         <div>

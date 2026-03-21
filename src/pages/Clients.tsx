@@ -53,7 +53,7 @@ export default function Clients() {
   };
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
+    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Directorio de Clientes</h3>

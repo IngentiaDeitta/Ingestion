@@ -127,7 +127,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // Role flags robustos
   const userRole = profile?.role?.trim().toLowerCase();
-  const isAdmin = userRole === 'administrador';
+  const isAdmin = userRole === 'administrador' || userRole === 'socio ingentia' || userRole === 'project manager';
   const isReadOnly = userRole === 'lector' || !userRole;
 
   return (

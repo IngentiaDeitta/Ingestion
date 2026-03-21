@@ -91,7 +91,7 @@ export default function Projects() {
   const avatarColors = ['bg-blue-100 text-blue-600', 'bg-purple-100 text-purple-600', 'bg-green-100 text-green-600', 'bg-orange-100 text-orange-600', 'bg-pink-100 text-pink-600'];
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto min-h-screen">
+    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Proyectos</h3>
@@ -103,7 +103,7 @@ export default function Projects() {
         </Link>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm flex flex-col mb-10">
+      <div className="flex-1 bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm flex flex-col mb-10 min-h-[500px]">
         <div className="p-6 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-96">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#666666]">
@@ -138,7 +138,7 @@ export default function Projects() {
         ) : filteredProjects.length === 0 ? (
           <div className="p-20 text-center text-[#666666]">No se encontraron proyectos.</div>
         ) : viewMode === 'list' ? (
-          <div className="overflow-x-auto min-h-[300px]">
+          <div className="overflow-visible min-h-[400px]">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-black/5">

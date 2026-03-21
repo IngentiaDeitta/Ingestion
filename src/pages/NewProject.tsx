@@ -66,7 +66,7 @@ export default function NewProject() {
   };
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1000px] mx-auto">
+    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1000px] mx-auto">
       <div className="flex items-center gap-4">
         <Link to="/projects" className="p-3 bg-white/50 hover:bg-white/80 rounded-full transition-colors border border-black/5 shadow-sm">
           <ArrowLeft size={20} className="text-[#1A1A1A]" />

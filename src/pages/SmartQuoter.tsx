@@ -250,7 +250,7 @@ export default function SmartQuoter() {
     const textareaClass = "w-full rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] p-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all text-sm resize-none";
 
     return (
-        <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
+        <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>

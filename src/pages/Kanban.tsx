@@ -24,6 +24,7 @@ interface Task {
   hours: number;
   started_at?: string;
   actual_hours?: number;
+  position?: number;
 }
 
 interface Column {
@@ -79,6 +80,7 @@ export default function Kanban() {
       const tasks: Record<string, Task> = {};
       const columns = JSON.parse(JSON.stringify(INITIAL_COLUMNS));
 
+      // Sorting tasks within each column by position
       tasksData?.forEach((t: any) => {
         const task: Task = {
           id: t.id,
@@ -94,10 +96,16 @@ export default function Kanban() {
           hours: Number(t.hours || 0),
           started_at: t.started_at,
           actual_hours: t.actual_hours ? Number(t.actual_hours) : undefined,
+          position: Number(t.position || 0),
         };
         tasks[task.id] = task;
         const columnId = STATUS_MAP[t.status] || 'col-1';
         if (columns[columnId]) columns[columnId].taskIds.push(task.id);
+      });
+
+      // Sort taskIds in each column by the position property
+      Object.keys(columns).forEach(colId => {
+        columns[colId].taskIds.sort((a: string, b: string) => (tasks[a].position || 0) - (tasks[b].position || 0));
       });
 
       setData({ tasks, columns, columnOrder: ['col-1', 'col-2', 'col-3', 'col-4'] });
@@ -174,53 +182,100 @@ export default function Kanban() {
   };
 
   const onDragEnd = async (result: DropResult) => {
-    if (!isAdmin) return; // Si no es admin, no puede mover tareas
+    if (!isAdmin) {
+      alert('Solo los administradores o responsables pueden mover tareas.');
+      return; 
+    }
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-    const startColumn = data.columns[source.droppableId];
-    const finishColumn = data.columns[destination.droppableId];
-    const newData = { ...data };
-
-    if (startColumn === finishColumn) {
-      const newTaskIds = Array.from(startColumn.taskIds);
-      newTaskIds.splice(source.index, 1);
-      newTaskIds.splice(destination.index, 0, draggableId);
-      newData.columns[startColumn.id].taskIds = newTaskIds;
-      setData(newData);
-      return;
-    }
-
-    const startTaskIds = Array.from(startColumn.taskIds);
-    startTaskIds.splice(source.index, 1);
-    newData.columns[startColumn.id].taskIds = startTaskIds;
-    const finishTaskIds = Array.from(finishColumn.taskIds);
-    finishTaskIds.splice(destination.index, 0, draggableId);
-    newData.columns[finishColumn.id].taskIds = finishTaskIds;
-    setData(newData);
-
     try {
+      setSaving(true);
+      const startColumn = data.columns[source.droppableId];
+      const finishColumn = data.columns[destination.droppableId];
+      const newData = { ...data };
+
+      // Move locally first for responsiveness
+      if (startColumn === finishColumn) {
+        const newTaskIds = Array.from(startColumn.taskIds);
+        newTaskIds.splice(source.index, 1);
+        newTaskIds.splice(destination.index, 0, draggableId);
+        newData.columns[startColumn.id].taskIds = newTaskIds;
+      } else {
+        const startTaskIds = Array.from(startColumn.taskIds);
+        startTaskIds.splice(source.index, 1);
+        newData.columns[startColumn.id].taskIds = startTaskIds;
+        const finishTaskIds = Array.from(finishColumn.taskIds);
+        finishTaskIds.splice(destination.index, 0, draggableId);
+        newData.columns[finishColumn.id].taskIds = finishTaskIds;
+      }
+      setData(newData);
+
+      // Now prepare database update
       const newStatus = COLUMN_TO_STATUS[destination.droppableId];
+      const task = data.tasks[draggableId];
       const updates: any = { status: newStatus };
       
-      const task = data.tasks[draggableId];
+      // Calculate position
+      const targetColumn = newData.columns[destination.droppableId];
+      const newIndex = destination.index;
+      let newPos = 0;
       
+      if (targetColumn.taskIds.length === 1) {
+        newPos = 1000; // First item in column
+      } else if (newIndex === 0) {
+        // Moved to top
+        const nextId = targetColumn.taskIds[1];
+        newPos = (data.tasks[nextId]?.position || 0) / 2;
+      } else if (newIndex === targetColumn.taskIds.length - 1) {
+        // Moved to bottom
+        const prevId = targetColumn.taskIds[newIndex - 1];
+        newPos = (data.tasks[prevId]?.position || 0) + 1000;
+      } else {
+        // Moved between two items
+        const prevId = targetColumn.taskIds[newIndex - 1];
+        const nextId = targetColumn.taskIds[newIndex + 1];
+        newPos = ((data.tasks[prevId]?.position || 0) + (data.tasks[nextId]?.position || 0)) / 2;
+      }
+      
+      updates.position = newPos;
+
+      // Status change logic for hours tracking
       if (newStatus === 'in-progress' && !task.started_at) {
         updates.started_at = new Date().toISOString();
       } else if (newStatus === 'done' && task.started_at) {
         const started = new Date(task.started_at);
         const now = new Date();
         const diffMs = now.getTime() - started.getTime();
-        // Calculamos la diferencia en días (mínimo 1 si se empezó y terminó el mismo día)
         const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
         updates.actual_hours = diffDays;
       }
       
-      await supabase.from('tasks').update(updates).eq('id', draggableId);
+      const { error } = await supabase.from('tasks').update(updates).eq('id', draggableId);
+      if (error) {
+        // We catch if 'position' column doesn't exist to avoid breakage
+        if (error.code === '42703') { // undefined_column
+          console.warn('DB missing position column. Updating only status.');
+          delete updates.position;
+          await supabase.from('tasks').update(updates).eq('id', draggableId);
+        } else {
+          throw error;
+        }
+      }
+      
+      // Update local task position
+      setData(prev => ({
+        ...prev,
+        tasks: { ...prev.tasks, [draggableId]: { ...prev.tasks[draggableId], ...updates } }
+      }));
+      
     } catch (error) {
       console.error('Error updating status:', error);
+      alert('Error al guardar el movimiento. Recargando...');
       fetchTasks();
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -251,7 +306,7 @@ export default function Kanban() {
   };
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto min-h-[calc(100vh-8rem)]">
+    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto min-h-[calc(100vh-10rem)]">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-4">
           <div>

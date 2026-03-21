@@ -4,12 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
 
-const EXPENSE_TAGS = [
+const TRANSACTION_TAGS = [
   { value: 'operational', label: 'Costos Operativos' },
   { value: 'salaries',    label: 'Sueldos' },
   { value: 'travel',      label: 'Viáticos' },
   { value: 'software',    label: 'Licencias/Software' },
+  { value: 'capital',     label: 'Ajuste de Capital / Inversión' },
   { value: 'other',       label: 'Otros' },
+];
+
+const FUND_SOURCES = [
+  { value: 'Pedro',    label: 'Pedro' },
+  { value: 'Fernando', label: 'Fernando' },
+  { value: 'Ingentia', label: 'Ingentia' },
 ];
 
 const CURRENCIES = [
@@ -37,6 +44,7 @@ export default function NewInvoice() {
     status: 'Pending',
     currency: 'USD',
     tag: '',
+    fundSource: '',
   });
 
   useEffect(() => { 
@@ -60,6 +68,7 @@ export default function NewInvoice() {
       status: data.status || 'Pending',
       currency: data.currency || 'USD',
       tag: data.tag || '',
+      fundSource: data.fund_source || '',
     });
     
     // If it's an income, the amount in DB includes IVA. We must reverse it to avoid double taxing when editing.
@@ -105,9 +114,10 @@ export default function NewInvoice() {
         status: (isEditing ? formData.status : 'Pending') || 'Pending',
         date: formData.date,
         currency: formData.currency,
-        tag: type === 'expense' && formData.tag ? formData.tag : null,
+        tag: formData.tag || null,
         client_id:  (!isIngentia && formData.clientId)  ? formData.clientId  : null,
         project_id: (!isIngentia && formData.projectId) ? formData.projectId : null,
+        fund_source: type === 'expense' ? formData.fundSource : null,
       };
 
       const { error } = isEditing 
@@ -130,7 +140,7 @@ export default function NewInvoice() {
   };
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1000px] mx-auto">
+    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1000px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -182,21 +192,19 @@ export default function NewInvoice() {
           </div>
 
           {/* Tag — solo gastos */}
-          {type === 'expense' && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2">
-                <Tag size={14} /> Categoría del Gasto
-              </label>
-              <select
-                value={formData.tag}
-                onChange={e => setFormData({ ...formData, tag: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none appearance-none"
-              >
-                <option value="">Sin categoría...</option>
-                {EXPENSE_TAGS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-          )}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2">
+              <Tag size={14} /> Categoría
+            </label>
+            <select
+              value={formData.tag}
+              onChange={e => setFormData({ ...formData, tag: e.target.value })}
+              className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none appearance-none"
+            >
+              <option value="">{type === 'income' ? 'Ventas / Servicios (Default)' : 'Sin categoría...'}</option>
+              {TRANSACTION_TAGS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
 
           {/* Reference */}
           <div className="flex flex-col gap-2">
@@ -226,6 +234,22 @@ export default function NewInvoice() {
               className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none"
             />
           </div>
+
+          {/* Origen de los fondos — solo gastos */}
+          {type === 'expense' && (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#1A1A1A]">Origen de los Fondos</label>
+              <select
+                required
+                value={formData.fundSource}
+                onChange={e => setFormData({ ...formData, fundSource: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none appearance-none"
+              >
+                <option value="">Seleccionar origen...</option>
+                {FUND_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* ── Sección: Origen del gasto (solo para expenses) ── */}

@@ -185,7 +185,7 @@ export default function Settings() {
   ];
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
+    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
       <div>
         <h1 className="text-4xl font-semibold text-[#1A1A1A] mb-2">Ajustes</h1>
         <p className="text-[#666666]">Gestiona tu cuenta y las preferencias de la empresa.</p>
