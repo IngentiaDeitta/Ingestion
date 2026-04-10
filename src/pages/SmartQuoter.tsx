@@ -14,6 +14,46 @@ import { sendNotification } from "../lib/notifications";
 type AppState = 'welcome' | 'loading' | 'results';
 type TabState = 'strategy' | 'budget';
 
+const EditablePrice = ({ value, onChange, label='USD' }: { value: number, onChange: (v: number) => void, label?: string }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [localVal, setLocalVal] = useState(value.toString());
+
+    return (
+        <div className="flex items-center justify-start sm:justify-end gap-1 group">
+            <span className="text-xl sm:text-2xl font-light text-[#1A1A1A]">$</span>
+            {isEditing ? (
+                <input
+                    type="number"
+                    autoFocus
+                    value={localVal}
+                    onChange={(e) => setLocalVal(e.target.value)}
+                    onBlur={() => {
+                        setIsEditing(false);
+                        onChange(parseFloat(localVal) || 0);
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            setIsEditing(false);
+                            onChange(parseFloat(localVal) || 0);
+                        }
+                    }}
+                    className="text-xl sm:text-2xl font-light text-[#1A1A1A] bg-transparent outline-none border-b border-[#FFD166] w-28 sm:text-right"
+                />
+            ) : (
+                <span 
+                    onClick={() => { setIsEditing(true); setLocalVal(value.toString()); }}
+                    className="text-xl sm:text-2xl font-light text-[#1A1A1A] cursor-text hover:text-[#FFD166] transition-colors border-b border-transparent hover:border-[#FFD166]/50"
+                    title="Click para editar"
+                >
+                    {value.toLocaleString()}
+                </span>
+            )}
+            <span className="text-xs text-[#666666] ml-1 font-medium">{label}</span>
+        </div>
+    );
+};
+
+
 export interface AnalysisResult {
     diagnosis: string;
     hoursStage1: number;
@@ -232,6 +272,20 @@ export default function SmartQuoter() {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handlePriceUpdate = (module: 'module1' | 'module2' | 'module3', newPrice: number) => {
+        if (!results) return;
+        const updatedResults = { ...results };
+        if (module === 'module3') {
+            updatedResults.pricing[module].monthlyPrice = newPrice;
+        } else {
+            updatedResults.pricing[module].price = newPrice;
+        }
+        
+        // Actualizar el total de la inversión inicial sumando los módulos 1 y 2 que actúan como base si aplican
+        updatedResults.pricing.totalInitialInvestment = updatedResults.pricing.module1.price + updatedResults.pricing.module2.price;
+        setResults(updatedResults);
     };
 
     const clientName = dbClients.find(c => c.id === clientId)?.name || "Cliente";
@@ -589,8 +643,11 @@ export default function SmartQuoter() {
                                                             </div>
                                                         </div>
                                                         <div className="text-left sm:text-right pl-10 sm:pl-0">
-                                                            <span className="text-xl sm:text-2xl font-light text-[#1A1A1A]">${results.pricing.module1.price.toLocaleString()}</span>
-                                                            <span className="text-xs text-[#666666] ml-1 font-medium">USD</span>
+                                                            <EditablePrice 
+                                                                value={results.pricing.module1.price} 
+                                                                onChange={(newVal) => handlePriceUpdate('module1', newVal)} 
+                                                                label="USD" 
+                                                            />
                                                         </div>
                                                     </div>
                                                     <p className="text-[#666666] text-sm leading-relaxed mb-6 sm:ml-10">{results.pricing.module1.description}</p>
@@ -618,10 +675,11 @@ export default function SmartQuoter() {
                                                             </div>
                                                         </div>
                                                         <div className="text-left sm:text-right pl-10 sm:pl-0">
-                                                            <span className="text-xl sm:text-2xl font-light text-[#1A1A1A]">
-                                                                {results.pricing.module2.price > 0 ? `$${results.pricing.module2.price.toLocaleString()}` : 'N/A'}
-                                                            </span>
-                                                            <span className="text-xs text-[#666666] ml-1 font-medium">USD</span>
+                                                            <EditablePrice 
+                                                                value={results.pricing.module2.price} 
+                                                                onChange={(newVal) => handlePriceUpdate('module2', newVal)} 
+                                                                label="USD" 
+                                                            />
                                                         </div>
                                                     </div>
                                                     <p className="text-[#666666] text-sm leading-relaxed sm:ml-10">{results.pricing.module2.description}</p>
@@ -646,10 +704,11 @@ export default function SmartQuoter() {
                                                             </div>
                                                         </div>
                                                         <div className="text-left sm:text-right pl-10 sm:pl-0">
-                                                            <span className="text-xl sm:text-2xl font-light text-[#1A1A1A]">
-                                                                {results.pricing.module3.monthlyPrice > 0 ? `$${results.pricing.module3.monthlyPrice.toLocaleString()}` : 'N/A'}
-                                                            </span>
-                                                            <span className="text-xs text-[#666666] ml-1 font-medium">USD/mes</span>
+                                                            <EditablePrice 
+                                                                value={results.pricing.module3.monthlyPrice} 
+                                                                onChange={(newVal) => handlePriceUpdate('module3', newVal)} 
+                                                                label="USD/mes" 
+                                                            />
                                                         </div>
                                                     </div>
                                                     <p className="text-[#666666] text-sm leading-relaxed sm:ml-10">{results.pricing.module3.description}</p>
