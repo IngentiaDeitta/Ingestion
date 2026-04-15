@@ -71,11 +71,15 @@ export default function NewInvoice() {
       fundSource: data.fund_source || '',
     });
     
-    // If it's an income, the amount in DB includes IVA. We must reverse it to avoid double taxing when editing.
-    const dbAmount = parseFloat(data.amount || '0');
-    const initialPrice = data.type === 'income' ? dbAmount / 1.21 : dbAmount;
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+      setItems(data.items);
+    } else {
+      // Fallback: If no structured items, create one from total and description
+      const dbAmount = parseFloat(data.amount || '0');
+      const initialPrice = data.type === 'income' ? dbAmount / 1.21 : dbAmount;
+      setItems([{ id: Date.now(), description: data.description || '', quantity: 1, price: initialPrice }]);
+    }
 
-    setItems([{ id: 1, description: data.description || '', quantity: 1, price: initialPrice }]);
     if (!data.client_id && !data.project_id && data.type === 'expense') setIsIngentia(true);
   };
 
@@ -118,6 +122,7 @@ export default function NewInvoice() {
         client_id:  (!isIngentia && formData.clientId)  ? formData.clientId  : null,
         project_id: (!isIngentia && formData.projectId) ? formData.projectId : null,
         fund_source: type === 'expense' ? formData.fundSource : null,
+        items: items, // Persist structured items
       };
 
       const { error } = isEditing 
