@@ -372,6 +372,7 @@ export default function NewInvoice() {
                     className="w-full h-10 rounded-xl border border-black/10 bg-white/80 text-[#1A1A1A] px-3 outline-none text-sm text-center"
                     required
                     min="0"
+                    step="any"
                   />
                 </div>
                 <div className="col-span-2">
@@ -382,6 +383,7 @@ export default function NewInvoice() {
                     className="w-full h-10 rounded-xl border border-black/10 bg-white/80 text-[#1A1A1A] px-3 outline-none text-sm text-right"
                     required
                     min="0"
+                    step="any"
                   />
                 </div>
                 <div className="col-span-2 flex items-center justify-end gap-2 pr-2">

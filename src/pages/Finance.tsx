@@ -1,6 +1,6 @@
 import {
   DollarSign, Download, Filter, ArrowUpRight, ArrowDownRight,
-  MoreVertical, Trash2, Tag, TrendingUp, Clock, Zap, CheckCircle2
+  MoreVertical, Trash2, Tag, TrendingUp, Clock, Zap, CheckCircle2, Edit2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -202,7 +202,7 @@ export default function Finance() {
             <span className="flex items-center text-[#222222] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">Total USD</span>
           </div>
           <p className="text-white/70 text-sm font-medium mb-1">Balance Consolidado</p>
-          <h4 className="text-4xl font-light">${totalBalanceUSD.toLocaleString()}</h4>
+          <h4 className="text-4xl font-light">${totalBalanceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h4>
         </div>
 
         {currencyBalances.map(c => (
@@ -216,7 +216,7 @@ export default function Finance() {
             </div>
             <p className="text-[#666666] text-xs font-medium mb-1">Saldo en {c.code}</p>
             <h4 className={`text-3xl font-light ${c.net >= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
-              {c.symbol}{c.net.toLocaleString()}
+              {c.symbol}{c.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h4>
           </div>
         ))}
@@ -337,7 +337,7 @@ export default function Finance() {
                       </td>
                       <td className="px-8 py-5 text-right">
                         <span className={`text-sm font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                          {t.type === 'income' ? '+' : '-'}{curr.symbol}{Math.abs(t.amount).toLocaleString()}
+                          {t.type === 'income' ? '+' : '-'}{curr.symbol}{Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </td>
                       <td className="px-8 py-5 text-right relative">
@@ -350,6 +350,9 @@ export default function Finance() {
                             <button onClick={(e) => handleToggleStatus(t, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
                               <DollarSign size={16} />{t.status === 'Paid' ? 'Pendiente' : 'Pagado'}
                             </button>
+                            <Link to={`/finance/edit/${t.id}`} className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
+                              <Edit2 size={16} />Editar
+                            </Link>
                             <button onClick={(e) => handleDelete(t.id, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-red-500 font-medium hover:bg-red-50 rounded-xl transition-colors text-left">
                               <Trash2 size={16} />Eliminar
                             </button>
