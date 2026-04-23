@@ -64,7 +64,7 @@ export default function Dashboard() {
         supabase.from('clients').select('*', { count: 'exact', head: true }),
         supabase.from('projects').select('id, name, status, budget, outcome'),
         supabase.from('tasks').select('*'),
-        supabase.from('finances').select('amount, type'),
+        supabase.from('finances').select('amount, type, currency'),
         supabase.from('team').select('*'),
       ]);
 
