@@ -11,6 +11,7 @@ import {
   ResponsiveContainer, BarChart, Bar, Legend
 } from 'recharts';
 import { mockStats } from '../data/mockData';
+import exchangeRates from '../data/exchange_rates.json';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -31,8 +32,8 @@ interface Transaction {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const EXCHANGE_RATES = {
-  USD: Number(import.meta.env.VITE_EXCHANGE_RATE_USD || 1405),
-  EUR: Number(import.meta.env.VITE_EXCHANGE_RATE_EUR || 1665),
+  USD: Number(import.meta.env.VITE_EXCHANGE_RATE_USD || exchangeRates.USD || 1405),
+  EUR: Number(import.meta.env.VITE_EXCHANGE_RATE_EUR || exchangeRates.EUR || 1665),
   ARS: 1
 };
 

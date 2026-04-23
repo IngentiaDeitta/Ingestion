@@ -59,10 +59,18 @@ def update_env(rates):
     if not found_eur:
         new_lines.append(f"VITE_EXCHANGE_RATE_EUR={rates['EUR']}\n")
 
-    with open(env_path, 'w') as f:
-        f.writelines(new_lines)
-    
-    print(f"Updated .env with USD: {rates['USD']} and EUR: {rates['EUR']}")
+    # Update JSON
+    import json
+    from datetime import datetime
+    json_path = "c:\\app_ingentia\\src\\data\\exchange_rates.json"
+    with open(json_path, 'w') as f:
+        json.dump({
+            "USD": rates['USD'],
+            "EUR": rates['EUR'],
+            "lastUpdated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }, f, indent=2)
+
+    print(f"Updated .env and exchange_rates.json with USD: {rates['USD']} and EUR: {rates['EUR']}")
 
 def main():
     print("Agente de tipos de cambio iniciado...")

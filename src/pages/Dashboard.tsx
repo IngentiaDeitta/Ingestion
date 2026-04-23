@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { mockStats } from '../data/mockData';
+import exchangeRates from '../data/exchange_rates.json';
 
 interface Stats {
   totalClients: number;
@@ -142,14 +143,15 @@ export default function Dashboard() {
       checkTaskAlerts();
 
       const EXCHANGE_RATES = {
-        USD: Number(import.meta.env.VITE_SUPABASE_URL ? (import.meta.env.VITE_EXCHANGE_RATE_USD || 1405) : 1405),
-        EUR: Number(import.meta.env.VITE_SUPABASE_URL ? (import.meta.env.VITE_EXCHANGE_RATE_EUR || 1665) : 1665),
+        USD: Number(import.meta.env.VITE_EXCHANGE_RATE_USD || exchangeRates.USD || 1405),
+        EUR: Number(import.meta.env.VITE_EXCHANGE_RATE_EUR || exchangeRates.EUR || 1665),
         ARS: 1
       };
 
       let totalBalanceARS = 0;
       (financesData || []).forEach((t: any) => {
-        const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
+        const currency = t.currency || 'USD';
+        const rate = EXCHANGE_RATES[currency as keyof typeof EXCHANGE_RATES] || 1;
         const amt = parseFloat(t.amount) * rate;
         totalBalanceARS += t.type === 'income' ? amt : -amt;
       });
