@@ -30,6 +30,12 @@ interface Transaction {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
+const EXCHANGE_RATES = {
+  USD: Number(import.meta.env.VITE_EXCHANGE_RATE_USD || 1405),
+  EUR: Number(import.meta.env.VITE_EXCHANGE_RATE_EUR || 1665),
+  ARS: 1
+};
+
 const TRANSACTION_TAGS = [
   { value: 'operational', label: 'Costos Operativos', color: 'bg-blue-100 text-blue-800' },
   { value: 'salaries', label: 'Sueldos', color: 'bg-purple-100 text-purple-800' },
@@ -62,7 +68,8 @@ function buildMonthlyChartData(transactions: Transaction[]) {
     transactions.forEach(t => {
       const td = new Date(t.date);
       if (td.getMonth() === m && td.getFullYear() === y) {
-        const amt = parseFloat(t.amount as any);
+        const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
+        const amt = parseFloat(t.amount as any) * rate;
         if (t.type === 'income') ingresos += amt; else gastos += amt;
       }
     });
@@ -170,7 +177,10 @@ export default function Finance() {
     return { ...c, income: inc, expenses: exp, net: inc - exp };
   });
 
-  const totalBalanceUSD = currencyBalances.find(c => c.code === 'USD')?.net ?? 0;
+  const totalBalanceARS = currencyBalances.reduce((acc, curr) => {
+    const rate = EXCHANGE_RATES[curr.code as keyof typeof EXCHANGE_RATES] || 1;
+    return acc + (curr.net * rate);
+  }, 0);
   const monthlyChart = buildMonthlyChartData(transactions);
 
   return (
@@ -199,10 +209,11 @@ export default function Finance() {
         <div className="bg-[#222222] text-white rounded-[32px] p-6 shadow-xl">
           <div className="flex justify-between items-start mb-4">
             <div className="p-3 bg-white/10 rounded-2xl"><DollarSign size={24} /></div>
-            <span className="flex items-center text-[#222222] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">Total USD</span>
+            <span className="flex items-center text-[#222222] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">Consolidado ARS</span>
           </div>
-          <p className="text-white/70 text-sm font-medium mb-1">Balance Consolidado</p>
-          <h4 className="text-4xl font-light">${totalBalanceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h4>
+          <p className="text-white/70 text-sm font-medium mb-1">Posición Total (ARS)</p>
+          <h4 className="text-4xl font-light">${totalBalanceARS.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</h4>
+          <p className="text-white/40 text-[10px] mt-2 font-mono">TC BNA: USD ${EXCHANGE_RATES.USD} | EUR ${EXCHANGE_RATES.EUR}</p>
         </div>
 
         {currencyBalances.map(c => (

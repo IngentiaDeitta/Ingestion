@@ -141,10 +141,17 @@ export default function Dashboard() {
       };
       checkTaskAlerts();
 
-      let totalBalance = 0;
+      const EXCHANGE_RATES = {
+        USD: Number(import.meta.env.VITE_SUPABASE_URL ? (import.meta.env.VITE_EXCHANGE_RATE_USD || 1405) : 1405),
+        EUR: Number(import.meta.env.VITE_SUPABASE_URL ? (import.meta.env.VITE_EXCHANGE_RATE_EUR || 1665) : 1665),
+        ARS: 1
+      };
+
+      let totalBalanceARS = 0;
       (financesData || []).forEach((t: any) => {
-        const amt = parseFloat(t.amount);
-        totalBalance += t.type === 'income' ? amt : -amt;
+        const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
+        const amt = parseFloat(t.amount) * rate;
+        totalBalanceARS += t.type === 'income' ? amt : -amt;
       });
 
       const won = projectsData?.filter(p => p.outcome === 'Ganado').length ?? 0;
@@ -157,7 +164,7 @@ export default function Dashboard() {
         projectsAtRisk: atRiskCount,
         portfolioHealth: health,
         totalRevenue: totalBudget,
-        totalBalance,
+        totalBalance: totalBalanceARS,
         totalHours,
         billableHours,
         nonBillableHours,
@@ -191,7 +198,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-2 min-w-[120px] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/finance')}>
             <span className="text-sm text-[#666666]">Balance Total</span>
             <div className="h-8 w-28 bg-[#FFD166] rounded-full flex items-center px-3 text-[#222222] text-xs font-medium">
-              ${(Math.abs(stats.totalBalance) / 1000).toFixed(1)}k
+              ${(stats.totalBalance / 1_000_000).toFixed(2)}M
             </div>
           </div>
           <div className="flex flex-col gap-2 flex-1 min-w-[200px] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/kanban')}>
@@ -234,8 +241,8 @@ export default function Dashboard() {
               <ArrowUpRight size={12} className="mr-0.5" />+{mockStats.revenueGrowth}%
             </span>
           </div>
-          <p className="text-[#666666] text-xs font-medium mb-1">Balance Total</p>
-          <h4 className="text-3xl font-light text-[#1A1A1A]">${(Math.abs(stats.totalBalance) / 1000).toFixed(1)}k</h4>
+          <p className="text-[#666666] text-xs font-medium mb-1">Balance Consolidado (ARS)</p>
+          <h4 className="text-3xl font-light text-[#1A1A1A]">${(stats.totalBalance / 1_000_000).toFixed(2)}M</h4>
         </div>
 
         {/* Salud del Portfolio */}
@@ -378,7 +385,7 @@ export default function Dashboard() {
               </div>
               <div className="p-4 bg-white rounded-2xl border border-black/5">
                 <p className="text-xs text-[#666666] mb-1">Balance Financiero</p>
-                <p className="text-lg font-medium text-[#1A1A1A]">${stats.totalBalance.toLocaleString()}</p>
+                <p className="text-lg font-medium text-[#1A1A1A]">${(stats.totalBalance / 1_000_000).toFixed(2)}M ARS</p>
               </div>
             </div>
           </div>
