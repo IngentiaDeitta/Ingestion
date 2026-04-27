@@ -212,9 +212,15 @@ export default function Finance() {
             <div className="p-3 bg-white/10 rounded-2xl"><DollarSign size={24} /></div>
             <span className="flex items-center text-[#222222] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">Consolidado ARS</span>
           </div>
-          <p className="text-white/70 text-sm font-medium mb-1">Posición Total (ARS)</p>
+          <p className="text-white/70 text-sm font-medium mb-1">Balance Consolidado (ARS)</p>
           <h4 className="text-4xl font-light">${totalBalanceARS.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</h4>
-          <p className="text-white/40 text-[10px] mt-2 font-mono">TC BNA: USD ${EXCHANGE_RATES.USD} | EUR ${EXCHANGE_RATES.EUR}</p>
+          <div className="mt-4 pt-3 border-t border-white/5 flex flex-col gap-1">
+            <div className="flex justify-between text-[10px] text-white/40 font-bold tracking-wider">
+              <span>USD: ${EXCHANGE_RATES.USD.toLocaleString()}</span>
+              <span>EUR: ${EXCHANGE_RATES.EUR.toLocaleString()}</span>
+            </div>
+            <p className="text-[9px] text-white/20 text-right italic">Sincronizado: {exchangeRates.lastUpdated}</p>
+          </div>
         </div>
 
         {currencyBalances.map(c => (

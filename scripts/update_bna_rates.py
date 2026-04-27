@@ -32,7 +32,7 @@ def get_bna_rates():
         return None
 
 def update_env(rates):
-    env_path = "c:\\app_ingentia\\.env"
+    env_path = "c:\\app-ingentia\\.env"
     if not os.path.exists(env_path):
         print("Error: .env file not found.")
         return
@@ -62,7 +62,7 @@ def update_env(rates):
     # Update JSON
     import json
     from datetime import datetime
-    json_path = "c:\\app_ingentia\\src\\data\\exchange_rates.json"
+    json_path = "c:\\app-ingentia\\src\\data\\exchange_rates.json"
     with open(json_path, 'w') as f:
         json.dump({
             "USD": rates['USD'],
