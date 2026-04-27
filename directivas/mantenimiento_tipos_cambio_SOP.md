@@ -22,7 +22,7 @@ Asegurar que el sistema disponga siempre de los tipos de cambio más recientes (
 
 ## Restricciones y Casos Borde
 - **Permisos de GitHub:** Si el token no tiene permisos de escritura, la actualización fallará con un error 403. Se debe configurar `permissions: contents: write` en el archivo `.yml`.
-- **Cambios en el DOM del BNA:** El scraping por regex es frágil. Si el BNA cambia su estructura, el script debe actualizarse para buscar nuevos patrones.
+- **Cambios en el DOM del BNA:** El scraping por regex es frágil. Si el BNA cambia su estructura o añade clases (ej. `class="destacado"`), el script debe usar un regex que ignore atributos en las etiquetas `<td>` y maneje espacios en blanco excesivos (ej. `rf"{currency_name}</td>\s*<td[^>]*>\s*([\d,.]+)\s*</td>\s*<td[^>]*>\s*([\d,.]+)\s*</td>"`).
 - **Diferencia Compra/Venta:** Siempre utilizar el valor de **venta** para la consolidación de activos/balance, según política contable de la empresa.
 
 ## Procedimiento de Corrección

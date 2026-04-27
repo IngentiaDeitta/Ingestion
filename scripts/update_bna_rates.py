@@ -16,11 +16,12 @@ def get_bna_rates():
         
         def extract_rate(currency_name, html_content):
             # Regex to find the currency name and then the next numerical values (Compra / Venta)
-            # Example: <td>Dolar U.S.A</td> <td>1365,00</td> <td>1405,00</td>
-            pattern = rf"<td>{currency_name}</td>\s*<td>[\d,]+</td>\s*<td>([\d,]+)</td>"
+            # Extremely flexible with whitespace and attributes
+            pattern = rf"{currency_name}</td>\s*<td[^>]*>\s*([\d,.]+)\s*</td>\s*<td[^>]*>\s*([\d,.]+)\s*</td>"
             match = re.search(pattern, html_content, re.IGNORECASE)
             if match:
-                return float(match.group(1).replace(',', '.'))
+                # We want the second value (Venta)
+                return float(match.group(2).replace(',', '.'))
             return None
 
         usd = extract_rate("Dolar U.S.A", html)
