@@ -1,0 +1,53 @@
+# DIRECTIVA: BRANDING_UPDATE_SOP
+
+**ID:** 2026-04-29-001
+**Script Asociado:** `scripts/update_branding_logo.py`
+**Última Actualización:** 2026-04-29
+**Estado:** ACTIVO
+
+---
+
+## 1. Objetivos y Alcance
+*Reemplazar el branding textual actual por un logo de imagen específico.*
+- **Objetivo Principal:** Sustituir el texto "Ingentia Management" y su icono actual por la imagen `Recursos/Logo Blanco_T.png`.
+- **Criterio de Éxito:** El archivo `src/components/Sidebar.tsx` contiene la etiqueta `<img>` con la ruta correcta, altura de ~56px (para compensar el espacio en blanco del archivo original) y está posicionado según las especificaciones del usuario.
+
+---
+
+## 2. Especificaciones de Entrada/Salida (I/O)
+... (omitted) ...
+
+## 5. Restricciones y Casos Borde (Edge Cases)
+
+### Limitaciones Conocidas
+- **Espacio en blanco en imagen:** El archivo `Logo Blanco_T.png` tiene márgenes transparentes internos significativos (534px de alto total, pero el logo es pequeño). Se requiere una altura de clase CSS mayor (ej. 56px-64px) para que el logo se vea de ~30px reales.
+
+---
+
+## 6. Historial de Aprendizaje / Protocolo de Errores y Aprendizajes [Memoria Viva]
+
+| Fecha | Error Detectado | Causa Raíz | Solución/Parche Aplicado |
+|-------|----------------|------------|--------------------------|
+| 29/04 | N/A | Tarea inicial | Implementado reemplazo en Sidebar.tsx. Se movió el logo a `public/Recursos` para asegurar su disponibilidad en Vite. Se usó `justify-center` y altura de 22px. |
+| 29/04 | Logo pequeño | El usuario solicitó agrandarlo | Se incrementó la altura del logo a 32px y el contenedor a h-24 para mejor balance visual. |
+| 29/04 | Tamaño no percibido | El archivo PNG tiene mucho whitespace lateral y superior | Se incrementó la altura a 56px para compensar el margen interno del archivo. |
+
+---
+
+## 7. Ejemplos de Uso
+
+```bash
+python scripts/update_branding_logo.py
+```
+
+---
+
+## 8. Checklist de Pre-Ejecución
+- [x] Verificar existencia de `src/components/Sidebar.tsx`.
+- [x] Verificar existencia de `Recursos/Logo Blanco_T.png`.
+
+---
+
+## 9. Checklist Post-Ejecución
+- [ ] Verificar cambios en el código.
+- [ ] Validar visualmente si es posible (vía screenshot si se tiene acceso).

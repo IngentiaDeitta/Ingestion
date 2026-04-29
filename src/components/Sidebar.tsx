@@ -19,16 +19,12 @@ export default function Sidebar() {
   return (
     <aside className="w-[280px] bg-white border-r border-black/5 flex flex-col sticky top-0 h-screen z-50">
       {/* Logo Section */}
-      <div className="h-24 flex items-center px-8">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#222222] rounded-xl flex items-center justify-center text-white shadow-lg shadow-black/10">
-            <div className="w-5 h-5 bg-white rounded-md"></div>
-          </div>
-          <div>
-            <h1 className="text-2xl font-black tracking-tighter text-[#1A1A1A]">Ingent<span className="text-[#FFD166]">IA</span></h1>
-            <span className="text-[10px] font-bold text-[#666666] tracking-[0.2em] uppercase leading-none">Management</span>
-          </div>
-        </div>
+      <div className="h-24 flex items-center justify-center px-8 border-b border-black/[0.02]">
+        <img 
+          src="/Recursos/Logo Blanco_T.png" 
+          alt="Ingentia Management" 
+          className="h-[58px] w-auto object-contain"
+        />
       </div>
 
       {/* Navigation */}
