@@ -31,6 +31,7 @@
 | 29/04 | N/A | Tarea inicial | Implementado reemplazo en Sidebar.tsx. Se movió el logo a `public/Recursos` para asegurar su disponibilidad en Vite. Se usó `justify-center` y altura de 22px. |
 | 29/04 | Logo pequeño | El usuario solicitó agrandarlo | Se incrementó la altura del logo a 32px y el contenedor a h-24 para mejor balance visual. |
 | 29/04 | Tamaño no percibido | El archivo PNG tiene mucho whitespace lateral y superior | Se incrementó la altura a 56px para compensar el margen interno del archivo. |
+| 29/04 | Ajuste final | El usuario solicitó fijar en 58px | Se ajustó a 58px y se realizó deploy forzado a producción. |
 
 ---
 
