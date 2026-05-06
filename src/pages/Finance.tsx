@@ -236,7 +236,9 @@ export default function Finance() {
             <span className="flex items-center text-[#222222] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">Consolidado ARS</span>
           </div>
           <p className="text-white/70 text-sm font-medium mb-1">Balance Consolidado (ARS)</p>
-          <h4 className="text-4xl font-light">${totalBalanceARS.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</h4>
+          <h4 className={`text-4xl font-light ${totalBalanceARS < 0 ? 'text-red-400' : 'text-white'}`}>
+            ${totalBalanceARS.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </h4>
           <div className="mt-4 pt-3 border-t border-white/5 flex flex-col gap-1">
             <div className="flex justify-between text-[10px] text-white/40 font-bold tracking-wider">
               <span>USD: ${EXCHANGE_RATES.USD.toLocaleString()}</span>

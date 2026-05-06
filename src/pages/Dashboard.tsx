@@ -199,7 +199,7 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-col gap-2 min-w-[120px] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/finance')}>
             <span className="text-sm text-[#666666]">Balance Total</span>
-            <div className="h-8 w-28 bg-[#FFD166] rounded-full flex items-center px-3 text-[#222222] text-xs font-medium">
+            <div className={`h-8 w-28 bg-[#FFD166] rounded-full flex items-center px-3 text-xs font-medium ${stats.totalBalance < 0 ? 'text-red-600' : 'text-[#222222]'}`}>
               ${(stats.totalBalance / 1_000_000).toFixed(2)}M
             </div>
           </div>
@@ -244,7 +244,9 @@ export default function Dashboard() {
             </span>
           </div>
           <p className="text-[#666666] text-xs font-medium mb-1">Balance Consolidado (ARS)</p>
-          <h4 className="text-3xl font-light text-[#1A1A1A]">${(stats.totalBalance / 1_000_000).toFixed(2)}M</h4>
+          <h4 className={`text-3xl font-light ${stats.totalBalance < 0 ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
+            ${(stats.totalBalance / 1_000_000).toFixed(2)}M
+          </h4>
         </div>
 
         {/* Salud del Portfolio */}
@@ -387,7 +389,9 @@ export default function Dashboard() {
               </div>
               <div className="p-4 bg-white rounded-2xl border border-black/5">
                 <p className="text-xs text-[#666666] mb-1">Balance Financiero</p>
-                <p className="text-lg font-medium text-[#1A1A1A]">${(stats.totalBalance / 1_000_000).toFixed(2)}M ARS</p>
+                <p className={`text-lg font-medium ${stats.totalBalance < 0 ? 'text-red-600' : 'text-[#1A1A1A]'}`}>
+                  ${(stats.totalBalance / 1_000_000).toFixed(2)}M ARS
+                </p>
               </div>
             </div>
           </div>

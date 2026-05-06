@@ -83,6 +83,57 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
 
       if (error) throw error;
 
+      // Actualizar nombre en tareas si cambió
+      if (editFormData.name !== project.name) {
+        const { error: taskUpdateError } = await supabase
+          .from('tasks')
+          .update({ project: editFormData.name })
+          .eq('project', project.name);
+        
+        if (taskUpdateError) {
+          console.error('Error updating task project names:', taskUpdateError);
+        }
+      }
+
+      // Actualizar nombre del cliente en tareas si cambió
+      if (editFormData.client !== project.client) {
+        const { error: clientTaskError } = await supabase
+          .from('tasks')
+          .update({ client: editFormData.client })
+          .eq('client', project.client);
+        
+        if (clientTaskError) {
+          console.error('Error updating task client names:', clientTaskError);
+        }
+      }
+
+      // También actualizar descripciones en finanzas que contengan los nombres viejos
+      if (editFormData.name !== project.name || editFormData.client !== project.client) {
+        const { data: financesToUpdate } = await supabase
+          .from('finances')
+          .select('id, description')
+          .eq('project_id', id);
+
+        if (financesToUpdate) {
+          for (const fin of financesToUpdate) {
+            let newDesc = fin.description;
+            if (editFormData.name !== project.name) {
+              newDesc = newDesc.replace(project.name, editFormData.name);
+            }
+            if (editFormData.client !== project.client) {
+              newDesc = newDesc.replace(project.client, editFormData.client);
+            }
+            
+            if (newDesc !== fin.description) {
+              await supabase
+                .from('finances')
+                .update({ description: newDesc })
+                .eq('id', fin.id);
+            }
+          }
+        }
+      }
+
       // HISTORIAL
       const historyEntries = [];
       if (editFormData.outcome !== project.outcome) {

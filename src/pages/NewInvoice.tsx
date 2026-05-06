@@ -43,6 +43,7 @@ export default function NewInvoice() {
   const [distributionMode, setDistributionMode] = useState<'equal' | 'manual'>('equal');
   const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
   const [manualAmounts, setManualAmounts] = useState<Record<string, number>>({});
+  const [includeTax, setIncludeTax] = useState(false);
 
   const [formData, setFormData] = useState({
     clientId: '',
@@ -81,11 +82,24 @@ export default function NewInvoice() {
     
     if (data.items && Array.isArray(data.items) && data.items.length > 0) {
       setItems(data.items);
+      const itemsSubtotal = data.items.reduce((acc: number, item: any) => acc + (item.quantity * item.price), 0);
+      const dbAmount = parseFloat(data.amount || '0');
+      // If total amount is ~21% higher than items sum, enable tax toggle
+      if (Math.abs(dbAmount - itemsSubtotal * 1.21) < 0.05) {
+        setIncludeTax(true);
+      }
     } else {
       // Fallback: If no structured items, create one from total and description
       const dbAmount = parseFloat(data.amount || '0');
-      const initialPrice = data.type === 'income' ? dbAmount / 1.21 : dbAmount;
-      setItems([{ id: Date.now(), description: data.description || '', quantity: 1, price: initialPrice }]);
+      // If it's an income, check if it was likely with VAT
+      if (data.type === 'income') {
+        // We assume new default is NO VAT. 
+        // But for old ones, we might need to check. 
+        // For simplicity in fallback, we'll keep the subtotal = total if we can't be sure.
+        setItems([{ id: Date.now(), description: data.description || '', quantity: 1, price: dbAmount }]);
+      } else {
+        setItems([{ id: Date.now(), description: data.description || '', quantity: 1, price: dbAmount }]);
+      }
     }
 
     if (!data.client_id && !data.project_id && data.type === 'expense') setIsIngentia(true);
@@ -113,7 +127,7 @@ export default function NewInvoice() {
   };
 
   const subtotal = items.reduce((acc, item: any) => acc + (item.quantity * item.price), 0);
-  const tax = type === 'income' ? subtotal * 0.21 : 0;
+  const tax = (type === 'income' && includeTax) ? subtotal * 0.21 : 0;
   const total = subtotal + tax;
 
   const currencySymbol = CURRENCIES.find(c => c.value === formData.currency)?.symbol ?? '$';
@@ -565,9 +579,26 @@ export default function NewInvoice() {
               <span>{currencySymbol}{subtotal.toFixed(2)}</span>
             </div>
             {type === 'income' && (
-              <div className="flex justify-between text-sm text-[#666666]">
-                <span>IVA (21%)</span>
-                <span>{currencySymbol}{tax.toFixed(2)}</span>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between py-2 border-y border-black/5 mb-1">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-[#1A1A1A]">Calcular IVA (21%)</span>
+                    <span className="text-[10px] text-[#666666]">Añadir impuesto sobre el subtotal</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIncludeTax(!includeTax)}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${includeTax ? 'bg-green-500' : 'bg-black/10'}`}
+                  >
+                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${includeTax ? 'right-1' : 'left-1'}`} />
+                  </button>
+                </div>
+                {includeTax && (
+                  <div className="flex justify-between text-sm text-[#666666]">
+                    <span>IVA (21%)</span>
+                    <span>{currencySymbol}{tax.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
             )}
             <div className="h-px w-full bg-black/10 my-1" />
