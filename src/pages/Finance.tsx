@@ -8,7 +8,7 @@ import { useUser } from '../context/UserContext';
 import { supabase } from '../lib/supabase';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar, Legend
+  ResponsiveContainer, BarChart, Bar, Legend, PieChart, Pie, Cell
 } from 'recharts';
 import { mockStats } from '../data/mockData';
 import exchangeRates from '../data/exchange_rates.json';
@@ -92,6 +92,7 @@ export default function Finance() {
   const [filterType, setFilterType] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [partnerBalances, setPartnerBalances] = useState<any[]>([]);
+  const [expensesByTag, setExpensesByTag] = useState<any[]>([]);
 
   const [hoursChartData, setHoursChartData] = useState<any[]>([]);
 
@@ -155,18 +156,68 @@ export default function Finance() {
 
       if (partnersRes.data && partTransRes.data) {
         const balances = partnersRes.data.map(p => {
-          const trans = partTransRes.data.filter(t => t.partner_id === p.id);
-          const contributions = trans.filter(t => t.type === 'contribution').reduce((a, t) => a + Number(t.amount), 0);
-          const withdrawals = trans.filter(t => t.type === 'withdrawal').reduce((a, t) => a + Number(t.amount), 0);
+          const pt = partTransRes.data.filter(t => t.partner_id === p.id);
+          const contributions = pt.filter(t => t.type === 'contribution').reduce((a, t) => a + Number(t.amount), 0);
+          const withdrawals = pt.filter(t => t.type === 'withdrawal').reduce((a, t) => a + Number(t.amount), 0);
+          
+          // Gastos pagados por el socio (fund_source)
+          const expensesPaid = trans
+            .filter(t => t.type === 'expense' && t.fund_source?.trim().toLowerCase() === p.name?.trim().toLowerCase())
+            .reduce((a, t) => {
+              const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
+              // Partner balances are usually in USD in this app, let's convert to USD if needed
+              // or keep in ARS? The current code seems to assume USD for partner balances?
+              // Looking at pb.balance >= 0 ? ... : ... "USD" (line 353).
+              const amt = parseFloat(t.amount as any);
+              return a + (t.currency === 'USD' ? amt : (amt * rate / EXCHANGE_RATES.USD));
+            }, 0);
+
           return {
             ...p,
             contributions,
             withdrawals,
-            balance: contributions - withdrawals
+            expensesPaid,
+            balance: (contributions + expensesPaid) - withdrawals
           };
         });
         setPartnerBalances(balances);
       }
+
+      // Process Expenses by Tag for Doughnut Chart
+      const tagTotals: Record<string, number> = {};
+      trans.filter(t => t.type === 'expense').forEach(t => {
+        const tag = t.tag || 'other';
+        const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
+        const amt = parseFloat(t.amount as any) * rate;
+        tagTotals[tag] = (tagTotals[tag] || 0) + amt;
+      });
+
+      const pieData = Object.entries(tagTotals).map(([tag, total]) => {
+        const info = getTagInfo(tag);
+        return {
+          name: info?.label || 'Otros',
+          value: total,
+          color: info ? info.color.split(' ')[0].replace('bg-', '#').replace('-100', '') : '#CBD5E1'
+        };
+      }).sort((a, b) => b.value - a.value);
+
+      // Map tailwind colors to hex for Recharts
+      const colorMap: Record<string, string> = {
+        blue: '#3B82F6',
+        purple: '#A855F7',
+        orange: '#F97316',
+        cyan: '#06B6D4',
+        emerald: '#10B981',
+        indigo: '#6366F1',
+        gray: '#94A3B8'
+      };
+
+      const finalPieData = pieData.map(d => {
+        const colorKey = Object.keys(colorMap).find(k => d.name.toLowerCase().includes(k) || d.color.toLowerCase().includes(k));
+        return { ...d, color: colorKey ? colorMap[colorKey] : d.color };
+      });
+
+      setExpensesByTag(finalPieData);
 
     } catch (err) {
       console.error(err);
@@ -266,7 +317,7 @@ export default function Finance() {
       </div>
 
       {/* ── Analytics Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
           <div className="flex justify-between items-center mb-6">
             <h4 className="text-xl font-medium text-[#1A1A1A]">Facturación vs Costes</h4>
@@ -293,7 +344,42 @@ export default function Finance() {
 
         <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
           <div className="flex justify-between items-center mb-6">
-            <h4 className="text-xl font-medium text-[#1A1A1A]">Distribución de Horas</h4>
+            <h4 className="text-xl font-medium text-[#1A1A1A]">Distribución de Gastos</h4>
+            <Tag size={20} className="text-[#666]" />
+          </div>
+          <div className="h-64 flex flex-col items-center">
+            <ResponsiveContainer width="100%" height="80%">
+              <PieChart>
+                <Pie
+                  data={expensesByTag}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {expensesByTag.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: any) => [`$${v.toLocaleString()}`, '']} contentStyle={{ borderRadius: '16px', border: 'none' }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
+              {expensesByTag.slice(0, 4).map((entry, index) => (
+                <div key={index} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                  <span className="text-[10px] text-[#666] font-medium">{entry.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h4 className="text-xl font-medium text-[#1A1A1A]">Horas Mensuales</h4>
             <Clock size={20} className="text-[#666]" />
           </div>
           <div className="h-64">
@@ -302,8 +388,8 @@ export default function Finance() {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#999', fontSize: 11 }} />
                 <Tooltip contentStyle={{ borderRadius: '16px', border: 'none' }} formatter={(v: any) => [`${v}h`, '']} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
-                <Bar name="Facturables" dataKey="facturables" stackId="a" fill="#1A1A1A" radius={[0, 0, 0, 0]} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px' }} />
+                <Bar name="Facturables" dataKey="facturables" stackId="a" fill="#1A1A1A" />
                 <Bar name="No Facturables" dataKey="noFacturables" stackId="a" fill="#FFD166" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -335,12 +421,12 @@ export default function Finance() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Aportes</span>
-                  <span className="text-xl font-medium text-[#1A1A1A]">${pb.contributions.toLocaleString()}</span>
+                  <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Gastos Pagados</span>
+                  <span className="text-xl font-medium text-[#1A1A1A]">${pb.expensesPaid.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Retiros</span>
-                  <span className="text-xl font-medium text-red-500">${pb.withdrawals.toLocaleString()}</span>
+                  <span className="text-xl font-medium text-red-500">${pb.withdrawals.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
               </div>
 
