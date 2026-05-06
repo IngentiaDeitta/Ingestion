@@ -11,6 +11,7 @@ import Finance from './pages/Finance';
 import NewInvoice from './pages/NewInvoice';
 import Kanban from './pages/Kanban';
 import SmartQuoter from './pages/SmartQuoter';
+import SolutionArchitect from './pages/SolutionArchitect';
 // Reports section removed — content merged into Finance
 import Team from './pages/Team';
 import Settings from './pages/Settings';
@@ -46,6 +47,7 @@ function App() {
             <Route path="/finance/edit/:id" element={<NewInvoice />} />
             <Route path="/kanban" element={<Kanban />} />
             <Route path="/smart-quoter" element={<SmartQuoter />} />
+            <Route path="/solution-architect" element={<SolutionArchitect />} />
             <Route path="/reports" element={<Navigate to="/finance" replace />} />
             <Route path="/team" element={<Team />} />
             <Route path="/settings" element={<Settings />} />

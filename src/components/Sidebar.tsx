@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FolderKanban, FileText, Calculator, Settings, Clock, LogOut, ChevronRight, Zap, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, FileText, Calculator, Settings, Clock, LogOut, ChevronRight, Zap, CheckSquare, Microscope } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 

@@ -145,7 +145,7 @@ export default function NewInvoice() {
         tag: formData.tag || null,
         client_id:  (!isIngentia && formData.clientId)  ? formData.clientId  : null,
         project_id: (!isIngentia && formData.projectId) ? formData.projectId : null,
-        fund_source: type === 'expense' ? formData.fundSource : null,
+        fund_source: (type === 'expense' || type === 'withdrawal') ? formData.fundSource : null,
         items: items, // Persist structured items
       };
 
@@ -154,25 +154,6 @@ export default function NewInvoice() {
         : await supabase.from('finances').insert([payload]).select();
       
       if (error) throw error;
-
-      const financeId = insertedData?.[0]?.id;
-
-      if (financeId && (type === 'withdrawal' || formData.tag === 'contribution')) {
-        // Delete existing assignments if editing
-        if (isEditing) {
-          await supabase.from('partner_transactions').delete().eq('finance_id', financeId);
-        }
-
-        const assignments = selectedPartners.map(pId => ({
-          finance_id: financeId,
-          partner_id: pId,
-          amount: distributionMode === 'equal' ? total / selectedPartners.length : (manualAmounts[pId] || 0),
-          type: type === 'withdrawal' ? 'withdrawal' : 'contribution'
-        }));
-
-        const { error: partErr } = await supabase.from('partner_transactions').insert(assignments);
-        if (partErr) console.error('Error saving partner assignments:', partErr);
-      }
 
       await sendNotification(
         isEditing ? 'Transacción Actualizada' : (type === 'income' ? 'Nueva Factura Generada' : (type === 'expense' ? 'Nuevo Gasto Registrado' : 'Retiro de Capital')),
@@ -294,17 +275,19 @@ export default function NewInvoice() {
             />
           </div>
 
-          {/* Origen de los fondos — solo gastos */}
-          {type === 'expense' && (
+          {/* Origen de los fondos / Socio */}
+          {(type === 'expense' || type === 'withdrawal') && (
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#1A1A1A]">Origen de los Fondos</label>
+              <label className="text-sm font-medium text-[#1A1A1A]">
+                {type === 'expense' ? 'Origen de los Fondos' : 'Socio'}
+              </label>
               <select
                 required
                 value={formData.fundSource}
                 onChange={e => setFormData({ ...formData, fundSource: e.target.value })}
                 className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none appearance-none"
               >
-                <option value="">Seleccionar origen...</option>
+                <option value="">Seleccionar...</option>
                 {FUND_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </div>
@@ -368,100 +351,7 @@ export default function NewInvoice() {
           </div>
         )}
 
-        {/* ── Sección: Asignación a Socios (Solo si es Retiro o Aporte) ── */}
-        {(type === 'withdrawal' || formData.tag === 'contribution') && (
-          <div className="flex flex-col gap-6 pt-6 border-t border-black/5 animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-lg font-medium text-[#1A1A1A]">Asignación a Socios</h4>
-                <p className="text-sm text-[#666666]">Distribuye el monto total entre los socios involucrados.</p>
-              </div>
-              <div className="flex bg-black/5 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setDistributionMode('equal')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${distributionMode === 'equal' ? 'bg-white text-black shadow-sm' : 'text-[#666666] hover:text-black'}`}
-                >
-                  Equitativo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDistributionMode('manual')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${distributionMode === 'manual' ? 'bg-white text-black shadow-sm' : 'text-[#666666] hover:text-black'}`}
-                >
-                  Manual
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {partners.map(partner => {
-                const isSelected = selectedPartners.includes(partner.id);
-                const equalAmount = isSelected ? (total / selectedPartners.length) : 0;
-                const currentAmount = distributionMode === 'equal' ? equalAmount : (manualAmounts[partner.id] || 0);
-
-                return (
-                  <div
-                    key={partner.id}
-                    onClick={() => {
-                      if (selectedPartners.includes(partner.id)) {
-                        setSelectedPartners(selectedPartners.filter(pid => pid !== partner.id));
-                      } else {
-                        setSelectedPartners([...selectedPartners, partner.id]);
-                      }
-                    }}
-                    className={`cursor-pointer group relative p-4 rounded-2xl border transition-all ${
-                      isSelected
-                        ? 'bg-[#222222] border-[#222222] text-white shadow-lg'
-                        : 'bg-white/40 border-black/10 hover:border-black/20 text-[#1A1A1A]'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-bold uppercase tracking-tight">{partner.name}</span>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                        isSelected ? 'bg-[#FFD166] border-[#FFD166]' : 'border-black/10'
-                      }`}>
-                        {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
-                      </div>
-                    </div>
-                    
-                    {isSelected ? (
-                      <div className="mt-4 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                        <label className="text-[10px] font-bold text-white/50 uppercase mb-1 block">Monto a asignar ({formData.currency})</label>
-                        {distributionMode === 'equal' ? (
-                          <div className="text-xl font-light text-[#FFD166]">
-                            {currencySymbol}{currentAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </div>
-                        ) : (
-                          <input
-                            type="number"
-                            value={manualAmounts[partner.id] || ''}
-                            onChange={e => setManualAmounts({ ...manualAmounts, [partner.id]: parseFloat(e.target.value) || 0 })}
-                            placeholder="0.00"
-                            className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white outline-none focus:border-[#FFD166] transition-colors"
-                          />
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[#999] mt-2 group-hover:text-[#666]">Click para incluir</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {distributionMode === 'manual' && selectedPartners.length > 0 && (
-              <div className={`p-4 rounded-2xl border text-sm font-medium flex justify-between items-center ${
-                Math.abs(Object.values(manualAmounts).reduce((a, b) => a + b, 0) - total) < 0.01
-                  ? 'bg-green-50 border-green-200 text-green-700'
-                  : 'bg-red-50 border-red-200 text-red-700'
-              }`}>
-                <span>Total asignado: {currencySymbol}{Object.values(manualAmounts).reduce((a, b) => a + b, 0).toLocaleString()}</span>
-                <span>Restante: {currencySymbol}{(total - Object.values(manualAmounts).reduce((a, b) => a + b, 0)).toLocaleString()}</span>
-              </div>
-            )}
-          </div>
-        )}
+        {/* ── Sección eliminada de Asignación a Socios porque fundSource lo maneja ── */}
 
         {/* ── Sección: Origen del ingreso (cliente/proyecto para ingresos) ── */}
         {type === 'income' && (

@@ -79,13 +79,9 @@ export interface AnalysisResult {
 }
 
 export default function SmartQuoter() {
-    const [companySize, setCompanySize] = useState("Medium");
-    const [serviceType, setServiceType] = useState("Consultancy");
-    const [clientUrl, setClientUrl] = useState("");
-    const [notebookLmContext, setNotebookLmContext] = useState("");
-    const [transcripts, setTranscripts] = useState("");
     const [clientId, setClientId] = useState("");
     const [projectId, setProjectId] = useState("");
+    const [analysisData, setAnalysisData] = useState<any>(null);
     const [appState, setAppState] = useState<AppState>('welcome');
     const [activeTab, setActiveTab] = useState<TabState>('strategy');
     const [results, setResults] = useState<AnalysisResult | null>(null);
@@ -113,19 +109,22 @@ export default function SmartQuoter() {
         fetchClientsAndProjects();
         
         const quoteId = searchParams.get('quoteId');
+        const analysisId = searchParams.get('analysisId');
+        const pIdFromUrl = searchParams.get('projectId');
+        
         if (quoteId) {
             loadQuoteFromId(quoteId);
+        } else if (analysisId) {
+            loadAnalysisFromId(analysisId);
+        } else if (pIdFromUrl) {
+            loadFromProject(pIdFromUrl);
         } else {
             const savedQuote = localStorage.getItem("lastAdvancedQuote");
             if (savedQuote) {
                 try {
                     const parsed = JSON.parse(savedQuote);
                     setResults(parsed.results);
-                    setCompanySize(parsed.inputs.companySize || "Medium");
-                    setServiceType(parsed.inputs.serviceType || "Consultancy");
-                    setClientUrl(parsed.inputs.clientUrl || "");
-                    setNotebookLmContext(parsed.inputs.notebookLmContext || "");
-                    setTranscripts(parsed.inputs.transcripts || "");
+                    setAnalysisData(parsed.inputs.analysisData || null);
                     setClientId(parsed.inputs.clientId || "");
                     setProjectId(parsed.inputs.projectId || "");
                     setAppState('results');
@@ -133,6 +132,72 @@ export default function SmartQuoter() {
             }
         }
     }, [searchParams]);
+
+    const loadFromProject = async (id: string) => {
+        try {
+            setIsIdLoading(true);
+            setAppState('loading');
+            
+            const { data: project, error } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('id', id)
+                .single();
+            
+            if (error) throw error;
+            if (project) {
+                // Find matching client ID based on project.client name
+                const { data: client } = await supabase
+                    .from('clients')
+                    .select('id')
+                    .eq('name', project.client)
+                    .single();
+                
+                if (client) setClientId(client.id);
+                setProjectId(project.id);
+                
+                if (project.project_analysis) {
+                    setAnalysisData(project.project_analysis);
+                    // Since we have data, we can directly trigger analysis or stay in welcome ready to click
+                    setAppState('welcome');
+                } else {
+                    setAppState('welcome');
+                }
+            }
+        } catch (error: any) {
+            console.error('Error loading project context:', error);
+            setAppState('welcome');
+        } finally {
+            setIsIdLoading(false);
+        }
+    };
+
+    const loadAnalysisFromId = async (id: string) => {
+        try {
+            setIsIdLoading(true);
+            setAppState('loading');
+            
+            const { data, error } = await supabase
+                .from('solution_analyses')
+                .select('*')
+                .eq('id', id)
+                .single();
+            
+            if (error) throw error;
+            if (data) {
+                setClientId(data.client_id);
+                setProjectId(data.project_id);
+                setAnalysisData(data.full_analysis_json);
+                setAppState('welcome');
+            }
+        } catch (error: any) {
+            console.error('Error loading analysis:', error);
+            alert('No se pudo cargar el análisis previo');
+            setAppState('welcome');
+        } finally {
+            setIsIdLoading(false);
+        }
+    };
 
     const fetchClientsAndProjects = async () => {
         const { data: clientsData } = await supabase.from('clients').select('id, name').order('name');
@@ -171,8 +236,8 @@ export default function SmartQuoter() {
     };
 
     const analyzeProject = async () => {
-        if (!transcripts.trim() && !clientUrl.trim() && !notebookLmContext.trim()) {
-            alert("Por favor, ingresa al menos un contexto.");
+        if (!analysisData) {
+            alert("No hay un análisis base para cotizar. Inicia desde AI Solution Architect.");
             return;
         }
         if (!clientId || !projectId) {
@@ -189,11 +254,7 @@ export default function SmartQuoter() {
             const geminiResult = await analyzeWithGemini({
                 clientName: cName,
                 projectName: pName,
-                companySize,
-                serviceType,
-                clientUrl,
-                notebookContext: notebookLmContext,
-                transcripts
+                solutionAnalysisJson: analysisData
             });
 
             setResults(geminiResult);
@@ -204,7 +265,7 @@ export default function SmartQuoter() {
             setSelectedModules(initialModules);
 
             localStorage.setItem("lastAdvancedQuote", JSON.stringify({
-                inputs: { companySize, serviceType, clientUrl, notebookLmContext, transcripts, clientId, projectId },
+                inputs: { analysisData, clientId, projectId },
                 results: geminiResult,
                 timestamp: new Date().getTime()
             }));
@@ -226,8 +287,8 @@ export default function SmartQuoter() {
     };
 
     const startNewQuote = () => {
-        setResults(null); setTranscripts(""); setNotebookLmContext("");
-        setClientUrl(""); setClientId(""); setProjectId("");
+        setResults(null); setAnalysisData(null);
+        setClientId(""); setProjectId("");
         setAppState('welcome');
         localStorage.removeItem("lastAdvancedQuote");
     };
@@ -370,63 +431,33 @@ export default function SmartQuoter() {
                                 <Microscope size={20} />
                             </div>
                             <div>
-                                <h4 className="text-lg font-medium text-[#1A1A1A]">Contexto Analítico</h4>
-                                <p className="text-xs text-[#666666]">Define los parámetros y fuentes de información</p>
+                                <h4 className="text-lg font-medium text-[#1A1A1A]">Análisis Estratégico</h4>
+                                <p className="text-xs text-[#666666]">Base para la cotización inteligente</p>
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-[#1A1A1A]">Tamaño de Empresa</label>
-                                    <select value={companySize} onChange={(e) => setCompanySize(e.target.value)} className={inputClass}>
-                                        <option value="SME">Pequeña / SME</option>
-                                        <option value="Medium">Mediana</option>
-                                        <option value="Large">Corporación</option>
-                                    </select>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-[#1A1A1A]">Tipo de Servicio</label>
-                                    <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className={inputClass}>
-                                        <option value="Consultancy">Consultoría</option>
-                                        <option value="Full">Consultoría + App/IA</option>
-                                    </select>
-                                </div>
+                        {analysisData ? (
+                            <div className="bg-[#222222]/5 p-4 rounded-2xl border border-black/5 text-sm text-[#1A1A1A]">
+                                <p className="font-medium mb-2 flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                    Análisis cargado correctamente
+                                </p>
+                                <p className="text-[#666666] text-xs">El modelo Gemini utilizará la arquitectura y diagnóstico previo para estructurar el presupuesto modular de forma automática.</p>
                             </div>
-
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-[#1A1A1A]">Sitios y Redes del cliente</label>
-                                <input type="text" value={clientUrl} onChange={(e) => setClientUrl(e.target.value)}
-                                    placeholder="https://ejemplo.com, @instagram..."
-                                    className={inputClass} />
+                        ) : (
+                            <div className="bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20 text-sm text-amber-800">
+                                <p className="font-medium flex items-center gap-2">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    No hay análisis asociado
+                                </p>
+                                <p className="text-xs mt-1">Debes iniciar este proceso desde el módulo <strong>AI Solution Architect</strong> para obtener un análisis profundo de la empresa antes de cotizar.</p>
                             </div>
+                        )}
 
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-[#1A1A1A]">Importar Cuaderno (NotebookLM)</label>
-                                <input type="text" value={notebookLmContext} onChange={(e) => setNotebookLmContext(e.target.value)}
-                                    placeholder="Pega aquí el link o nombre del cuaderno de NotebookLM..."
-                                    className={inputClass} />
-                            </div>
-
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-[#1A1A1A]">Contexto NotebookLM / Manual</label>
-                                <textarea value={notebookLmContext} onChange={(e) => setNotebookLmContext(e.target.value)} rows={3}
-                                    placeholder="Describe el contexto del cuaderno, resumen o notas relevantes..."
-                                    className={textareaClass}></textarea>
-                            </div>
-
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-[#1A1A1A]">Minutas Extra</label>
-                                <textarea value={transcripts} onChange={(e) => setTranscripts(e.target.value)} rows={3}
-                                    placeholder="Pega aquí las minutas de la reunión..."
-                                    className={textareaClass}></textarea>
-                            </div>
-                        </div>
-
-                        <button onClick={analyzeProject} disabled={appState === 'loading'}
+                        <button onClick={analyzeProject} disabled={appState === 'loading' || !analysisData}
                             className="w-full bg-[#222222] hover:bg-black disabled:opacity-50 text-white transition-all py-4 rounded-full font-medium flex items-center justify-center gap-2 shadow-lg shadow-black/10 mt-2">
                             {appState === 'loading' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-                            {appState === 'loading' ? 'Procesando con IA...' : 'Procesar y Presupuestar'}
+                            {appState === 'loading' ? 'Generando Presupuesto...' : 'Generar Presupuesto con IA'}
                         </button>
                     </div>
                 </aside>
@@ -438,8 +469,10 @@ export default function SmartQuoter() {
                             <div className="w-20 h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6">
                                 <Calculator className="w-9 h-9 text-[#999999]" />
                             </div>
-                            <h3 className="text-2xl font-medium text-[#1A1A1A]">Esperando Datos</h3>
-                            <p className="text-[#666666] mt-2 max-w-sm text-sm">Vincula un cliente y proyecto, luego elabora el contexto para generar un análisis estratégico con presupuesto.</p>
+                            <h3 className="text-2xl font-medium text-[#1A1A1A]">Listo para Cotizar</h3>
+                            <p className="text-[#666666] mt-2 max-w-sm text-sm">
+                                {analysisData ? "El análisis estratégico ha sido cargado. Haz clic en 'Generar Presupuesto con IA' para continuar." : "Esperando que se transfiera un análisis desde AI Solution Architect."}
+                            </p>
                         </div>
                     )}
 
@@ -448,8 +481,8 @@ export default function SmartQuoter() {
                             <div className="w-20 h-20 bg-[#222222] rounded-2xl flex items-center justify-center mb-6 shadow-lg">
                                 <Loader2 className="w-9 h-9 text-[#FFD166] animate-spin" />
                             </div>
-                            <h3 className="text-xl font-medium text-[#1A1A1A]">Analizando contexto...</h3>
-                            <p className="text-[#666666] mt-2 text-sm">Investigando mercado y dimensionando ROI</p>
+                            <h3 className="text-xl font-medium text-[#1A1A1A]">Generando presupuesto...</h3>
+                            <p className="text-[#666666] mt-2 text-sm">Estructurando módulos y estimando ROI en base al análisis previo</p>
                         </div>
                     )}
 

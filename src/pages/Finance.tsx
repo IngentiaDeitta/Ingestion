@@ -94,94 +94,57 @@ export default function Finance() {
   const [partnerBalances, setPartnerBalances] = useState<any[]>([]);
   const [expensesByTag, setExpensesByTag] = useState<any[]>([]);
 
-  const [hoursChartData, setHoursChartData] = useState<any[]>([]);
-
-  useEffect(() => { fetchData(); }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      const [finResponse, projectsResponse, tasksResponse] = await Promise.all([
-        supabase.from('finances').select('*').order('date', { ascending: false }),
-        supabase.from('projects').select('id, name, outcome'),
-        supabase.from('tasks').select('id, project, hours, actual_hours, status, created_at')
+      const [finResponse] = await Promise.all([
+        supabase.from('finances').select('*').order('date', { ascending: false })
       ]);
 
       if (finResponse.error) throw finResponse.error;
       const trans = (finResponse.data || []).map((t: any) => ({ ...t, currency: t.currency ?? 'USD' }));
       setTransactions(trans);
 
-      const projs = projectsResponse.data || [];
-      const tasks = tasksResponse.data || [];
-
-      // Process Hours Distribution Data
-      const now = new Date();
-      const hData = [];
-      const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
-      // Generate last 12 months including current
-      for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const m = d.getMonth();
-        const y = d.getFullYear();
-        
-        let facturables = 0;
-        let noFacturables = 0;
-        
-        tasks.forEach((t: any) => {
-          const td = new Date(t.created_at);
-          if (td.getMonth() === m && td.getFullYear() === y) {
-            const project = projs.find(p => p.name?.trim().toLowerCase() === t.project?.trim().toLowerCase());
-            const isBillable = project?.outcome === 'Ganado';
-            
-            // Logic similar to Dashboard: use actual_hours if done, otherwise hours
-            const h = t.status === 'done' 
-              ? (Number(t.actual_hours) || Number(t.hours) || 0) 
-              : (Number(t.hours) || 0);
-              
-            if (isBillable) facturables += h; else noFacturables += h;
-          }
-        });
-        
-        hData.push({ name: months[m], facturables, noFacturables });
-      }
-      setHoursChartData(hData);
-
       // Process Partner Balances
-      const [partnersRes, partTransRes] = await Promise.all([
-        supabase.from('partners').select('*'),
-        supabase.from('partner_transactions').select('*')
-      ]);
+      const partnersList = [
+        { id: '1', name: 'Pedro' },
+        { id: '2', name: 'Fernando' }
+      ];
 
-      if (partnersRes.data && partTransRes.data) {
-        const balances = partnersRes.data.map(p => {
-          const pt = partTransRes.data.filter(t => t.partner_id === p.id);
-          const contributions = pt.filter(t => t.type === 'contribution').reduce((a, t) => a + Number(t.amount), 0);
-          const withdrawals = pt.filter(t => t.type === 'withdrawal').reduce((a, t) => a + Number(t.amount), 0);
-          
-          // Gastos pagados por el socio (fund_source)
-          const expensesPaid = trans
-            .filter(t => t.type === 'expense' && t.fund_source?.trim().toLowerCase() === p.name?.trim().toLowerCase())
-            .reduce((a, t) => {
-              const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
-              // Partner balances are usually in USD in this app, let's convert to USD if needed
-              // or keep in ARS? The current code seems to assume USD for partner balances?
-              // Looking at pb.balance >= 0 ? ... : ... "USD" (line 353).
-              const amt = parseFloat(t.amount as any);
-              return a + (t.currency === 'USD' ? amt : (amt * rate / EXCHANGE_RATES.USD));
-            }, 0);
+      const balances = partnersList.map(p => {
+        // Contributions
+        const contributions = trans
+          .filter(t => t.type === 'income' && t.tag === 'contribution' && t.fund_source?.trim().toLowerCase() === p.name.toLowerCase())
+          .reduce((a, t) => {
+            const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
+            const amt = parseFloat(t.amount as any);
+            return a + (t.currency === 'USD' ? amt : (amt * rate / EXCHANGE_RATES.USD));
+          }, 0);
 
-          return {
-            ...p,
-            contributions,
-            withdrawals,
-            expensesPaid,
-            balance: (contributions + expensesPaid) - withdrawals
-          };
-        });
-        setPartnerBalances(balances);
-      }
+        // Withdrawals
+        const withdrawals = trans
+          .filter(t => t.type === 'withdrawal' && t.fund_source?.trim().toLowerCase() === p.name.toLowerCase())
+          .reduce((a, t) => {
+            const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
+            const amt = parseFloat(t.amount as any);
+            return a + (t.currency === 'USD' ? amt : (amt * rate / EXCHANGE_RATES.USD));
+          }, 0);
+
+        // Gastos pagados
+        const expensesPaid = trans
+          .filter(t => t.type === 'expense' && t.fund_source?.trim().toLowerCase() === p.name.toLowerCase())
+          .reduce((a, t) => {
+            const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
+            const amt = parseFloat(t.amount as any);
+            return a + (t.currency === 'USD' ? amt : (amt * rate / EXCHANGE_RATES.USD));
+          }, 0);
+
+        return {
+          ...p,
+          contributions,
+          withdrawals,
+          expensesPaid,
+          balance: (contributions + expensesPaid) - withdrawals
+        };
+      });
+      setPartnerBalances(balances);
 
       // Process Expenses by Tag for Doughnut Chart
       const tagTotals: Record<string, number> = {};
@@ -317,7 +280,7 @@ export default function Finance() {
       </div>
 
       {/* ── Analytics Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
           <div className="flex justify-between items-center mb-6">
             <h4 className="text-xl font-medium text-[#1A1A1A]">Facturación vs Costes</h4>
@@ -374,25 +337,6 @@ export default function Finance() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h4 className="text-xl font-medium text-[#1A1A1A]">Horas Mensuales</h4>
-            <Clock size={20} className="text-[#666]" />
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hoursChartData}>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#999', fontSize: 11 }} />
-                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none' }} formatter={(v: any) => [`${v}h`, '']} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px' }} />
-                <Bar name="Facturables" dataKey="facturables" stackId="a" fill="#1A1A1A" />
-                <Bar name="No Facturables" dataKey="noFacturables" stackId="a" fill="#FFD166" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
           </div>
         </div>
       </div>
