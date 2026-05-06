@@ -94,6 +94,12 @@ export default function Finance() {
   const [partnerBalances, setPartnerBalances] = useState<any[]>([]);
   const [expensesByTag, setExpensesByTag] = useState<any[]>([]);
 
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
       const [finResponse] = await Promise.all([
         supabase.from('finances').select('*').order('date', { ascending: false })
       ]);
