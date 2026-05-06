@@ -10,9 +10,11 @@ const TRANSACTION_TAGS = [
   { value: 'travel',      label: 'Viáticos' },
   { value: 'software',    label: 'Licencias/Software' },
   { value: 'capital',     label: 'Ajuste de Capital / Inversión' },
+  { value: 'contribution', label: 'Aporte de Capital' },
   { value: 'other',       label: 'Otros' },
 ];
 
+// Fund sources are now partially handled by partners for specific tags
 const FUND_SOURCES = [
   { value: 'Pedro',    label: 'Pedro' },
   { value: 'Fernando', label: 'Fernando' },
@@ -30,11 +32,17 @@ export default function NewInvoice() {
   const { id } = useParams();
   const isEditing = !!id;
 
-  const [type, setType] = useState<'income' | 'expense'>('income');
+  const [type, setType] = useState<'income' | 'expense' | 'withdrawal'>('income');
   const [items, setItems] = useState([{ id: 1, description: '', quantity: 1, price: 0 }]);
   const [clients, setClients] = useState<{id: string, name: string}[]>([]);
   const [projects, setProjects] = useState<{id: string, name: string}[]>([]);
+  const [partners, setPartners] = useState<{id: string, name: string}[]>([]);
   const [isIngentia, setIsIngentia] = useState(false);
+  
+  // Partner assignment states
+  const [distributionMode, setDistributionMode] = useState<'equal' | 'manual'>('equal');
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
+  const [manualAmounts, setManualAmounts] = useState<Record<string, number>>({});
 
   const [formData, setFormData] = useState({
     clientId: '',
@@ -48,7 +56,7 @@ export default function NewInvoice() {
   });
 
   useEffect(() => { 
-    fetchClientsAndProjects(); 
+    fetchClientsProjectsAndPartners(); 
     if (isEditing) fetchTransactionToEdit();
   }, [id]);
 
@@ -83,11 +91,13 @@ export default function NewInvoice() {
     if (!data.client_id && !data.project_id && data.type === 'expense') setIsIngentia(true);
   };
 
-  const fetchClientsAndProjects = async () => {
+  const fetchClientsProjectsAndPartners = async () => {
     const { data: cData } = await supabase.from('clients').select('id, name').order('name');
     setClients(cData || []);
     const { data: pData } = await supabase.from('projects').select('id, name').order('name');
     setProjects(pData || []);
+    const { data: partData } = await supabase.from('partners').select('id, name').order('name');
+    setPartners(partData || []);
   };
 
   const handleAddItem = () => {
@@ -125,15 +135,34 @@ export default function NewInvoice() {
         items: items, // Persist structured items
       };
 
-      const { error } = isEditing 
-        ? await supabase.from('finances').update(payload).eq('id', id)
-        : await supabase.from('finances').insert([payload]);
+      const { data: insertedData, error } = isEditing 
+        ? await supabase.from('finances').update(payload).eq('id', id).select()
+        : await supabase.from('finances').insert([payload]).select();
       
       if (error) throw error;
 
+      const financeId = insertedData?.[0]?.id;
+
+      if (financeId && (type === 'withdrawal' || formData.tag === 'contribution')) {
+        // Delete existing assignments if editing
+        if (isEditing) {
+          await supabase.from('partner_transactions').delete().eq('finance_id', financeId);
+        }
+
+        const assignments = selectedPartners.map(pId => ({
+          finance_id: financeId,
+          partner_id: pId,
+          amount: distributionMode === 'equal' ? total / selectedPartners.length : (manualAmounts[pId] || 0),
+          type: type === 'withdrawal' ? 'withdrawal' : 'contribution'
+        }));
+
+        const { error: partErr } = await supabase.from('partner_transactions').insert(assignments);
+        if (partErr) console.error('Error saving partner assignments:', partErr);
+      }
+
       await sendNotification(
-        isEditing ? 'Transacción Actualizada' : (type === 'income' ? 'Nueva Factura Generada' : 'Nuevo Gasto Registrado'),
-        `Se ha ${isEditing ? 'modificado' : 'registrado'} un monto de ${currencySymbol}${total.toLocaleString()} (${type === 'income' ? 'Ingreso' : 'Egreso'}).`,
+        isEditing ? 'Transacción Actualizada' : (type === 'income' ? 'Nueva Factura Generada' : (type === 'expense' ? 'Nuevo Gasto Registrado' : 'Retiro de Capital')),
+        `Se ha ${isEditing ? 'modificado' : 'registrado'} un monto de ${currencySymbol}${total.toLocaleString()} (${type === 'income' ? 'Ingreso' : (type === 'expense' ? 'Gasto' : 'Retiro')}).`,
         'invoice'
       );
 
@@ -160,7 +189,7 @@ export default function NewInvoice() {
 
         {/* Type toggle */}
         {!isEditing && (
-          <div className="flex bg-white/50 p-1 rounded-2xl border border-black/5">
+          <div className="flex bg-white/50 p-1 rounded-2xl border border-black/5 shadow-inner">
             <button
               type="button"
               onClick={() => { setType('income'); setIsIngentia(false); }}
@@ -170,10 +199,17 @@ export default function NewInvoice() {
             </button>
             <button
               type="button"
-              onClick={() => setType('expense')}
+              onClick={() => { setType('expense'); setIsIngentia(false); }}
               className={`px-6 py-2 rounded-xl text-sm font-medium transition-all ${type === 'expense' ? 'bg-[#222222] text-white shadow-lg' : 'text-[#666666] hover:bg-black/5'}`}
             >
               Gasto
+            </button>
+            <button
+              type="button"
+              onClick={() => { setType('withdrawal'); setIsIngentia(false); }}
+              className={`px-6 py-2 rounded-xl text-sm font-medium transition-all ${type === 'withdrawal' ? 'bg-[#FFD166] text-black shadow-lg' : 'text-[#666666] hover:bg-black/5'}`}
+            >
+              Retiro
             </button>
           </div>
         )}
@@ -196,37 +232,41 @@ export default function NewInvoice() {
             </select>
           </div>
 
-          {/* Tag — solo gastos */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2">
-              <Tag size={14} /> Categoría
-            </label>
-            <select
-              value={formData.tag}
-              onChange={e => setFormData({ ...formData, tag: e.target.value })}
-              className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none appearance-none"
-            >
-              <option value="">{type === 'income' ? 'Ventas / Servicios (Default)' : 'Sin categoría...'}</option>
-              {TRANSACTION_TAGS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
+          {/* Tag — solo gastos e ingresos */}
+          {type !== 'withdrawal' && (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#1A1A1A] flex items-center gap-2">
+                <Tag size={14} /> Categoría
+              </label>
+              <select
+                value={formData.tag}
+                onChange={e => setFormData({ ...formData, tag: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none appearance-none"
+              >
+                <option value="">{type === 'income' ? 'Ventas / Servicios (Default)' : 'Sin categoría...'}</option>
+                {TRANSACTION_TAGS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Reference */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-[#1A1A1A]">Referencia / Nro Comprobante</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <FileText size={18} className="text-[#666666]" />
+          {type !== 'withdrawal' && (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#1A1A1A]">Referencia / Nro Comprobante</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FileText size={18} className="text-[#666666]" />
+                </div>
+                <input
+                  required
+                  type="text"
+                  value={formData.invNumber}
+                  onChange={e => setFormData({ ...formData, invNumber: e.target.value })}
+                  className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 outline-none"
+                />
               </div>
-              <input
-                required
-                type="text"
-                value={formData.invNumber}
-                onChange={e => setFormData({ ...formData, invNumber: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 outline-none"
-              />
             </div>
-          </div>
+          )}
 
           {/* Fecha */}
           <div className="flex flex-col gap-2">
@@ -314,6 +354,101 @@ export default function NewInvoice() {
           </div>
         )}
 
+        {/* ── Sección: Asignación a Socios (Solo si es Retiro o Aporte) ── */}
+        {(type === 'withdrawal' || formData.tag === 'contribution') && (
+          <div className="flex flex-col gap-6 pt-6 border-t border-black/5 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-lg font-medium text-[#1A1A1A]">Asignación a Socios</h4>
+                <p className="text-sm text-[#666666]">Distribuye el monto total entre los socios involucrados.</p>
+              </div>
+              <div className="flex bg-black/5 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setDistributionMode('equal')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${distributionMode === 'equal' ? 'bg-white text-black shadow-sm' : 'text-[#666666] hover:text-black'}`}
+                >
+                  Equitativo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDistributionMode('manual')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${distributionMode === 'manual' ? 'bg-white text-black shadow-sm' : 'text-[#666666] hover:text-black'}`}
+                >
+                  Manual
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {partners.map(partner => {
+                const isSelected = selectedPartners.includes(partner.id);
+                const equalAmount = isSelected ? (total / selectedPartners.length) : 0;
+                const currentAmount = distributionMode === 'equal' ? equalAmount : (manualAmounts[partner.id] || 0);
+
+                return (
+                  <div
+                    key={partner.id}
+                    onClick={() => {
+                      if (selectedPartners.includes(partner.id)) {
+                        setSelectedPartners(selectedPartners.filter(pid => pid !== partner.id));
+                      } else {
+                        setSelectedPartners([...selectedPartners, partner.id]);
+                      }
+                    }}
+                    className={`cursor-pointer group relative p-4 rounded-2xl border transition-all ${
+                      isSelected
+                        ? 'bg-[#222222] border-[#222222] text-white shadow-lg'
+                        : 'bg-white/40 border-black/10 hover:border-black/20 text-[#1A1A1A]'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-bold uppercase tracking-tight">{partner.name}</span>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
+                        isSelected ? 'bg-[#FFD166] border-[#FFD166]' : 'border-black/10'
+                      }`}>
+                        {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
+                      </div>
+                    </div>
+                    
+                    {isSelected ? (
+                      <div className="mt-4 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <label className="text-[10px] font-bold text-white/50 uppercase mb-1 block">Monto a asignar ({formData.currency})</label>
+                        {distributionMode === 'equal' ? (
+                          <div className="text-xl font-light text-[#FFD166]">
+                            {currencySymbol}{currentAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </div>
+                        ) : (
+                          <input
+                            type="number"
+                            value={manualAmounts[partner.id] || ''}
+                            onChange={e => setManualAmounts({ ...manualAmounts, [partner.id]: parseFloat(e.target.value) || 0 })}
+                            placeholder="0.00"
+                            className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white outline-none focus:border-[#FFD166] transition-colors"
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[#999] mt-2 group-hover:text-[#666]">Click para incluir</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {distributionMode === 'manual' && selectedPartners.length > 0 && (
+              <div className={`p-4 rounded-2xl border text-sm font-medium flex justify-between items-center ${
+                Math.abs(Object.values(manualAmounts).reduce((a, b) => a + b, 0) - total) < 0.01
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                <span>Total asignado: {currencySymbol}{Object.values(manualAmounts).reduce((a, b) => a + b, 0).toLocaleString()}</span>
+                <span>Restante: {currencySymbol}{(total - Object.values(manualAmounts).reduce((a, b) => a + b, 0)).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Sección: Origen del ingreso (cliente/proyecto para ingresos) ── */}
         {type === 'income' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-black/5">
@@ -351,9 +486,9 @@ export default function NewInvoice() {
           {/* Column headers */}
           <div className="grid grid-cols-12 gap-4 px-2">
             <div className="col-span-6 text-xs font-medium text-[#999] uppercase tracking-widest">Descripción</div>
-            <div className="col-span-2 text-xs font-medium text-[#999] uppercase tracking-widest text-center">Cant.</div>
-            <div className="col-span-2 text-xs font-medium text-[#999] uppercase tracking-widest text-right">Precio ({currencySymbol})</div>
-            <div className="col-span-2 text-xs font-medium text-[#999] uppercase tracking-widest text-right">Total</div>
+            {type !== 'withdrawal' && <div className="col-span-2 text-xs font-medium text-[#999] uppercase tracking-widest text-center">Cant.</div>}
+            <div className={`${type === 'withdrawal' ? 'col-span-4' : 'col-span-2'} text-xs font-medium text-[#999] uppercase tracking-widest text-right`}>Importe ({currencySymbol})</div>
+            {type !== 'withdrawal' && <div className="col-span-2 text-xs font-medium text-[#999] uppercase tracking-widest text-right">Total</div>}
           </div>
 
           <div className="flex flex-col gap-3">
@@ -369,36 +504,46 @@ export default function NewInvoice() {
                     required
                   />
                 </div>
-                <div className="col-span-2">
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                    className="w-full h-10 rounded-xl border border-black/10 bg-white/80 text-[#1A1A1A] px-3 outline-none text-sm text-center"
-                    required
-                    min="0"
-                    step="any"
-                  />
-                </div>
-                <div className="col-span-2">
+                {type !== 'withdrawal' && (
+                  <div className="col-span-2">
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                      className="w-full h-10 rounded-xl border border-black/10 bg-white/80 text-[#1A1A1A] px-3 outline-none text-sm text-center"
+                      required
+                      min="0"
+                      step="any"
+                    />
+                  </div>
+                )}
+                <div className={type === 'withdrawal' ? 'col-span-4' : 'col-span-2'}>
                   <input
                     type="number"
                     value={item.price}
                     onChange={e => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
-                    className="w-full h-10 rounded-xl border border-black/10 bg-white/80 text-[#1A1A1A] px-3 outline-none text-sm text-right"
+                    className="w-full h-10 rounded-xl border border-black/10 bg-white/80 text-[#1A1A1A] px-3 outline-none text-sm text-right font-medium"
                     required
                     min="0"
                     step="any"
                   />
                 </div>
-                <div className="col-span-2 flex items-center justify-end gap-2 pr-2">
-                  <span className="text-sm font-medium text-[#1A1A1A] w-full text-right">
-                    {currencySymbol}{(item.quantity * item.price).toFixed(2)}
-                  </span>
-                  <button type="button" onClick={() => handleRemoveItem(item.id)} className="text-[#666666] hover:text-red-500 transition-colors p-1">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                {type !== 'withdrawal' ? (
+                  <div className="col-span-2 flex items-center justify-end gap-2 pr-2">
+                    <span className="text-sm font-medium text-[#1A1A1A] w-full text-right">
+                      {currencySymbol}{(item.quantity * item.price).toFixed(2)}
+                    </span>
+                    <button type="button" onClick={() => handleRemoveItem(item.id)} className="text-[#666666] hover:text-red-500 transition-colors p-1">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="col-span-2 flex items-center justify-end pr-2">
+                    <button type="button" onClick={() => handleRemoveItem(item.id)} className="text-[#666666] hover:text-red-500 transition-colors p-1">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

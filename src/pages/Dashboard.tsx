@@ -69,7 +69,7 @@ export default function Dashboard() {
       ]);
 
       const atRiskCount = projectsData?.filter(p => p.status === 'En Riesgo').length ?? 0;
-      const totalProjects = projectsData?.length ?? 0;
+      const totalProjects = projectsData?.filter(p => !['Completado', 'Finalizado', 'Perdido', 'Cancelado'].includes(p.status)).length ?? 0;
       const totalBudget = projectsData?.reduce((a, p) => a + (p.budget || 0), 0) ?? 0;
       const health = totalProjects > 0 ? Math.round(((totalProjects - atRiskCount) / totalProjects) * 100) : 100;
 

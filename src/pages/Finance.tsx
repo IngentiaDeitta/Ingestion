@@ -20,7 +20,7 @@ interface Transaction {
   date: string;
   description: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'withdrawal';
   status: string;
   currency: string;
   tag?: string;
@@ -43,6 +43,7 @@ const TRANSACTION_TAGS = [
   { value: 'travel', label: 'Viáticos', color: 'bg-orange-100 text-orange-800' },
   { value: 'software', label: 'Licencias', color: 'bg-cyan-100 text-cyan-800' },
   { value: 'capital', label: 'Ajuste de Capital / Inversión', color: 'bg-emerald-100 text-emerald-800' },
+  { value: 'contribution', label: 'Aporte de Capital', color: 'bg-indigo-100 text-indigo-800' },
   { value: 'other', label: 'Otros', color: 'bg-gray-100 text-gray-600' },
 ];
 
@@ -71,7 +72,7 @@ function buildMonthlyChartData(transactions: Transaction[]) {
       if (td.getMonth() === m && td.getFullYear() === y) {
         const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
         const amt = parseFloat(t.amount as any) * rate;
-        if (t.type === 'income') ingresos += amt; else gastos += amt;
+        if (t.type === 'income') ingresos += amt; else gastos += amt; // Withdrawal counts as expense for monthly balance
       }
     });
     data.push({ name: MONTHS[m], ingresos, gastos });
@@ -90,6 +91,7 @@ export default function Finance() {
   const [filterTag, setFilterTag] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [partnerBalances, setPartnerBalances] = useState<any[]>([]);
 
   const [hoursChartData, setHoursChartData] = useState<any[]>([]);
 
@@ -145,6 +147,27 @@ export default function Finance() {
       }
       setHoursChartData(hData);
 
+      // Process Partner Balances
+      const [partnersRes, partTransRes] = await Promise.all([
+        supabase.from('partners').select('*'),
+        supabase.from('partner_transactions').select('*')
+      ]);
+
+      if (partnersRes.data && partTransRes.data) {
+        const balances = partnersRes.data.map(p => {
+          const trans = partTransRes.data.filter(t => t.partner_id === p.id);
+          const contributions = trans.filter(t => t.type === 'contribution').reduce((a, t) => a + Number(t.amount), 0);
+          const withdrawals = trans.filter(t => t.type === 'withdrawal').reduce((a, t) => a + Number(t.amount), 0);
+          return {
+            ...p,
+            contributions,
+            withdrawals,
+            balance: contributions - withdrawals
+          };
+        });
+        setPartnerBalances(balances);
+      }
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -174,7 +197,7 @@ export default function Finance() {
 
   const currencyBalances = CURRENCIES.map(c => {
     const inc = transactions.filter(t => t.type === 'income' && t.currency === c.code).reduce((a, t) => a + parseFloat(t.amount as any), 0);
-    const exp = transactions.filter(t => t.type === 'expense' && t.currency === c.code).reduce((a, t) => a + parseFloat(t.amount as any), 0);
+    const exp = transactions.filter(t => (t.type === 'expense' || t.type === 'withdrawal') && t.currency === c.code).reduce((a, t) => a + parseFloat(t.amount as any), 0);
     return { ...c, income: inc, expenses: exp, net: inc - exp };
   });
 
@@ -286,6 +309,64 @@ export default function Finance() {
         </div>
       </div>
 
+      {/* ── Partner Balances ── */}
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-2xl font-medium text-[#1A1A1A]">Cuenta Corriente Socios</h4>
+            <p className="text-[#666666]">Saldos acumulados por aportes y dividendos.</p>
+          </div>
+          <div className="p-3 bg-white/50 rounded-2xl border border-black/5 shadow-sm">
+            <Zap size={20} className="text-[#FFD166]" />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {partnerBalances.map(pb => (
+            <div key={pb.id} className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-6 transition-transform hover:scale-[1.02]">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-bold text-[#1A1A1A] uppercase tracking-tight">{pb.name}</span>
+                <div className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${pb.balance >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {pb.balance >= 0 ? 'Saldo a favor' : 'Excedente retiros'}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Aportes</span>
+                  <span className="text-xl font-medium text-[#1A1A1A]">${pb.contributions.toLocaleString()}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Retiros</span>
+                  <span className="text-xl font-medium text-red-500">${pb.withdrawals.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-black/5 flex flex-col gap-2">
+                <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Saldo Neto Disponible</span>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-4xl font-light ${pb.balance >= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
+                    ${pb.balance.toLocaleString()}
+                  </span>
+                  <span className="text-sm font-medium text-[#999]">USD</span>
+                </div>
+                <p className="text-xs text-[#666] italic mt-1">
+                  {pb.balance >= 0 
+                    ? `Socio puede retirar ${pb.balance.toLocaleString()} USD adicionales.` 
+                    : `Socio debe ${Math.abs(pb.balance).toLocaleString()} USD por retiros en exceso.`}
+                </p>
+              </div>
+            </div>
+          ))}
+          {partnerBalances.length === 0 && (
+            <div className="col-span-full py-12 text-center bg-black/[0.02] rounded-[32px] border border-dashed border-black/10">
+              <p className="text-[#999] text-sm font-medium">No se encontraron registros de socios o transacciones asignadas.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+
       {/* ── Transactions Table ── */}
       <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm min-h-[500px]">
         <div className="p-8 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
@@ -302,7 +383,7 @@ export default function Finance() {
         {showFilters && (
           <div className="px-8 py-6 border-b border-black/5 flex flex-wrap gap-6 bg-black/[0.02]">
             {[
-              { label: 'Tipo', value: filterType, setter: setFilterType, options: [['all', 'Todos'], ['income', 'Ingresos'], ['expense', 'Gastos']] },
+              { label: 'Tipo', value: filterType, setter: setFilterType, options: [['all', 'Todos'], ['income', 'Ingresos'], ['expense', 'Gastos'], ['withdrawal', 'Retiros']] },
               { label: 'Moneda', value: filterCurrency, setter: setFilterCurrency, options: [['all', 'Todas'], ['USD', 'USD'], ['ARS', 'ARS'], ['EUR', 'EUR']] },
               { label: 'Categoría', value: filterTag, setter: setFilterTag, options: [['all', 'Todas'], ...TRANSACTION_TAGS.map(t => [t.value, t.label])] },
             ].map(f => (
@@ -345,7 +426,9 @@ export default function Finance() {
                       <td className="px-8 py-5">
                         {tagInfo
                           ? <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${tagInfo.color}`}><Tag size={10} />{tagInfo.label}</span>
-                          : <span className="text-xs text-[#999] uppercase font-bold tracking-tighter opacity-50">{t.type === 'income' ? 'Ingreso' : 'Egreso'}</span>}
+                          : <span className="text-xs text-[#999] uppercase font-bold tracking-tighter opacity-50">
+                              {t.type === 'income' ? 'Ingreso' : (t.type === 'expense' ? 'Gasto' : 'Retiro')}
+                            </span>}
                       </td>
                       <td className="px-8 py-5">
                         <span className="text-xs font-medium text-[#666666]">{t.fund_source || '-'}</span>

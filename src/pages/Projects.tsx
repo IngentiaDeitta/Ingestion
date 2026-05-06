@@ -188,7 +188,8 @@ export default function Projects() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :
-                        project.status === 'Completado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
+                        project.status === 'Completado' || project.status === 'Finalizado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
+                        (project.status === 'Perdido' || project.status === 'Cancelado') ? 'bg-slate-500/10 text-slate-600 border-slate-500/20' :
                           'bg-red-500/10 text-red-700 border-red-500/20'
                         }`}>
                         {project.status}
@@ -246,7 +247,8 @@ export default function Projects() {
                 <Link to={`/projects/${project.id}`} className="block">
                   <div className="flex justify-between items-start mb-4">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :
-                      project.status === 'Completado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
+                      project.status === 'Completado' || project.status === 'Finalizado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
+                      (project.status === 'Perdido' || project.status === 'Cancelado') ? 'bg-slate-500/10 text-slate-600 border-slate-500/20' :
                         'bg-red-500/10 text-red-700 border-red-500/20'
                       }`}>
                       {project.status}
