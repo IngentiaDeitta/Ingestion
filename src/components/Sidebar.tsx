@@ -18,12 +18,12 @@ export default function Sidebar() {
 
   return (
     <aside className="w-[280px] bg-white border-r border-black/5 flex flex-col sticky top-0 h-screen z-50">
-      {/* Logo Section - Fixed at 58px as per branding requirements */}
+      {/* Logo Section - Increased to 84px to compensate for image whitespace and ensure visibility */}
       <div className="h-24 flex items-center justify-center px-8 border-b border-black/[0.02]">
         <img 
           src="/Recursos/Logo Blanco_T.png" 
           alt="Ingentia Management" 
-          className="h-[58px] w-auto object-contain"
+          className="h-[84px] w-auto object-contain"
         />
       </div>
 

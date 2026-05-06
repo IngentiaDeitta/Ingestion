@@ -1,5 +1,5 @@
 import { Search, Bell, Plus, ChevronDown, User, LogOut, Settings as SettingsIcon, MessageSquare, Trash2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -13,6 +13,70 @@ export default function Header() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{
+    projects: any[],
+    clients: any[],
+    finances: any[]
+  }>({ projects: [], clients: [], finances: [] });
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, []);
+
+  useEffect(() => {
+    const performSearch = async () => {
+      if (searchQuery.length < 2) {
+        setSearchResults({ projects: [], clients: [], finances: [] });
+        setIsSearchOpen(false);
+        return;
+      }
+
+      setIsSearching(true);
+      setIsSearchOpen(true);
+
+      try {
+        const [projects, clients, finances] = await Promise.all([
+          supabase.from('projects').select('id, name').ilike('name', `%${searchQuery}%`).limit(5),
+          supabase.from('clients').select('id, name').ilike('name', `%${searchQuery}%`).limit(5),
+          supabase.from('finances').select('id, description, amount, currency').ilike('description', `%${searchQuery}%`).limit(5)
+        ]);
+
+        setSearchResults({
+          projects: projects.data || [],
+          clients: clients.data || [],
+          finances: finances.data || []
+        });
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const timer = setTimeout(performSearch, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchNotifications();
@@ -124,15 +188,90 @@ export default function Header() {
   return (
     <header className="h-20 bg-white/60 backdrop-blur-xl border-b border-white/40 px-8 flex items-center justify-between sticky top-0 z-40">
       {/* Left Search */}
-      <div className="flex-1 max-w-md">
+      <div className="flex-1 max-w-md relative" ref={searchRef}>
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#999999] group-focus-within:text-[#1A1A1A] transition-colors" size={18} />
+          <Search className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isSearchOpen ? 'text-[#1A1A1A]' : 'text-[#999999]'}`} size={18} />
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => searchQuery.length >= 2 && setIsSearchOpen(true)}
             placeholder="Buscar proyectos, clientes, facturas..." 
             className="w-full h-11 bg-white/40 border border-white/60 rounded-full pl-12 pr-4 outline-none focus:ring-2 focus:ring-[#FFD166]/50 focus:border-[#FFD166]/50 transition-all font-medium text-sm text-[#1A1A1A] placeholder:text-[#999999]"
           />
+          {isSearching && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <div className="w-4 h-4 border-2 border-[#FFD166] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
         </div>
+
+        {/* Search Results Dropdown */}
+        {isSearchOpen && (searchQuery.length >= 2) && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-2xl border border-black/5 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+            <div className="max-h-[480px] overflow-y-auto custom-scrollbar p-2">
+              {searchResults.projects.length === 0 && searchResults.clients.length === 0 && searchResults.finances.length === 0 && !isSearching ? (
+                <div className="p-8 text-center text-sm text-[#999999] italic">No se encontraron resultados para "{searchQuery}"</div>
+              ) : (
+                <>
+                  {searchResults.projects.length > 0 && (
+                    <div className="mb-2">
+                      <p className="px-4 py-2 text-[10px] font-bold text-[#999999] uppercase tracking-widest">Proyectos</p>
+                      {searchResults.projects.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => { navigate('/projects'); setIsSearchOpen(false); setSearchQuery(''); }}
+                          className="flex items-center gap-3 w-full p-3 rounded-2xl hover:bg-black/5 text-sm text-[#1A1A1A] transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">P</div>
+                          <span className="font-medium truncate">{p.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.clients.length > 0 && (
+                    <div className="mb-2">
+                      <p className="px-4 py-2 text-[10px] font-bold text-[#999999] uppercase tracking-widest">Clientes</p>
+                      {searchResults.clients.map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => { navigate('/clients'); setIsSearchOpen(false); setSearchQuery(''); }}
+                          className="flex items-center gap-3 w-full p-3 rounded-2xl hover:bg-black/5 text-sm text-[#1A1A1A] transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">C</div>
+                          <span className="font-medium truncate">{c.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.finances.length > 0 && (
+                    <div>
+                      <p className="px-4 py-2 text-[10px] font-bold text-[#999999] uppercase tracking-widest">Finanzas</p>
+                      {searchResults.finances.map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => { navigate('/finance'); setIsSearchOpen(false); setSearchQuery(''); }}
+                          className="flex items-center gap-3 w-full p-3 rounded-2xl hover:bg-black/5 text-sm text-[#1A1A1A] transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">F</div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium truncate">{f.description}</span>
+                            <span className="text-[10px] text-[#666666]">{f.currency} {f.amount}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="p-3 bg-black/5 border-t border-black/5 text-center">
+              <p className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">Presiona Esc para cerrar</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Actions */}
