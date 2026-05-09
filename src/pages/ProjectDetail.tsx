@@ -124,7 +124,36 @@ export default function ProjectDetail() {
           .select('*')
           .eq('project', projectData.name)
           .order('created_at', { ascending: false });
-        setProjectTasks(tasksData || []);
+        
+        const tasks = tasksData || [];
+        setProjectTasks(tasks);
+
+        // Auto-calculate progress based on tasks
+        if (tasks.length > 0) {
+          let totalProgress = 0;
+          tasks.forEach(task => {
+            if (task.status === 'done') {
+              totalProgress += 100;
+            } else {
+              const estimated = Number(task.hours) || 0;
+              const actual = Number(task.actual_hours) || 0;
+              if (estimated > 0) {
+                const taskProgress = Math.min(100, (actual / estimated) * 100);
+                totalProgress += taskProgress;
+              }
+            }
+          });
+          const calculatedProgress = Math.round(totalProgress / tasks.length);
+          
+          // Update state and DB if different
+          if (calculatedProgress !== projectData.progress) {
+            setProject(prev => prev ? { ...prev, progress: calculatedProgress } : null);
+            await supabase.from('projects').update({ progress: calculatedProgress }).eq('id', id);
+          }
+        } else if (projectData.progress !== 0) {
+          setProject(prev => prev ? { ...prev, progress: 0 } : null);
+          await supabase.from('projects').update({ progress: 0 }).eq('id', id);
+        }
       }
 
     } catch (error) {
@@ -279,14 +308,14 @@ export default function ProjectDetail() {
 
   return (
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link to="/projects" className="p-3 bg-white/50 hover:bg-white/80 rounded-full transition-colors border border-black/5 shadow-sm">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <Link to="/projects" className="p-3 bg-white/50 hover:bg-white/80 rounded-full transition-colors border border-black/5 shadow-sm shrink-0">
             <ArrowLeft size={20} className="text-[#1A1A1A]" />
           </Link>
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">{project.name}</h3>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-3 mb-1">
+              <h3 className="text-3xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A] break-words">{project.name}</h3>
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                 project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :
                 project.status === 'Completado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
@@ -305,7 +334,7 @@ export default function ProjectDetail() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           <button 
             onClick={() => setIsAnalystModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-[#FFD166] hover:bg-[#FFC033] text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-sm"
@@ -505,7 +534,7 @@ export default function ProjectDetail() {
                                 </div>
 
                                 {isExpanded && (
-                                  <div className="px-10 pb-6 pt-2 border-t border-black/5 animate-in slide-in-from-top-2 duration-300">
+                                  <div className="px-4 md:px-10 pb-6 pt-2 border-t border-black/5 animate-in slide-in-from-top-2 duration-300">
                                     <div className="flex flex-col gap-4">
                                       {task.description ? (
                                         <div className="bg-black/5 p-4 rounded-2xl">

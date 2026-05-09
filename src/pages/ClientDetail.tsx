@@ -464,13 +464,13 @@ export default function ClientDetail() {
 
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-5">
-          <Link to="/clients" className="p-3 bg-white/60 hover:bg-white rounded-2xl transition-all duration-300 border border-black/5 shadow-sm hover:shadow-md group backdrop-blur-md">
+        <div className="flex items-start md:items-center gap-5">
+          <Link to="/clients" className="p-3 bg-white/60 hover:bg-white rounded-2xl transition-all duration-300 border border-black/5 shadow-sm hover:shadow-md group backdrop-blur-md shrink-0">
             <ArrowLeft size={20} className="text-[#1A1A1A] group-hover:-translate-x-0.5 transition-transform" />
           </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h3 className="text-[42px] font-medium tracking-tight text-[#1A1A1A] leading-none">{client.name}</h3>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="text-3xl md:text-[42px] font-medium tracking-tight text-[#1A1A1A] leading-none break-words">{client.name}</h3>
               <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${client.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                 {client.status}
               </span>
@@ -478,7 +478,7 @@ export default function ClientDetail() {
             <p className="text-[#666666] mt-2 font-medium">Cliente desde {new Date(client.created_at).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <button 
             onClick={handleRunAgentAnalysis}
             disabled={isAgentRunning}

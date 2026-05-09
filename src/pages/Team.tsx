@@ -100,7 +100,7 @@ export default function Team() {
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1200px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Equipo</h3>
+          <h3 className="text-4xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A]">Equipo</h3>
           <p className="text-[#666666] mt-1">Gestiona los recursos y miembros de tu organización.</p>
         </div>
         <button 

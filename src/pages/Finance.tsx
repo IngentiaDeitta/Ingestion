@@ -234,7 +234,7 @@ export default function Finance() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Finanzas</h3>
+          <h3 className="text-4xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A]">Finanzas</h3>
           <p className="text-[#666666] mt-1">Gestión integral de ingresos, egresos y analíticas financieras.</p>
         </div>
         <div className="flex items-center gap-4">

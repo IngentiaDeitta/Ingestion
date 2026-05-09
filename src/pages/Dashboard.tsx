@@ -180,7 +180,7 @@ export default function Dashboard() {
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-6">
-        <h1 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">
+        <h1 className="text-4xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A]">
           Hola, {profile?.first_name || 'Usuario'}!
         </h1>
 
@@ -434,63 +434,67 @@ function DashboardCalendar({ tasks, teamMembers }: { tasks: any[], teamMembers: 
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-black/5 rounded-2xl border border-black/5 mb-2">
-        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
-          <div key={d} className="bg-white/50 py-3 text-center text-[10px] font-bold text-[#666666] uppercase tracking-wider">{d}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-px bg-black/5 rounded-2xl border border-black/5 overflow-hidden">
-        {calendarDays.map((date, i) => {
-          if (date === null) return <div key={`empty-${i}`} className="bg-white/30 min-h-[120px]" />;
-          
-          const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
-          const dayTasks = tasks.filter(t => {
-            if (!t.due_date || t.due_date === 'Sin fecha') return false;
-            
-            let normalized = t.due_date;
-            if (t.due_date.includes('/')) {
-              const [d, m, y] = t.due_date.split('/');
-              normalized = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-            }
-            return normalized.split('T')[0] === dayStr;
-          });
-          
-          return (
-            <div key={date} className="bg-white min-h-[120px] p-2 flex flex-col gap-1 border border-black/[0.02] hover:bg-black/[0.01] transition-colors relative">
-              <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${new Date().getDate() === date && new Date().getMonth() === month && new Date().getFullYear() === year ? 'bg-[#FFD166] text-[#222222] shadow-sm' : 'text-[#666666]'}`}>{date}</span>
-              <div className="flex flex-col gap-1 overflow-y-auto max-h-[100px] custom-scrollbar">
-                {dayTasks.map(t => {
-                  const statusColors: Record<string, string> = {
-                    'todo': 'bg-gray-400',
-                    'in-progress': 'bg-amber-500',
-                    'review': 'bg-purple-500',
-                    'done': 'bg-emerald-500'
-                  };
-                  const statusColor = statusColors[t.status as keyof typeof statusColors] || 'bg-gray-400';
+      <div className="overflow-x-auto custom-scrollbar pb-4">
+        <div className="min-w-[700px]">
+          <div className="grid grid-cols-7 gap-px bg-black/5 rounded-2xl border border-black/5 mb-2">
+            {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
+              <div key={d} className="bg-white/50 py-3 text-center text-[10px] font-bold text-[#666666] uppercase tracking-wider">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-px bg-black/5 rounded-2xl border border-black/5 overflow-hidden">
+            {calendarDays.map((date, i) => {
+              if (date === null) return <div key={`empty-${i}`} className="bg-white/30 min-h-[120px]" />;
+              
+              const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+              const dayTasks = tasks.filter(t => {
+                if (!t.due_date || t.due_date === 'Sin fecha') return false;
+                
+                let normalized = t.due_date;
+                if (t.due_date.includes('/')) {
+                  const [d, m, y] = t.due_date.split('/');
+                  normalized = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                }
+                return normalized.split('T')[0] === dayStr;
+              });
+              
+              return (
+                <div key={date} className="bg-white min-h-[120px] p-2 flex flex-col gap-1 border border-black/[0.02] hover:bg-black/[0.01] transition-colors relative">
+                  <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${new Date().getDate() === date && new Date().getMonth() === month && new Date().getFullYear() === year ? 'bg-[#FFD166] text-[#222222] shadow-sm' : 'text-[#666666]'}`}>{date}</span>
+                  <div className="flex flex-col gap-1 overflow-y-auto max-h-[100px] custom-scrollbar">
+                    {dayTasks.map(t => {
+                      const statusColors: Record<string, string> = {
+                        'todo': 'bg-gray-400',
+                        'in-progress': 'bg-amber-500',
+                        'review': 'bg-purple-500',
+                        'done': 'bg-emerald-500'
+                      };
+                      const statusColor = statusColors[t.status as keyof typeof statusColors] || 'bg-gray-400';
 
-                  return (
-                    <div key={t.id} className="text-[9px] p-1.5 rounded-lg border border-black/5 bg-white shadow-sm flex items-start gap-1.5 group hover:border-[#FFD166] transition-all">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${statusColor}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[#1A1A1A] truncate">{t.title}</p>
-                        <div className="flex -space-x-1 mt-1">
-                          {(t.assignees || []).slice(0, 2).map((name: string, idx: number) => {
-                            const member = teamMembers.find(m => m.name === name);
-                            return (
-                              <div key={idx} className="w-4 h-4 rounded-full border border-white flex items-center justify-center text-[6px] text-white" style={{ backgroundColor: member?.avatar_color || '#222222' }}>
-                                {name[0]}
-                              </div>
-                            );
-                          })}
+                      return (
+                        <div key={t.id} className="text-[9px] p-1.5 rounded-lg border border-black/5 bg-white shadow-sm flex items-start gap-1.5 group hover:border-[#FFD166] transition-all">
+                          <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${statusColor}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-[#1A1A1A] truncate">{t.title}</p>
+                            <div className="flex -space-x-1 mt-1">
+                              {(t.assignees || []).slice(0, 2).map((name: string, idx: number) => {
+                                const member = teamMembers.find(m => m.name === name);
+                                return (
+                                  <div key={idx} className="w-4 h-4 rounded-full border border-white flex items-center justify-center text-[6px] text-white" style={{ backgroundColor: member?.avatar_color || '#222222' }}>
+                                    {name[0]}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
