@@ -39,7 +39,8 @@ export default function NewProject() {
           due_date: formData.due_date ? formatDate(formData.due_date) : '',
           description: formData.description,
           progress: 0,
-          status: 'En Progreso'
+          status: 'Preventa',
+          outcome: 'Propuesta'
         }]);
 
       if (error) throw error;

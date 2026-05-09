@@ -290,6 +290,7 @@ export default function ProjectDetail() {
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                 project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :
                 project.status === 'Completado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
+                project.status === 'Preventa' ? 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20' :
                 'bg-red-500/10 text-red-700 border-red-500/20'
               }`}>
                 {project.status}
@@ -342,7 +343,7 @@ export default function ProjectDetail() {
               </div>
               <div className="w-full bg-black/5 rounded-full h-3">
                 <div 
-                  className={`h-3 rounded-full ${project.status === 'En Riesgo' ? 'bg-red-400' : project.status === 'Completado' ? 'bg-green-400' : 'bg-[#FFD166]'}`}
+                  className={`h-3 rounded-full ${project.status === 'En Riesgo' ? 'bg-red-400' : project.status === 'Completado' ? 'bg-green-400' : project.status === 'Preventa' ? 'bg-indigo-400' : 'bg-[#FFD166]'}`}
                   style={{ width: `${project.progress}%` }}
                 ></div>
               </div>

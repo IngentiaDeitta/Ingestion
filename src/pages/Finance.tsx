@@ -115,39 +115,40 @@ export default function Finance() {
       ];
 
       const balances = partnersList.map(p => {
-        // Contributions
-        const contributions = trans
-          .filter(t => t.type === 'income' && t.tag === 'contribution' && t.fund_source?.trim().toLowerCase() === p.name.toLowerCase())
+        // Encontrar transacciones del socio
+        const partnerTrans = trans.filter(t => t.fund_source?.trim().toLowerCase() === p.name.toLowerCase());
+
+        // Retiros en ARS
+        const withdrawalsARS = partnerTrans
+          .filter(t => t.type === 'withdrawal')
           .reduce((a, t) => {
             const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
-            const amt = parseFloat(t.amount as any);
-            return a + (t.currency === 'USD' ? amt : (amt * rate / EXCHANGE_RATES.USD));
+            return a + (parseFloat(t.amount as any) * rate);
           }, 0);
 
-        // Withdrawals
-        const withdrawals = trans
-          .filter(t => t.type === 'withdrawal' && t.fund_source?.trim().toLowerCase() === p.name.toLowerCase())
+        // Gastos pagados en ARS
+        const expensesPaidARS = partnerTrans
+          .filter(t => t.type === 'expense')
           .reduce((a, t) => {
             const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
-            const amt = parseFloat(t.amount as any);
-            return a + (t.currency === 'USD' ? amt : (amt * rate / EXCHANGE_RATES.USD));
+            return a + (parseFloat(t.amount as any) * rate);
           }, 0);
 
-        // Gastos pagados
-        const expensesPaid = trans
-          .filter(t => t.type === 'expense' && t.fund_source?.trim().toLowerCase() === p.name.toLowerCase())
+        // Aportes de capital (si se quieren mantener para contexto, pero el saldo neto sigue la fórmula del usuario)
+        const contributionsARS = partnerTrans
+          .filter(t => t.type === 'income' && t.tag === 'contribution')
           .reduce((a, t) => {
             const rate = EXCHANGE_RATES[t.currency as keyof typeof EXCHANGE_RATES] || 1;
-            const amt = parseFloat(t.amount as any);
-            return a + (t.currency === 'USD' ? amt : (amt * rate / EXCHANGE_RATES.USD));
+            return a + (parseFloat(t.amount as any) * rate);
           }, 0);
 
         return {
           ...p,
-          contributions,
-          withdrawals,
-          expensesPaid,
-          balance: (contributions + expensesPaid) - withdrawals
+          contributions: contributionsARS,
+          withdrawals: withdrawalsARS,
+          expensesPaid: expensesPaidARS,
+          // El usuario solicitó: Saldo = Total retiros - Total gastos
+          balance: withdrawalsARS - expensesPaidARS
         };
       });
       setPartnerBalances(balances);
@@ -383,15 +384,15 @@ export default function Finance() {
               <div className="pt-6 border-t border-black/5 flex flex-col gap-2">
                 <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Saldo Neto Disponible</span>
                 <div className="flex items-baseline gap-2">
-                  <span className={`text-4xl font-light ${pb.balance >= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
-                    ${pb.balance.toLocaleString()}
+                  <span className={`text-4xl font-light ${pb.balance <= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
+                    ${Math.abs(pb.balance).toLocaleString()}
                   </span>
-                  <span className="text-sm font-medium text-[#999]">USD</span>
+                  <span className="text-sm font-medium text-[#999]">ARS</span>
                 </div>
                 <p className="text-xs text-[#666] italic mt-1">
-                  {pb.balance >= 0 
-                    ? `Socio puede retirar ${pb.balance.toLocaleString()} USD adicionales.` 
-                    : `Socio debe ${Math.abs(pb.balance).toLocaleString()} USD por retiros en exceso.`}
+                  {pb.balance <= 0 
+                    ? `Socio tiene un saldo a favor de $${Math.abs(pb.balance).toLocaleString()} ARS por gastos no retirados.` 
+                    : `Socio ha retirado $${pb.balance.toLocaleString()} ARS por encima de sus gastos.`}
                 </p>
               </div>
             </div>

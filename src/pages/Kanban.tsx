@@ -1,4 +1,4 @@
-import { Plus, MoreHorizontal, Calendar, MessageSquare, Paperclip, X, Save, User, Tag, Check, Loader2, Trash2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Calendar, MessageSquare, Paperclip, X, Save, User, Tag, Check, Loader2, Trash2, Clock } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -60,6 +60,33 @@ export default function Kanban() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
 
   useEffect(() => { fetchTasks(); fetchTeam(); fetchProjects(); }, []);
+  
+  const calculateAndSaveProjectProgress = async (projectName: string) => {
+    if (!projectName || projectName === 'General') return;
+    
+    // Fetch all tasks for this project
+    const { data: tasksData, error } = await supabase.from('tasks').select('status, hours, actual_hours').eq('project', projectName);
+    if (error || !tasksData || tasksData.length === 0) return;
+
+    const totalTasks = tasksData.length;
+    let totalProgress = 0;
+
+    tasksData.forEach(task => {
+      if (task.status === 'done') {
+        totalProgress += 100;
+      } else {
+        const estimated = Number(task.hours) || 0;
+        const actual = Number(task.actual_hours) || 0;
+        if (estimated > 0) {
+          const taskProgress = Math.min(100, (actual / estimated) * 100);
+          totalProgress += taskProgress;
+        }
+      }
+    });
+
+    const projectProgress = Math.round(totalProgress / totalTasks);
+    await supabase.from('projects').update({ progress: projectProgress }).eq('name', projectName);
+  };
 
   const fetchProjects = async () => {
     const { data } = await supabase.from('projects').select('*').order('name');
@@ -125,6 +152,7 @@ export default function Kanban() {
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
     if (updates.hours !== undefined) dbUpdates.hours = updates.hours;
+    if (updates.actual_hours !== undefined) dbUpdates.actual_hours = updates.actual_hours;
     if (updates.assignees !== undefined) {
       dbUpdates.assignees = updates.assignees;
       dbUpdates.assignee = updates.assignees.length > 0 ? updates.assignees[0] : null;
@@ -143,6 +171,8 @@ export default function Kanban() {
       if (selectedTask && selectedTask.id === id) {
         setSelectedTask(prev => prev ? { ...prev, ...updates } : null);
       }
+      fetchTasks();
+      calculateAndSaveProjectProgress(data.tasks[id].project || 'General');
     } catch (error) {
       console.error('Error updating task:', error);
       alert('Error al guardar cambios');
@@ -178,6 +208,9 @@ export default function Kanban() {
       alert('Error al eliminar la tarea');
     } finally {
       setSaving(false);
+      // Trigger progress recalculation
+      const task = data.tasks[id];
+      if (task) calculateAndSaveProjectProgress(task.project);
     }
   };
 
@@ -245,11 +278,14 @@ export default function Kanban() {
       if (newStatus === 'in-progress' && !task.started_at) {
         updates.started_at = new Date().toISOString();
       } else if (newStatus === 'done' && task.started_at) {
-        const started = new Date(task.started_at);
-        const now = new Date();
-        const diffMs = now.getTime() - started.getTime();
-        const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-        updates.actual_hours = diffDays;
+        // Solo calcular horas si no hay horas reales cargadas manualmente
+        if (task.actual_hours === undefined || task.actual_hours === null || task.actual_hours <= 0) {
+          const started = new Date(task.started_at);
+          const now = new Date();
+          const diffMs = now.getTime() - started.getTime();
+          const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+          updates.actual_hours = diffDays;
+        }
       }
       
       const { error } = await supabase.from('tasks').update(updates).eq('id', draggableId);
@@ -278,6 +314,7 @@ export default function Kanban() {
       fetchTasks();
     } finally {
       setSaving(false);
+      calculateAndSaveProjectProgress(data.tasks[draggableId].project);
     }
   };
 
@@ -300,6 +337,7 @@ export default function Kanban() {
       if (error) throw error;
       
       await fetchTasks();
+      calculateAndSaveProjectProgress(taskData.project || 'General');
       setIsNewTaskOpen(false);
     } catch (error: any) {
       console.error('Error creating task:', error);
@@ -390,25 +428,38 @@ export default function Kanban() {
                                         </div>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-1 text-xs font-medium text-[#666666] shadow-sm bg-black/5 px-2 py-1 rounded-full border border-black/5">
-                                      <Calendar size={12} className="text-[#666666]" />
-                                      <span>{(() => {
-                                        if (!task.dueDate || task.dueDate === 'Sin fecha') return 'venc. s/f';
-                                        
-                                        // Si la fecha ya está en DD/MM/YYYY, la mostramos tal cual
-                                        if (task.dueDate.includes('/')) return task.dueDate;
-                                        
-                                        // Si es ISO (YYYY-MM-DD), la formateamos a DD/MM/YYYY manualmente para evitar desfase de zona horaria
-                                        if (task.dueDate.includes('-')) {
-                                          const parts = task.dueDate.split('T')[0].split('-');
-                                          if (parts.length === 3) {
-                                            const [y, m, d] = parts;
-                                            return `${d}/${m}/${y}`;
+                                    <div className="flex items-center gap-3">
+                                      {/* Horas Est / Real */}
+                                      {task.hours > 0 && (
+                                        <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border ${
+                                          task.actual_hours !== undefined && task.actual_hours !== null
+                                            ? task.actual_hours > task.hours
+                                              ? 'bg-red-500/10 text-red-700 border-red-500/20'
+                                              : 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
+                                            : 'bg-black/5 text-[#666666] border-black/10'
+                                        }`}>
+                                          <Clock size={10} />
+                                          <span>{task.hours}h</span>
+                                          {task.actual_hours !== undefined && task.actual_hours !== null && (
+                                            <><span className="opacity-40">/</span><span>{task.actual_hours}h</span></>
+                                          )}
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-1 text-xs font-medium text-[#666666] shadow-sm bg-black/5 px-2 py-1 rounded-full border border-black/5">
+                                        <Calendar size={12} className="text-[#666666]" />
+                                        <span>{(() => {
+                                          if (!task.dueDate || task.dueDate === 'Sin fecha') return 'venc. s/f';
+                                          if (task.dueDate.includes('/')) return task.dueDate;
+                                          if (task.dueDate.includes('-')) {
+                                            const parts = task.dueDate.split('T')[0].split('-');
+                                            if (parts.length === 3) {
+                                              const [y, m, d] = parts;
+                                              return `${d}/${m}/${y}`;
+                                            }
                                           }
-                                        }
-
-                                        return task.dueDate;
-                                      })()}</span>
+                                          return task.dueDate;
+                                        })()}</span>
+                                      </div>
                                     </div>
                                   </div>
                               </div>
@@ -511,11 +562,26 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
   const [assignees, setAssignees] = useState(task.assignees);
   const [dueDate, setDueDate] = useState(task.dueDate);
   const [hours, setHours] = useState(task.hours);
+  const [actualHours, setActualHours] = useState<number | ''>(task.actual_hours ?? '');
 
   // Sincronizar cambios individuales solo al perder el foco para evitar saturar DB
   const saveTitle = () => { if (title !== task.title) onUpdate(task.id, { title }); };
   const saveDesc = () => { if (desc !== task.description) onUpdate(task.id, { description: desc }); };
   const saveHours = () => { if (hours !== task.hours) onUpdate(task.id, { hours }); };
+  const saveActualHours = () => {
+    const val = actualHours === '' ? undefined : Number(actualHours);
+    if (val !== task.actual_hours) onUpdate(task.id, { actual_hours: val });
+  };
+
+  // Eficiencia: % de diferencia entre estimado y real
+  const efficiencyInfo = (() => {
+    if (!hours || actualHours === '' || actualHours === undefined) return null;
+    const diff = Number(actualHours) - hours;
+    const pct = Math.round(Math.abs(diff) / hours * 100);
+    if (diff > 0) return { label: `+${pct}% sobre lo estimado`, color: 'text-red-600 bg-red-500/10 border-red-500/20' };
+    if (diff < 0) return { label: `${pct}% bajo estimado`, color: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20' };
+    return { label: 'Exacto al estimado', color: 'text-blue-700 bg-blue-500/10 border-blue-500/20' };
+  })();
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -573,10 +639,41 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
           </div>
           <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Proyecto</span><select disabled={!isAdmin} value={project} onChange={(e) => { setProject(e.target.value); onUpdate(task.id, { project: e.target.value }); }} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`}><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
           <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Descripción</span><textarea disabled={!isAdmin} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} onBlur={saveDesc} placeholder="Añade detalles aquí..." className={`w-full rounded-2xl border border-black/10 bg-black/5 p-4 outline-none resize-none transition-all ${isAdmin ? 'focus:ring-2 focus:ring-[#FFD166]' : 'cursor-not-allowed'}`}></textarea></div>
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-[#1A1A1A]">Horas Estimadas</span>
-            <input disabled={!isAdmin} type="number" value={hours} onChange={(e) => setHours(parseFloat(e.target.value) || 0)} onBlur={saveHours} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none transition-all ${isAdmin ? 'focus:ring-2 focus:ring-[#FFD166]' : 'cursor-not-allowed'}`} />
-          </div>
+          {hours > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-[#1A1A1A]">Horas Estimadas</span>
+                <input disabled={!isAdmin} type="number" min="0" step="0.5" value={hours} onChange={(e) => setHours(parseFloat(e.target.value) || 0)} onBlur={saveHours} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none transition-all ${isAdmin ? 'focus:ring-2 focus:ring-[#FFD166]' : 'cursor-not-allowed'}`} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-[#1A1A1A]">Horas Reales</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  placeholder="0"
+                  value={actualHours}
+                  onChange={(e) => setActualHours(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  onBlur={saveActualHours}
+                  className="w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none transition-all focus:ring-2 focus:ring-[#FFD166]"
+                />
+              </div>
+            </div>
+          )}
+          {hours <= 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-[#1A1A1A]">Horas Estimadas</span>
+              <input disabled={!isAdmin} type="number" min="0" step="0.5" value={hours} onChange={(e) => setHours(parseFloat(e.target.value) || 0)} onBlur={saveHours} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none transition-all ${isAdmin ? 'focus:ring-2 focus:ring-[#FFD166]' : 'cursor-not-allowed'}`} />
+              <p className="text-[10px] text-[#666666] italic">Define horas estimadas para habilitar el seguimiento de productividad.</p>
+            </div>
+          )}
+          {/* Indicador de eficiencia */}
+          {efficiencyInfo && (
+            <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-semibold ${efficiencyInfo.color}`}>
+              <Clock size={13} />
+              <span>Eficiencia: {efficiencyInfo.label}</span>
+            </div>
+          )}
         </div>
         <div className="p-8 border-t border-black/5 flex justify-end"><button onClick={onClose} className="bg-[#1A1A1A] hover:bg-black text-white px-10 py-3.5 rounded-full text-sm font-medium transition-all shadow-lg active:scale-95">Listo</button></div>
       </div>

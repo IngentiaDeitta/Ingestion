@@ -179,7 +179,7 @@ export default function Projects() {
                       <div className="flex items-center gap-3">
                         <div className="w-24 bg-black/5 rounded-full h-1.5 overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${project.status === 'En Riesgo' ? 'bg-red-400' : project.status === 'Completado' ? 'bg-green-400' : 'bg-[#FFD166]'}`}
+                            className={`h-full rounded-full ${project.status === 'En Riesgo' ? 'bg-red-400' : project.status === 'Completado' ? 'bg-green-400' : project.status === 'Preventa' ? 'bg-indigo-400' : 'bg-[#FFD166]'}`}
                             style={{ width: `${project.progress}%` }}
                           ></div>
                         </div>
@@ -190,6 +190,7 @@ export default function Projects() {
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :
                         project.status === 'Completado' || project.status === 'Finalizado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
                         (project.status === 'Perdido' || project.status === 'Cancelado') ? 'bg-slate-500/10 text-slate-600 border-slate-500/20' :
+                        project.status === 'Preventa' ? 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20' :
                           'bg-red-500/10 text-red-700 border-red-500/20'
                         }`}>
                         {project.status}
@@ -249,6 +250,7 @@ export default function Projects() {
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :
                       project.status === 'Completado' || project.status === 'Finalizado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
                       (project.status === 'Perdido' || project.status === 'Cancelado') ? 'bg-slate-500/10 text-slate-600 border-slate-500/20' :
+                      project.status === 'Preventa' ? 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20' :
                         'bg-red-500/10 text-red-700 border-red-500/20'
                       }`}>
                       {project.status}
@@ -298,7 +300,7 @@ export default function Projects() {
                     </div>
                     <div className="w-full bg-black/5 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${project.status === 'En Riesgo' ? 'bg-red-400' : project.status === 'Completado' ? 'bg-green-400' : 'bg-[#FFD166]'}`}
+                        className={`h-full rounded-full ${project.status === 'En Riesgo' ? 'bg-red-400' : project.status === 'Completado' ? 'bg-green-400' : project.status === 'Preventa' ? 'bg-indigo-400' : 'bg-[#FFD166]'}`}
                         style={{ width: `${project.progress}%` }}
                       ></div>
                     </div>

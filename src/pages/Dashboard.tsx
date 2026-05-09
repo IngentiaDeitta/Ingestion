@@ -73,24 +73,18 @@ export default function Dashboard() {
       const totalBudget = projectsData?.reduce((a, p) => a + (p.budget || 0), 0) ?? 0;
       const health = totalProjects > 0 ? Math.round(((totalProjects - atRiskCount) / totalProjects) * 100) : 100;
 
-      let billableHours = 0;
-      let nonBillableHours = 0;
+      let totalEstimatedHours = 0;
+      let totalActualHours = 0;
 
       (tasksData || []).forEach((t: any) => {
-        const project = projectsData?.find(p => p.name?.trim().toLowerCase() === t.project?.trim().toLowerCase());
-        const isBillable = project?.outcome === 'Ganado';
-        
-        // Sumamos las horas estimadas siempre para el total, 
-        // pero usamos actual_hours si ya está finalizada para el análisis de tiempo real
-        const currentHours = t.status === 'done' 
-          ? (Number(t.actual_hours) || Number(t.hours) || 0) 
-          : (Number(t.hours) || 0);
-        
-        if (isBillable) billableHours += currentHours;
-        else nonBillableHours += currentHours;
+        const est = Number(t.hours) || 0;
+        const act = Number(t.actual_hours) || 0;
+        totalEstimatedHours += est;
+        totalActualHours += act;
       });
 
-      const totalHours = Number((billableHours + nonBillableHours).toFixed(1));
+      const totalHours = Number(totalActualHours.toFixed(1));
+      const hoursGap = totalActualHours - totalEstimatedHours;
 
       setAllTasks(tasksData || []);
       setTeam(teamData || []);
@@ -168,8 +162,8 @@ export default function Dashboard() {
         totalRevenue: totalBudget,
         totalBalance: totalBalanceARS,
         totalHours,
-        billableHours,
-        nonBillableHours,
+        billableHours: totalEstimatedHours, // Re-utilizando campo para estimado
+        nonBillableHours: hoursGap, // Re-utilizando campo para gap
         avgProposalDays: 14,
         conversionRate,
         avgProjectDuration: 45,
@@ -259,16 +253,18 @@ export default function Dashboard() {
           <h4 className="text-3xl font-light text-[#1A1A1A]">{stats.portfolioHealth}%</h4>
         </div>
 
-        {/* Horas Totales */}
+        {/* Productividad (Gap de Horas) */}
         <div className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/kanban')}>
           <div className="flex justify-between items-start mb-3">
             <div className="p-2.5 bg-white rounded-xl shadow-sm"><Clock size={20} /></div>
             <div className="flex flex-col items-end">
-              <span className="text-[#008fcd] text-[10px] font-bold">Facturable: {stats.billableHours}h</span>
-              <span className="text-[#666666] text-[10px] font-bold">No Fact.: {stats.nonBillableHours}h</span>
+              <span className="text-[#666666] text-[10px] font-bold">Plan: {stats.billableHours}h</span>
+              <span className={`${stats.nonBillableHours > 0 ? 'text-red-500' : 'text-emerald-500'} text-[10px] font-bold`}>
+                Gap: {stats.nonBillableHours > 0 ? '+' : ''}{stats.nonBillableHours}h
+              </span>
             </div>
           </div>
-          <p className="text-[#666666] text-xs font-medium mb-1">Horas Totales</p>
+          <p className="text-[#666666] text-xs font-medium mb-1">Horas Reales Totales</p>
           <h4 className="text-3xl font-light text-[#1A1A1A]">{stats.totalHours}h</h4>
         </div>
 

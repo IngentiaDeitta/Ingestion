@@ -74,7 +74,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
           client: editFormData.client,
           budget: parseFloat(editFormData.budget) || 0,
           due_date: editFormData.due_date ? formatDateForDb(editFormData.due_date) : '',
-          status: editFormData.outcome === 'Perdido' ? 'Perdido' : (editFormData.outcome !== 'Ganado' ? 'Pendiente' : editFormData.status),
+          status: editFormData.outcome === 'Perdido' ? 'Perdido' : (editFormData.outcome !== 'Ganado' ? 'Preventa' : editFormData.status),
           progress: (editFormData.outcome === 'Perdido' || editFormData.outcome === 'Propuesta') ? 0 : editFormData.progress,
           description: editFormData.description,
           outcome: editFormData.outcome
@@ -148,7 +148,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
         historyEntries.push({
           project_id: id,
           field: 'status',
-          old_value: project.status || 'Pendiente',
+          old_value: project.status || 'Preventa',
           new_value: editFormData.status
         });
       }
@@ -270,11 +270,11 @@ export default function EditProjectModal({ project, onClose, onSuccess }: EditPr
               <select 
                 required 
                 disabled={!isAdmin || editFormData.outcome !== 'Ganado'}
-                value={editFormData.outcome === 'Perdido' ? 'Perdido' : (editFormData.outcome !== 'Ganado' ? 'Pendiente' : editFormData.status)}
+                value={editFormData.outcome === 'Perdido' ? 'Perdido' : (editFormData.outcome !== 'Ganado' ? 'Preventa' : editFormData.status)}
                 onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
                 className={`w-full h-12 rounded-2xl border border-black/10 bg-white text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all ${(!isAdmin || editFormData.outcome !== 'Ganado') ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
               >
-                <option value="Pendiente">Pendiente (Sin Ejecución)</option>
+                <option value="Preventa">Preventa</option>
                 <option value="En Progreso">En Progreso</option>
                 <option value="Finalizado">Finalizado</option>
                 <option value="En Riesgo">En Riesgo</option>
