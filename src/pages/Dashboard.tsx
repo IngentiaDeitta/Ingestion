@@ -211,7 +211,7 @@ export default function Dashboard() {
               {stats.projectsAtRisk} proyectos
             </div>
           </div>
-          <div className="flex items-center gap-8 ml-auto">
+          <div className="flex items-center gap-4 md:gap-8 ml-0 md:ml-auto w-full md:w-auto justify-between md:justify-end mt-4 md:mt-0">
             <div className="flex items-baseline gap-2 cursor-pointer hover:scale-105 transition-transform" onClick={() => navigate('/clients')}>
               <span className="text-[#666666] text-sm flex items-center gap-1"><UsersIcon size={14} /> Clientes</span>
               <span className="text-5xl font-light text-[#1A1A1A]">{stats.totalClients}</span>
@@ -225,7 +225,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Row 1: KPI Cards (6 metrics from Reports) ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {/* Balance Total */}
         <div
           className="bg-white/80 backdrop-blur-xl rounded-[28px] p-5 border border-white/40 shadow-sm cursor-pointer hover:shadow-md transition-shadow"

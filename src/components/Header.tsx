@@ -1,10 +1,10 @@
-import { Search, Bell, Plus, ChevronDown, User, LogOut, Settings as SettingsIcon, MessageSquare, Trash2 } from 'lucide-react';
+import { Search, Bell, Plus, ChevronDown, User, LogOut, Settings as SettingsIcon, MessageSquare, Trash2, Menu } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
-export default function Header() {
+export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: (val: boolean) => void }) {
   const { profile, signOut, isAdmin } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
@@ -186,9 +186,17 @@ export default function Header() {
   if (isAuthPage) return null;
 
   return (
-    <header className="h-20 bg-white/60 backdrop-blur-xl border-b border-white/40 px-8 flex items-center justify-between sticky top-0 z-40">
+    <header className="h-16 md:h-20 bg-white/60 backdrop-blur-xl border-b border-white/40 px-4 md:px-8 flex items-center justify-between sticky top-0 z-40 gap-4">
+      {/* Mobile Menu Toggle */}
+      <button 
+        onClick={() => setIsMobileMenuOpen && setIsMobileMenuOpen(true)}
+        className="md:hidden p-2 -ml-2 text-[#1A1A1A] hover:bg-black/5 rounded-full"
+      >
+        <Menu size={24} />
+      </button>
+
       {/* Left Search */}
-      <div className="flex-1 max-w-md relative" ref={searchRef}>
+      <div className="flex-1 max-w-md relative hidden md:block" ref={searchRef}>
         <div className="relative group">
           <Search className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isSearchOpen ? 'text-[#1A1A1A]' : 'text-[#999999]'}`} size={18} />
           <input 
@@ -275,13 +283,13 @@ export default function Header() {
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3 md:gap-6 ml-auto">
         <div className="flex items-center gap-2">
           {isAdmin && (
-            <div className="relative group mr-2">
-              <button className="h-11 bg-[#222222] hover:bg-black text-white px-6 rounded-full flex items-center gap-2 transition-all shadow-lg shadow-black/10 active:scale-95 group">
+            <div className="relative group mr-0 md:mr-2">
+              <button className="h-10 w-10 md:h-11 md:w-auto md:px-6 bg-[#222222] hover:bg-black text-white rounded-full flex items-center justify-center md:gap-2 transition-all shadow-lg shadow-black/10 active:scale-95 group">
                 <Plus size={18} className="transition-transform group-hover:rotate-90" />
-                <span className="text-sm font-medium">Crear</span>
+                <span className="text-sm font-medium hidden md:inline">Crear</span>
               </button>
               
               {/* Quick Actions Dropdown */}
@@ -306,11 +314,11 @@ export default function Header() {
           <div className="relative">
             <button 
               onClick={handleOpenNotifications}
-              className="w-11 h-11 bg-white border border-black/5 rounded-full flex items-center justify-center text-[#666666] hover:text-[#1A1A1A] hover:bg-black/5 transition-all relative"
+              className="w-10 h-10 md:w-11 md:h-11 bg-white border border-black/5 rounded-full flex items-center justify-center text-[#666666] hover:text-[#1A1A1A] hover:bg-black/5 transition-all relative"
             >
               <Bell size={20} />
               {hasUnread && notifications.length > 0 && (
-                <span className="absolute top-3 right-3 w-2 h-2 bg-[#FFD166] rounded-full border-2 border-white"></span>
+                <span className="absolute top-2 right-2 md:top-3 md:right-3 w-2 h-2 bg-[#FFD166] rounded-full border-2 border-white"></span>
               )}
             </button>
 
@@ -389,26 +397,26 @@ export default function Header() {
         </div>
 
         {/* Vertical Divider */}
-        <div className="w-px h-8 bg-black/5"></div>
+        <div className="w-px h-6 md:h-8 bg-black/5 hidden md:block"></div>
 
         {/* User Profile */}
         <div className="relative">
           <button 
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-3 p-1.5 pr-4 rounded-full bg-white border border-black/5 hover:bg-black/5 transition-all group"
+            className="flex items-center gap-2 md:gap-3 p-1 md:p-1.5 md:pr-4 rounded-full bg-white border border-black/5 hover:bg-black/5 transition-all group"
           >
-            <div className="w-9 h-9 rounded-full bg-[#222222] flex items-center justify-center text-white font-medium text-xs overflow-hidden">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[#222222] flex items-center justify-center text-white font-medium text-xs overflow-hidden">
                {profile?.avatar_url ? (
                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                ) : (
                  `${profile?.first_name?.[0] || 'U'}${profile?.last_name?.[0] || ''}`
                )}
             </div>
-            <div className="flex flex-col items-start">
+            <div className="flex-col items-start hidden md:flex">
               <span className="text-sm font-bold text-[#1A1A1A] leading-none">{profile?.first_name || 'Usuario'}</span>
               <span className="text-[10px] font-medium text-[#666666] mt-1">{profile?.role || 'Project Manager'}</span>
             </div>
-            <ChevronDown size={14} className={`text-[#999999] transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={14} className={`text-[#999999] transition-transform duration-300 hidden md:block ${isProfileOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isProfileOpen && (

@@ -377,7 +377,7 @@ export default function ProjectDetail() {
           </div>
 
           <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-8">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-center gap-3">
                 <h4 className="text-xl font-medium text-[#1A1A1A]">Tareas del Proyecto</h4>
                 <div className="flex bg-black/5 p-1 rounded-full border border-black/5">

@@ -441,9 +441,9 @@ export default function Finance() {
           </div>
         )}
 
-        <div className="overflow-visible">
+        <div className="overflow-x-auto custom-scrollbar">
           {loading ? <div className="p-20 text-center text-[#666] font-medium">Sincronizando con Supabase...</div> : (
-            <table className="w-full text-left border-separate border-spacing-0">
+            <table className="w-full text-left border-separate border-spacing-0 min-w-[800px]">
               <thead>
                 <tr className="bg-black/[0.01]">
                   {['Fecha', 'Descripción', 'Categoría', 'Origen', 'Moneda', 'Importe', ''].map((h, i) => (

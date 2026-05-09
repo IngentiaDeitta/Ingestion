@@ -138,8 +138,8 @@ export default function Projects() {
         ) : filteredProjects.length === 0 ? (
           <div className="p-20 text-center text-[#666666]">No se encontraron proyectos.</div>
         ) : viewMode === 'list' ? (
-          <div className="overflow-visible min-h-[400px]">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto custom-scrollbar min-h-[400px]">
+            <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="border-b border-black/5">
                   <th className="px-6 py-4 text-xs font-medium text-[#666666] uppercase tracking-wider">Proyecto</th>

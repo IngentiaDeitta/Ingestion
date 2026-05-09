@@ -86,8 +86,8 @@ export default function Clients() {
         {loading ? (
           <div className="p-20 text-center text-[#666666]">Cargando clientes...</div>
         ) : (
-          <div className="overflow-x-auto min-h-[300px]">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto custom-scrollbar min-h-[300px]">
+            <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="border-b border-black/5">
                   <th className="px-6 py-4 text-xs font-medium text-[#666666] uppercase tracking-wider">Empresa</th>

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FolderKanban, FileText, Calculator, Settings, Clock, LogOut, ChevronRight, Zap, CheckSquare, Microscope } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, FileText, Calculator, Settings, Clock, LogOut, ChevronRight, Zap, CheckSquare, Microscope, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
@@ -13,18 +13,25 @@ const menuItems = [
   { icon: Zap, label: 'Tech Stack', path: '/tech-stack' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, setIsOpen }: { isOpen?: boolean, setIsOpen?: (val: boolean) => void }) {
   const { profile, signOut } = useUser();
 
   return (
-    <aside className="w-[280px] bg-white border-r border-black/5 flex flex-col sticky top-0 h-screen z-50">
-      {/* Logo Section - Increased to 84px to compensate for image whitespace and ensure visibility */}
-      <div className="h-24 flex items-center justify-center px-8 border-b border-black/[0.02]">
+    <aside className={`w-[280px] bg-white border-r border-black/5 flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Logo Section */}
+      <div className="h-20 md:h-24 flex items-center justify-between px-6 md:px-8 border-b border-black/[0.02]">
         <img 
           src="/Recursos/Logo Blanco_T.png" 
           alt="Ingentia Management" 
-          className="h-[84px] w-auto object-contain"
+          className="h-[60px] md:h-[84px] w-auto object-contain"
         />
+        {/* Botón Cerrar (Solo Móvil) */}
+        <button 
+          onClick={() => setIsOpen && setIsOpen(false)}
+          className="md:hidden p-2 text-[#999] hover:bg-black/5 rounded-full"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* Navigation */}

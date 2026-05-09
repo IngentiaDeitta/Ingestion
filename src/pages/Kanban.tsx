@@ -363,13 +363,13 @@ export default function Kanban() {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 overflow-x-auto pb-4 custom-scrollbar">
+        <div className="flex-1 overflow-x-auto pb-4 custom-scrollbar snap-x snap-mandatory">
           <div className="flex gap-6 h-full pb-8">
             {data.columnOrder.map((columnId) => {
               const column = data.columns[columnId];
               const tasks = column.taskIds.map(taskId => data.tasks[taskId]);
               return (
-                <div key={column.id} className="flex-1 min-w-[280px] flex flex-col gap-4">
+                <div key={column.id} className="w-[85vw] md:w-auto md:flex-1 min-w-[280px] shrink-0 snap-center flex flex-col gap-4">
                   <div className="flex items-center gap-2 pb-3 border-b border-black/5">
                     <h4 className="font-medium text-[#1A1A1A]">{column.title}</h4>
                     <span className="bg-white/50 border border-black/5 text-[#1A1A1A] text-xs font-medium px-2.5 py-0.5 rounded-full">{tasks.length}</span>
