@@ -3,7 +3,11 @@ import re
 import os
 import json
 import sys
+import urllib3
 from datetime import datetime
+
+# Silenciar advertencias de InsecureRequestWarning al usar verify=False
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def get_bna_rates():
     """Intenta obtener tasas del BNA mediante scraping."""
@@ -12,7 +16,8 @@ def get_bna_rates():
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
     try:
-        response = requests.get(url, headers=headers, timeout=15)
+        # Usamos verify=False porque el BNA suele tener problemas de cadena de certificados en entornos Linux/Cloud
+        response = requests.get(url, headers=headers, timeout=15, verify=False)
         if response.status_code != 200:
             print(f"BNA error: Status {response.status_code}")
             return None
@@ -20,11 +25,9 @@ def get_bna_rates():
         html = response.text
         
         def extract_rate(currency_name, html_content):
-            # Regex flexible para capturar Compra y Venta
             pattern = rf"{currency_name}</td>\s*<td[^>]*>\s*([\d,.]+)\s*</td>\s*<td[^>]*>\s*([\d,.]+)\s*</td>"
             match = re.search(pattern, html_content, re.IGNORECASE)
             if match:
-                # Retornamos el valor de Venta (grupo 2)
                 return float(match.group(2).replace(',', '.'))
             return None
 
@@ -41,9 +44,9 @@ def get_bna_rates():
 def get_dolar_api_rates():
     """Fallback: Obtiene tasas de DolarAPI (más confiable que scraping)."""
     try:
-        # Dolar Oficial (BNA)
-        res_usd = requests.get("https://dolarapi.com/v1/dolares/oficial", timeout=10)
-        res_eur = requests.get("https://dolarapi.com/v1/cotizaciones/euro", timeout=10)
+        print("Consultando DolarAPI...")
+        res_usd = requests.get("https://dolarapi.com/v1/dolares/oficial", timeout=15)
+        res_eur = requests.get("https://dolarapi.com/v1/cotizaciones/euro", timeout=15)
         
         if res_usd.status_code == 200 and res_eur.status_code == 200:
             usd_data = res_usd.json()
@@ -53,17 +56,17 @@ def get_dolar_api_rates():
                 "EUR": float(eur_data['venta']),
                 "source": "DolarAPI"
             }
+        else:
+            print(f"DolarAPI retornó status no exitoso: USD={res_usd.status_code}, EUR={res_eur.status_code}")
     except Exception as e:
-        print(f"DolarAPI error: {e}")
+        print(f"DolarAPI Exception: {e}")
     return None
 
 def update_files(rates):
-    # Usar rutas relativas al directorio raíz del proyecto
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env_path = os.path.join(base_path, ".env")
     json_path = os.path.join(base_path, "src", "data", "exchange_rates.json")
 
-    # 1. Actualizar .env (si existe)
     if os.path.exists(env_path):
         with open(env_path, 'r') as f:
             lines = f.readlines()
@@ -90,10 +93,7 @@ def update_files(rates):
         with open(env_path, 'w') as f:
             f.writelines(new_lines)
         print(f"Archivo .env actualizado.")
-    else:
-        print("Archivo .env no encontrado, omitiendo actualización.")
 
-    # 2. Actualizar JSON (siempre)
     os.makedirs(os.path.dirname(json_path), exist_ok=True)
     with open(json_path, 'w') as f:
         json.dump({
@@ -108,12 +108,12 @@ def update_files(rates):
 def main():
     print(f"[{datetime.now()}] Iniciando actualización de tipos de cambio...")
     
-    # Intentar BNA primero
+    # 1. Intentar BNA primero
     rates = get_bna_rates()
     
-    # Si falla BNA, usar DolarAPI
+    # 2. Si falla BNA, usar DolarAPI
     if not rates:
-        print("BNA falló o bloqueó la solicitud. Intentando DolarAPI...")
+        print("BNA falló o bloqueó la solicitud (SSL/Scraping). Intentando DolarAPI...")
         rates = get_dolar_api_rates()
     
     if rates:
@@ -124,4 +124,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
