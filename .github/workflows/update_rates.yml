@@ -2,8 +2,9 @@ name: Update Exchange Rates
 
 on:
   schedule:
-    - cron: '0 11 * * *' # 8:00 AM ART (UTC-3)
-  workflow_dispatch: # Permite ejecución manual
+    - cron: '0 11 * * *' # 08:00 ART
+    - cron: '0 16 * * *' # 13:00 ART (Refuerzo por si el BNA demora en actualizar)
+  workflow_dispatch: # Permite ejecución manual desde la pestaña Actions
 
 jobs:
   update-rates:
@@ -13,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Asegura historial completo para el push
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -32,5 +35,10 @@ jobs:
           git config --global user.name 'Antigravity Agent'
           git config --global user.email 'agent@antigravity.ai'
           git add src/data/exchange_rates.json
-          git commit -m "chore: auto-update exchange rates from BNA [skip ci]" || echo "No changes to commit"
-          git push
+          # Solo commitear si hay cambios reales en el JSON
+          if git diff --staged --quiet; then
+            echo "No hay cambios en los tipos de cambio hoy."
+          else
+            git commit -m "chore: auto-update exchange rates from BNA/DolarAPI [skip ci]"
+            git push origin main
+          fi
