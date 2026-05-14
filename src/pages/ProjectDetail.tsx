@@ -47,10 +47,11 @@ export default function ProjectDetail() {
   const [taskGrouping, setTaskGrouping] = useState<'status' | 'priority'>('status');
 
   // AI Analyst State
-  const [isAnalystModalOpen, setIsAnalystModalOpen] = useState(false);
-  const [notebookContext, setNotebookContext] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAgentRunning, setIsAgentRunning] = useState(false);
+  const [showAgentPanel, setShowAgentPanel] = useState(false);
+  const [agentSteps, setAgentSteps] = useState<{ type: string; text: string }[]>([]);
+  const [agentDone, setAgentDone] = useState(false);
+  const [agentFailed, setAgentFailed] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -196,36 +197,62 @@ export default function ProjectDetail() {
     }
   };
 
-  const handleRunAnalysis = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id || !notebookContext.trim() || !project) return;
+  const handleRunAgentAnalysis = async () => {
+    if (!id || !project) return;
+
+    setAgentSteps([]);
+    setAgentDone(false);
+    setAgentFailed(false);
+    setIsAgentRunning(true);
+    setShowAgentPanel(true);
 
     try {
-      setIsAnalyzing(true);
-      setAnalysisError(null);
-      
-      const aiResult = await analyzeProjectWithGemini(
-        project.name,
-        project.description,
-        clientAnalysis || {},
-        notebookContext
-      );
-      
-      const { error } = await supabase
-        .from('projects')
-        .update({ project_analysis: aiResult })
-        .eq('id', id);
+      const res = await fetch('http://localhost:3001/api/run-project-agent/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: id })
+      });
 
-      if (error) throw error;
+      if (!res.ok || !res.body) {
+        throw new Error('No se pudo conectar al Local Bridge. Asegurate de que esté corriendo: node local_bridge.js');
+      }
 
-      await fetchProjectData();
-      setIsAnalystModalOpen(false);
-      setNotebookContext('');
-    } catch (error: any) {
-      console.error('Error running AI project analysis:', error);
-      setAnalysisError(error.message || 'Error al ejecutar el análisis. Por favor intentá de nuevo.');
-    } finally {
-      setIsAnalyzing(false);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'done') {
+              setAgentSteps(prev => [...prev, event]);
+              setAgentDone(true);
+              setIsAgentRunning(false);
+            } else if (event.type === 'fatal') {
+              setAgentSteps(prev => [...prev, event]);
+              setAgentFailed(true);
+              setIsAgentRunning(false);
+            } else {
+              setAgentSteps(prev => [...prev, event]);
+            }
+          } catch { /* ignorar JSON mal formado */ }
+        }
+      }
+    } catch (err: any) {
+      const isNetwork = err.message?.includes('fetch') || err.message?.includes('Failed');
+      const msg = isNetwork
+        ? 'El Local Bridge no está corriendo. Ejecutá en una terminal: node local_bridge.js'
+        : err.message;
+      setAgentSteps(prev => [...prev, { type: 'fatal', text: msg }]);
+      setAgentFailed(true);
+      setIsAgentRunning(false);
     }
   };
 
@@ -336,11 +363,12 @@ export default function ProjectDetail() {
         </div>
         <div className="flex flex-wrap sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           <button 
-            onClick={() => setIsAnalystModalOpen(true)}
-            className="flex items-center justify-center gap-2 bg-[#FFD166] hover:bg-[#FFC033] text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-sm"
+            onClick={handleRunAgentAnalysis}
+            disabled={isAgentRunning}
+            className="flex items-center justify-center gap-2 bg-[#FFD166] hover:bg-[#FFC033] disabled:opacity-60 disabled:cursor-not-allowed text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-sm"
           >
-            <Sparkles size={16} />
-            Análisis IA
+            {isAgentRunning ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            {isAgentRunning ? 'Investigando...' : 'Análisis IA'}
           </button>
           <button 
             onClick={() => setIsEditModalOpen(true)}
@@ -745,82 +773,84 @@ export default function ProjectDetail() {
       {editModal}
       {teamModal}
 
-      {/* AI Analyst Modal */}
-      {isAnalystModalOpen && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-          <div 
-            className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+      {/* AI Agent Progress Panel */}
+      {showAgentPanel && createPortal(
+        <div className="fixed inset-0 z-50 flex justify-end" style={{ pointerEvents: 'none' }}>
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
+            style={{ pointerEvents: 'all' }}
+            onClick={() => setShowAgentPanel(false)}
+          />
+
+          <div
+            className="relative h-full w-full max-w-md bg-white/90 backdrop-blur-2xl text-[#1A1A1A] flex flex-col shadow-2xl animate-in slide-in-from-right duration-300 border-l border-white/50"
+            style={{ pointerEvents: 'all' }}
           >
-            <div className="p-6 border-b border-black/5 flex justify-between items-center bg-gradient-to-r from-[#FFD166]/20 to-transparent rounded-t-[32px]">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#FFD166] rounded-xl text-[#1A1A1A]">
-                  <Sparkles size={20} />
+            <div className="flex items-center justify-between px-6 py-6 border-b border-black/5">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 bg-[#FFD166]/20 rounded-xl">
+                  <Sparkles size={20} className="text-[#FFB020]" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-medium text-[#1A1A1A]">AI Project Analyst</h3>
-                  <p className="text-xs text-[#666666]">Evaluar problema e impacto con NotebookLM</p>
+                  <h3 className="text-lg font-semibold tracking-wide text-[#1A1A1A]">AI Project Analyst</h3>
+                  <p className="text-sm text-[#666666] mt-0.5">{project.name}</p>
                 </div>
               </div>
-              <button onClick={() => setIsAnalystModalOpen(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-                <X size={20} className="text-[#1A1A1A]" />
+              <button onClick={() => setShowAgentPanel(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+                <X size={20} className="text-[#666666]" />
               </button>
             </div>
 
-            <form onSubmit={handleRunAnalysis} className="p-8 flex flex-col gap-6">
-              {analysisError && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">
-                  {analysisError}
+            <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-4">
+              {agentSteps.map((step, i) => (
+                <div key={i} className={`flex items-start gap-4 text-sm ${
+                  step.type === 'success' ? 'text-emerald-600' :
+                  step.type === 'error' || step.type === 'fatal' ? 'text-red-500' :
+                  step.type === 'done' ? 'text-[#FFB020] font-semibold' :
+                  'text-[#444444]'
+                }`}>
+                  <span className="mt-0.5 shrink-0 text-lg leading-none">
+                    {step.type === 'success' ? '✓' :
+                     step.type === 'error' || step.type === 'fatal' ? '✗' :
+                     step.type === 'done' ? '🎉' :
+                     '›'}
+                  </span>
+                  <span className="leading-relaxed text-[15px]">{step.text}</span>
+                </div>
+              ))}
+
+              {isAgentRunning && (
+                <div className="flex items-center gap-3 text-[#666666] text-sm mt-2">
+                  <Loader2 size={16} className="animate-spin shrink-0" />
+                  <span className="font-medium">Procesando...</span>
                 </div>
               )}
-              
-              {!clientAnalysis && (
-                <div className="p-4 bg-yellow-50 text-yellow-800 rounded-2xl text-sm border border-yellow-200">
-                  <strong>Nota:</strong> No se encontró un perfil estratégico de IA para el cliente. Es recomendable realizar el "AI Client Analyst" primero para que el modelo tenga más contexto, aunque puedes continuar de todos modos.
+            </div>
+
+            <div className="px-6 py-6 border-t border-black/5 bg-white/50">
+              {agentDone && (
+                <button
+                  onClick={() => { setShowAgentPanel(false); fetchProjectData(); }}
+                  className="w-full flex items-center justify-center gap-2 bg-[#FFD166] hover:bg-[#FFC033] text-[#1A1A1A] font-bold py-4 rounded-2xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 text-sm"
+                >
+                  <Sparkles size={18} />
+                  Ver Resultados
+                </button>
+              )}
+              {agentFailed && !agentDone && (
+                <button
+                  onClick={() => setShowAgentPanel(false)}
+                  className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-2xl transition-all text-sm border border-red-200"
+                >
+                  Cerrar
+                </button>
+              )}
+              {isAgentRunning && (
+                <div className="w-full bg-black/5 rounded-full h-2 overflow-hidden shadow-inner">
+                  <div className="h-full bg-[#FFD166] rounded-full animate-pulse" style={{ width: `${Math.min(95, agentSteps.length * 12)}%`, transition: 'width 0.5s ease' }} />
                 </div>
               )}
-
-              <div className="flex flex-col gap-3">
-                <label className="text-sm font-medium text-[#1A1A1A] flex justify-between items-center">
-                  <span>Contexto del Proyecto (NotebookLM)</span>
-                  <span className="text-[10px] bg-black/5 px-2 py-1 rounded-md text-[#666666] font-mono">Pega el texto aquí</span>
-                </label>
-                <textarea 
-                  required 
-                  value={notebookContext}
-                  onChange={(e) => setNotebookContext(e.target.value)}
-                  placeholder="Pegá aquí el resumen de NotebookLM referente al proyecto específico, sus problemas, requerimientos y contexto de negocio..."
-                  className="w-full h-64 rounded-2xl border border-black/10 bg-[#FAFAFA] text-[#1A1A1A] p-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all resize-none text-sm"
-                />
-              </div>
-
-              <div className="flex justify-end gap-4 mt-2">
-                <button 
-                  type="button"
-                  onClick={() => setIsAnalystModalOpen(false)}
-                  className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:bg-black/5 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isAnalyzing || !notebookContext.trim()}
-                  className="flex items-center gap-2 bg-[#1A1A1A] hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Analizando...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={18} />
-                      Ejecutar Análisis
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>,
         document.body

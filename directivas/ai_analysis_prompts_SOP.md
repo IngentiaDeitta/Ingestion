@@ -24,23 +24,30 @@ En lugar de tener una vista separada (`/solution-architect`), la IA y el anális
 Extracción de información clave: Nombre, Industria, Modelo de negocio, etc.
 
 ### 2. AI Project Analyst (Módulo Proyectos)
-**Objetivo:** Analizar un proyecto específico dentro del contexto de un cliente.
+**Objetivo:** Analizar un proyecto específico dentro del contexto de un cliente utilizando el agente Antigravity para extraer conocimiento de NotebookLM.
 
-**Contexto de Lectura:**
-- `[CTX]` -> Contexto general
-- `[DOC]` -> Procesos
-- `[MEET]` -> Reuniones
-- `[PROJ-XXX]` -> Información específica del proyecto
+**Proceso de Integración NotebookLM (Agente):**
+1. Revisar los documentos creados e identificar el cliente asociado al proyecto.
+2. Hacer match con el cuaderno creado en NotebookLM que corresponda a ese cliente.
+3. Dentro del cuaderno, buscar y consumir los diversos documentos clasificados según las directivas previstas para que el agente tome de contexto de la empresa y del proyecto.
+
+**Contexto de Lectura (Nomenclatura en Cuaderno NotebookLM):**
+- `[CTX]` -> Contexto general de la empresa/cliente
+- `[DOC]` -> Documentación de procesos y flujos de trabajo
+- `[MEET]` -> Reuniones y minutas (histórico)
+- `[PROJ-XXX]` -> Información específica del proyecto en curso
 
 **Reglas:**
+- El Agente buscará el cuaderno por el nombre del cliente asociado al proyecto.
 - Priorizar documentos `[PROJ-XXX]` relacionados al proyecto.
 - Complementar con `[MEET]`.
-- Usar `[CTX]` solo como contexto general.
-- Basarse en el contexto del cliente, no sobreinterpretar y ser concreto.
+- Usar `[CTX]` y `[DOC]` solo como contexto general.
+- Basarse estrictamente en los documentos encontrados en NotebookLM, no sobreinterpretar y ser concreto.
 
-**Input Esperado:**
+**Input Esperado (Entrada al Agente):**
 - Nombre del proyecto
 - Descripción del proyecto
+- Nombre del cliente asociado (para match con NotebookLM)
 - Client Analysis (`client_analysis` en JSON)
 
 **Proceso:**
