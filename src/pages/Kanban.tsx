@@ -330,7 +330,7 @@ export default function Kanban() {
         assignee: taskData.assignees?.length > 0 ? taskData.assignees[0] : null,
         due_date: taskData.dueDate || null,
         hours: taskData.hours || 0,
-        tags: [],
+        tags: taskData.milestoneId ? [`milestone:${taskData.milestoneId}`] : [],
         description: ''
       }]);
       
@@ -518,16 +518,29 @@ function MultiAssigneeSelector({ selectedNames, teamMembers, onChange }: { selec
 }
 
 function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onSave: (task: any) => void }) {
-  const [newTask, setNewTask] = useState({ title: '', project: availableProjects[0]?.name || 'General', priority: 'Media' as const, assignees: [] as string[], dueDate: '', hours: 0 });
+  const [newTask, setNewTask] = useState({ title: '', project: availableProjects[0]?.name || 'General', priority: 'Media' as const, assignees: [] as string[], dueDate: '', hours: 0, milestoneId: '' });
+  
+  const selectedProjectObj = availableProjects.find(p => p.name === newTask.project);
+  const billableMilestones = (selectedProjectObj?.project_analysis?.milestones || []).filter((m: any) => m.type === 'billing' || m.type === 'both');
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden p-6 flex flex-col gap-4">
         <div className="flex justify-between items-center"><h3 className="text-xl font-medium">Nueva Tarea</h3><button onClick={onClose}><X size={20} /></button></div>
         <input autoFocus placeholder="Título" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 px-4" />
         <div className="grid grid-cols-2 gap-4">
-          <select value={newTask.project} onChange={(e) => setNewTask({ ...newTask, project: e.target.value })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4"><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select>
+          <select value={newTask.project} onChange={(e) => setNewTask({ ...newTask, project: e.target.value, milestoneId: '' })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4"><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select>
           <select value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4"><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select>
         </div>
+        {billableMilestones.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-[#666666] uppercase pl-1">Hito Facturable (Opcional)</label>
+            <select value={newTask.milestoneId} onChange={(e) => setNewTask({ ...newTask, milestoneId: e.target.value })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4">
+              <option value="">Sin asociar</option>
+              {billableMilestones.map((m: any) => <option key={m.id} value={m.id}>{m.title}</option>)}
+            </select>
+          </div>
+        )}
         <MultiAssigneeSelector selectedNames={newTask.assignees} teamMembers={teamMembers} onChange={(names) => setNewTask({ ...newTask, assignees: names })} />
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
@@ -563,6 +576,20 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
   const [dueDate, setDueDate] = useState(task.dueDate);
   const [hours, setHours] = useState(task.hours);
   const [actualHours, setActualHours] = useState<number | ''>(task.actual_hours ?? '');
+  const [tags, setTags] = useState<string[]>(task.tags || []);
+  const milestoneId = tags.find(t => t.startsWith('milestone:'))?.replace('milestone:', '') || '';
+
+  const handleMilestoneChange = (newMilestoneId: string) => {
+    const newTags = tags.filter(t => !t.startsWith('milestone:'));
+    if (newMilestoneId) {
+      newTags.push(`milestone:${newMilestoneId}`);
+    }
+    setTags(newTags);
+    onUpdate(task.id, { tags: newTags });
+  };
+
+  const selectedProjectObj = availableProjects.find(p => p.name === project);
+  const billableMilestones = (selectedProjectObj?.project_analysis?.milestones || []).filter((m: any) => m.type === 'billing' || m.type === 'both');
 
   // Sincronizar cambios individuales solo al perder el foco para evitar saturar DB
   const saveTitle = () => { if (title !== task.title) onUpdate(task.id, { title }); };
@@ -637,7 +664,16 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Proyecto</span><select disabled={!isAdmin} value={project} onChange={(e) => { setProject(e.target.value); onUpdate(task.id, { project: e.target.value }); }} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`}><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
+          <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Proyecto</span><select disabled={!isAdmin} value={project} onChange={(e) => { setProject(e.target.value); handleMilestoneChange(''); onUpdate(task.id, { project: e.target.value }); }} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`}><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
+          {billableMilestones.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-[#1A1A1A]">Hito Facturable (Opcional)</span>
+              <select disabled={!isAdmin} value={milestoneId} onChange={(e) => handleMilestoneChange(e.target.value)} className={`w-full h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`}>
+                <option value="">Sin asociar</option>
+                {billableMilestones.map((m: any) => <option key={m.id} value={m.id}>{m.title}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex flex-col gap-2"><span className="text-sm font-medium text-[#1A1A1A]">Descripción</span><textarea disabled={!isAdmin} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} onBlur={saveDesc} placeholder="Añade detalles aquí..." className={`w-full rounded-2xl border border-black/10 bg-black/5 p-4 outline-none resize-none transition-all ${isAdmin ? 'focus:ring-2 focus:ring-[#FFD166]' : 'cursor-not-allowed'}`}></textarea></div>
           {hours > 0 && (
             <div className="grid grid-cols-2 gap-4">

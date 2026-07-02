@@ -1,12 +1,26 @@
-import { ArrowLeft, X, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, X, Plus, Trash2, FileText, CheckCircle, Calendar, DollarSign, Edit3, Upload, ChevronRight } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { analyzeProjectWithGemini, ProjectAnalysisResult } from '../lib/gemini-project-analyst';
+import { extractMilestonesWithGemini } from '../lib/gemini-milestones-extractor';
 import { Sparkles, Loader2, Target, AlertTriangle, Calculator } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EditProjectModal from '../components/EditProjectModal';
+
+export interface ProjectMilestone {
+  id: string;
+  title: string;
+  description: string;
+  type: 'delivery' | 'billing' | 'both';
+  estimated_date: string;
+  real_date: string | null;
+  completed: boolean;
+  amount: number | null;
+  billing_confirmed: boolean;
+  finance_id?: string | null;
+}
 
 interface Project {
   id: string;
@@ -19,7 +33,7 @@ interface Project {
   progress: number;
   created_at: string;
   outcome?: string;
-  project_analysis?: ProjectAnalysisResult;
+  project_analysis?: any;
 }
 
 interface TeamMember {
@@ -53,6 +67,19 @@ export default function ProjectDetail() {
   const [agentDone, setAgentDone] = useState(false);
   const [agentFailed, setAgentFailed] = useState(false);
 
+  // Hitos (Milestones) State
+  const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewMilestones, setPreviewMilestones] = useState<ProjectMilestone[]>([]);
+  const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
+  const [editingMilestone, setEditingMilestone] = useState<Partial<ProjectMilestone> | null>(null);
+  const [expandedMilestones, setExpandedMilestones] = useState<Record<string, boolean>>({});
+
+  const toggleMilestoneExpanded = (id: string) => {
+    setExpandedMilestones(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   useEffect(() => {
     if (id) {
       fetchProjectData();
@@ -71,6 +98,7 @@ export default function ProjectDetail() {
       
       if (projectError) throw projectError;
       setProject(projectData);
+      setMilestones(projectData.project_analysis?.milestones || []);
 
       // Fetch client analysis to use as context for project analysis
       if (projectData.client) {
@@ -129,24 +157,12 @@ export default function ProjectDetail() {
         const tasks = tasksData || [];
         setProjectTasks(tasks);
 
-        // Auto-calculate progress based on tasks
-        if (tasks.length > 0) {
-          let totalProgress = 0;
-          tasks.forEach(task => {
-            if (task.status === 'done') {
-              totalProgress += 100;
-            } else {
-              const estimated = Number(task.hours) || 0;
-              const actual = Number(task.actual_hours) || 0;
-              if (estimated > 0) {
-                const taskProgress = Math.min(100, (actual / estimated) * 100);
-                totalProgress += taskProgress;
-              }
-            }
-          });
-          const calculatedProgress = Math.round(totalProgress / tasks.length);
+        // Auto-calculate progress based on milestones
+        const currentMilestones = projectData.project_analysis?.milestones || [];
+        if (currentMilestones.length > 0) {
+          const completed = currentMilestones.filter((m: any) => m.completed).length;
+          const calculatedProgress = Math.round((completed / currentMilestones.length) * 100);
           
-          // Update state and DB if different
           if (calculatedProgress !== projectData.progress) {
             setProject(prev => prev ? { ...prev, progress: calculatedProgress } : null);
             await supabase.from('projects').update({ progress: calculatedProgress }).eq('id', id);
@@ -256,6 +272,267 @@ export default function ProjectDetail() {
     }
   };
 
+  // ── Gestión de Hitos (Milestones) ──────────────────────────────────────────
+
+  const saveMilestones = async (newMilestones: ProjectMilestone[]) => {
+    if (!project) return;
+
+    // Calcular progreso
+    const total = newMilestones.length;
+    const completed = newMilestones.filter(m => m.completed).length;
+    const calculatedProgress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    const updatedAnalysis = {
+      ...project.project_analysis,
+      milestones: newMilestones
+    };
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          project_analysis: updatedAnalysis,
+          progress: calculatedProgress
+        })
+        .eq('id', project.id);
+
+      if (error) throw error;
+
+      setProject(prev => prev ? {
+        ...prev,
+        project_analysis: updatedAnalysis,
+        progress: calculatedProgress
+      } : null);
+      setMilestones(newMilestones);
+    } catch (err: any) {
+      console.error('Error saving milestones:', err);
+      alert('Error al guardar los hitos: ' + err.message);
+    }
+  };
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPdf(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        try {
+          const extracted = await extractMilestonesWithGemini(base64);
+          if (extracted && extracted.length > 0) {
+            setPreviewMilestones(extracted.map(m => ({
+              id: crypto.randomUUID(),
+              title: m.title,
+              description: m.description,
+              type: m.type,
+              estimated_date: m.estimated_date,
+              real_date: null,
+              completed: false,
+              amount: m.amount,
+              billing_confirmed: false
+            })));
+            setIsPreviewModalOpen(true);
+          } else {
+            alert('Gemini no pudo detectar hitos estructurados en el archivo PDF.');
+          }
+        } catch (err: any) {
+          alert('Error al extraer hitos con Gemini: ' + err.message);
+        } finally {
+          setUploadingPdf(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      setUploadingPdf(false);
+    }
+  };
+
+  const handleConfirmImport = async (replaceExisting: boolean) => {
+    if (!project) return;
+    const newMilestones = replaceExisting
+      ? previewMilestones
+      : [...milestones, ...previewMilestones];
+    await saveMilestones(newMilestones);
+    setIsPreviewModalOpen(false);
+    setPreviewMilestones([]);
+  };
+
+  const handleToggleCompleted = async (milestone: ProjectMilestone) => {
+    const linkedTasks = projectTasks.filter(t => t.tags && Array.isArray(t.tags) && t.tags.includes(`milestone:${milestone.id}`));
+    const pendingTasks = linkedTasks.filter(t => t.status !== 'done');
+
+    if (!milestone.completed && pendingTasks.length > 0) {
+      alert(`No se puede completar el hito. Hay ${pendingTasks.length} tarea(s) vinculada(s) que aún no están finalizadas.`);
+      return;
+    }
+
+    const nextCompleted = !milestone.completed;
+    let realDate = milestone.real_date;
+
+    if (nextCompleted && !realDate) {
+      realDate = new Date().toISOString().split('T')[0];
+    } else if (!nextCompleted) {
+      realDate = null;
+    }
+
+    const updatedMilestones = milestones.map(m =>
+      m.id === milestone.id
+        ? { ...m, completed: nextCompleted, real_date: realDate }
+        : m
+    );
+    await saveMilestones(updatedMilestones);
+  };
+
+  const handleUpdateRealDate = async (milestoneId: string, date: string | null) => {
+    const milestone = milestones.find(m => m.id === milestoneId);
+    if (milestone && milestone.finance_id && date) {
+      try {
+        await supabase.from('finances').update({ date }).eq('id', milestone.finance_id);
+      } catch (err) {
+        console.error('Error updating finance date:', err);
+      }
+    }
+
+    const updatedMilestones = milestones.map(m =>
+      m.id === milestoneId
+        ? { ...m, real_date: date }
+        : m
+    );
+    await saveMilestones(updatedMilestones);
+  };
+
+  const handleConfirmPayment = async (milestone: ProjectMilestone) => {
+    if (!project || !clientId) return;
+    try {
+      if (milestone.billing_confirmed) {
+        // Desconfirmar cobro: eliminar la transacción de finances si existe
+        if (milestone.finance_id) {
+          const { error } = await supabase
+            .from('finances')
+            .delete()
+            .eq('id', milestone.finance_id);
+          if (error) throw error;
+        }
+
+        const updatedMilestones = milestones.map(m =>
+          m.id === milestone.id
+            ? { ...m, billing_confirmed: false, finance_id: null }
+            : m
+        );
+        await saveMilestones(updatedMilestones);
+      } else {
+        // Confirmar cobro: crear transacción en finances
+        const amountToCharge = milestone.amount || 0;
+        if (amountToCharge <= 0) {
+          alert('El hito de cobro debe tener un monto válido en USD.');
+          return;
+        }
+
+        const payload = {
+          description: `Cobro Hito: ${milestone.title}`,
+          amount: amountToCharge,
+          type: 'income',
+          status: 'Paid',
+          date: milestone.real_date || new Date().toISOString().split('T')[0],
+          currency: 'USD',
+          client_id: clientId,
+          project_id: project.id,
+          category: 'Servicios',
+          items: [{ id: 1, description: milestone.title, quantity: 1, price: amountToCharge }]
+        };
+
+        const { data, error } = await supabase
+          .from('finances')
+          .insert([payload])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const updatedMilestones = milestones.map(m =>
+          m.id === milestone.id
+            ? { ...m, billing_confirmed: true, finance_id: data.id }
+            : m
+        );
+        await saveMilestones(updatedMilestones);
+      }
+      // Refrescar datos del proyecto y finanzas
+      fetchProjectData();
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al gestionar el cobro: ' + err.message);
+    }
+  };
+
+  const handleSaveMilestoneManual = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project || !editingMilestone || !editingMilestone.title) return;
+
+    let updatedList: ProjectMilestone[] = [];
+    if (editingMilestone.id) {
+      // Modo edición
+      const oldMilestone = milestones.find(m => m.id === editingMilestone.id);
+      if (oldMilestone && oldMilestone.finance_id) {
+        try {
+          const updates: any = {};
+          if (editingMilestone.real_date && editingMilestone.real_date !== oldMilestone.real_date) {
+            updates.date = editingMilestone.real_date;
+          }
+          if (editingMilestone.amount && Number(editingMilestone.amount) !== oldMilestone.amount) {
+            updates.amount = Number(editingMilestone.amount);
+            // Also update the items array if amount changes
+            updates.items = [{ id: 1, description: editingMilestone.title, quantity: 1, price: Number(editingMilestone.amount) }];
+          }
+          if (Object.keys(updates).length > 0) {
+            await supabase.from('finances').update(updates).eq('id', oldMilestone.finance_id);
+          }
+        } catch (err) {
+          console.error('Error updating finance record:', err);
+        }
+      }
+      updatedList = milestones.map(m => m.id === editingMilestone.id ? (editingMilestone as ProjectMilestone) : m);
+    } else {
+      // Modo creación
+      const newM: ProjectMilestone = {
+        id: crypto.randomUUID(),
+        title: editingMilestone.title,
+        description: editingMilestone.description || '',
+        type: editingMilestone.type || 'delivery',
+        estimated_date: editingMilestone.estimated_date || new Date().toISOString().split('T')[0],
+        real_date: editingMilestone.real_date || null,
+        completed: editingMilestone.completed || false,
+        amount: editingMilestone.amount ? Number(editingMilestone.amount) : null,
+        billing_confirmed: editingMilestone.billing_confirmed || false
+      };
+      updatedList = [...milestones, newM];
+    }
+
+    await saveMilestones(updatedList);
+    setIsMilestoneModalOpen(false);
+    setEditingMilestone(null);
+  };
+
+  const handleDeleteMilestone = async (id: string) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este hito?')) return;
+
+    const milestone = milestones.find(m => m.id === id);
+    if (milestone && milestone.finance_id) {
+      try {
+        await supabase
+          .from('finances')
+          .delete()
+          .eq('id', milestone.finance_id);
+      } catch (err) {
+          console.error('Error deleting related finance transaction:', err);
+      }
+    }
+
+    const updatedList = milestones.filter(m => m.id !== id);
+    await saveMilestones(updatedList);
+  };
+
   if (loading) return <div className="p-20 text-center text-[#666666]">Cargando proyecto...</div>;
   if (!project) return <div className="p-20 text-center text-[#666666]">Proyecto no encontrado</div>;
 
@@ -332,6 +609,319 @@ export default function ProjectDetail() {
     </div>,
     document.body
   ) : null;
+
+  const previewImportModal = isPreviewModalOpen ? createPortal(
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6 border-b border-black/5 flex justify-between items-center bg-[#FFD166]/10">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className="text-[#FFB020]" />
+            <h3 className="text-xl font-medium text-[#1A1A1A]">Hitos Detectados por AI</h3>
+          </div>
+          <button onClick={() => setIsPreviewModalOpen(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+            <X size={20} className="text-[#1A1A1A]" />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto flex-1">
+          <p className="text-sm text-[#666666] mb-4">
+            Gemini ha analizado el documento y ha detectado los siguientes hitos. Por favor, revísalos antes de importarlos al proyecto.
+          </p>
+          <div className="border border-black/5 rounded-2xl overflow-hidden">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-black/2 border-b border-black/5 text-[#666666] font-bold uppercase tracking-wider">
+                  <th className="py-2.5 px-3">Título</th>
+                  <th className="py-2.5 px-3">Tipo</th>
+                  <th className="py-2.5 px-3">Fecha Estimada</th>
+                  <th className="py-2.5 px-3 text-right">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {previewMilestones.map((m, idx) => (
+                  <tr key={idx} className="border-b border-black/5">
+                    <td className="py-3 px-3">
+                      <p className="font-semibold text-[#1A1A1A]">{m.title}</p>
+                      <p className="text-[#666666] mt-0.5 line-clamp-1">{m.description}</p>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                        m.type === 'delivery' ? 'bg-blue-100 text-blue-800' :
+                        m.type === 'billing' ? 'bg-green-100 text-green-800' :
+                        'bg-purple-100 text-purple-800'
+                      }`}>
+                        {m.type === 'delivery' ? 'Entregable' : m.type === 'billing' ? 'Pago' : 'Mixto'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-[#1A1A1A]">
+                      {new Date(m.estimated_date).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 px-3 font-semibold text-right text-[#1A1A1A]">
+                      {m.amount ? `$${m.amount.toLocaleString()} USD` : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-black/5 flex flex-col sm:flex-row justify-between gap-4 bg-black/2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleConfirmImport(false)}
+              className="bg-white hover:bg-black/5 text-[#1A1A1A] border border-black/10 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-sm"
+            >
+              Combinar con Existentes
+            </button>
+            <button
+              onClick={() => handleConfirmImport(true)}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-sm"
+            >
+              Sobrescribir Existentes
+            </button>
+          </div>
+          <button
+            onClick={() => setIsPreviewModalOpen(false)}
+            className="bg-[#222222] hover:bg-black text-white px-6 py-2.5 rounded-full text-xs font-bold transition-all"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
+  const milestoneManualModal = isMilestoneModalOpen && editingMilestone ? createPortal(
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+      <form
+        onSubmit={handleSaveMilestoneManual}
+        className="bg-white rounded-[32px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-black/5 flex justify-between items-center bg-[#FFD166]/10">
+          <h3 className="text-xl font-medium text-[#1A1A1A]">
+            {editingMilestone.id ? 'Editar Hito' : 'Nuevo Hito'}
+          </h3>
+          <button 
+            type="button" 
+            onClick={() => setIsMilestoneModalOpen(false)} 
+            className="p-2 hover:bg-black/5 rounded-full transition-colors"
+          >
+            <X size={20} className="text-[#1A1A1A]" />
+          </button>
+        </div>
+
+        <div className="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Título del Hito</label>
+            <input
+              type="text"
+              required
+              value={editingMilestone.title || ''}
+              onChange={(e) => setEditingMilestone({ ...editingMilestone, title: e.target.value })}
+              className="bg-black/2 border border-black/10 rounded-2xl px-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A]"
+              placeholder="Ej: Entrega de Prototipo o Anticipo 30%"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Descripción</label>
+            <textarea
+              value={editingMilestone.description || ''}
+              onChange={(e) => setEditingMilestone({ ...editingMilestone, description: e.target.value })}
+              className="bg-black/2 border border-black/10 rounded-2xl px-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A] h-20 resize-none"
+              placeholder="Detalles sobre lo que se entrega o condiciones de cobro..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Tipo de Hito</label>
+              <select
+                value={editingMilestone.type || 'delivery'}
+                onChange={(e) => setEditingMilestone({ 
+                  ...editingMilestone, 
+                  type: e.target.value as any,
+                  amount: e.target.value === 'delivery' ? null : editingMilestone.amount 
+                })}
+                className="bg-black/2 border border-black/10 rounded-2xl px-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A]"
+              >
+                <option value="delivery">Entregable (Técnico)</option>
+                <option value="billing">Pago (Facturación)</option>
+                <option value="both">Mixto (Entrega + Pago)</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Fecha Estimada</label>
+              <input
+                type="date"
+                required
+                value={editingMilestone.estimated_date || ''}
+                onChange={(e) => setEditingMilestone({ ...editingMilestone, estimated_date: e.target.value })}
+                className="bg-black/2 border border-black/10 rounded-2xl px-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A]"
+              />
+            </div>
+          </div>
+
+          {(editingMilestone.type === 'billing' || editingMilestone.type === 'both') && (
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Monto del Cobro (USD)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#666666] font-medium">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={editingMilestone.amount || ''}
+                  onChange={(e) => setEditingMilestone({ ...editingMilestone, amount: e.target.value ? Number(e.target.value) : null })}
+                  className="w-full bg-black/2 border border-black/10 rounded-2xl pl-8 pr-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A] font-semibold"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          )}
+
+          {editingMilestone.id && (
+            <div className="border-t border-black/5 pt-4 flex flex-col gap-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editingMilestone.completed || false}
+                  onChange={(e) => setEditingMilestone({ 
+                    ...editingMilestone, 
+                    completed: e.target.checked,
+                    real_date: e.target.checked ? (editingMilestone.real_date || new Date().toISOString().split('T')[0]) : null
+                  })}
+                  className="w-4 h-4 rounded text-[#FFD166] focus:ring-[#FFD166] border-black/10"
+                />
+                <span className="text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider">Hito Completado</span>
+              </label>
+
+              {editingMilestone.completed && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Fecha Real de Finalización</label>
+                  <input
+                    type="date"
+                    required
+                    value={editingMilestone.real_date || ''}
+                    onChange={(e) => setEditingMilestone({ ...editingMilestone, real_date: e.target.value })}
+                    className="bg-black/2 border border-black/10 rounded-2xl px-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A]"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 border-t border-black/5 flex justify-end gap-3 bg-black/2">
+          <button
+            type="button"
+            onClick={() => setIsMilestoneModalOpen(false)}
+            className="bg-white hover:bg-black/5 text-[#1A1A1A] border border-black/10 px-6 py-2.5 rounded-full text-xs font-bold transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className="bg-[#222222] hover:bg-black text-white px-8 py-2.5 rounded-full text-xs font-bold transition-all"
+          >
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>,
+    document.body
+  ) : null;
+
+  const unlinkedTasks = projectTasks.filter(t => !(t.tags && Array.isArray(t.tags) && t.tags.some((tag: string) => tag.startsWith('milestone:'))));
+
+  const renderTaskItem = (task: any) => {
+    const isExpanded = expandedTasks.includes(task.id);
+    return (
+      <div 
+        key={task.id} 
+        className={`flex flex-col bg-white/40 rounded-3xl border border-black/5 hover:bg-white/60 transition-all overflow-hidden ${isExpanded ? 'ring-2 ring-[#FFD166]/30 bg-white/80' : ''}`}
+      >
+        <div 
+          className="flex items-center justify-between p-4 cursor-pointer"
+          onClick={() => setExpandedTasks(prev => isExpanded ? prev.filter(id => id !== task.id) : [...prev, task.id])}
+        >
+          <div className="flex items-center gap-4">
+            <div className={`w-2 h-2 rounded-full ${
+              task.status === 'done' ? 'bg-green-400' :
+              task.status === 'in-progress' ? 'bg-[#FFD166]' :
+              task.status === 'review' ? 'bg-blue-400' : 'bg-black/20'
+            }`} />
+            <div>
+              <p className="text-sm font-medium text-[#1A1A1A]">{task.title}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className={`text-[10px] font-bold uppercase ${
+                  task.priority === 'Alta' ? 'text-red-500' : 
+                  task.priority === 'Media' ? 'text-[#FFB020]' : 'text-blue-500'
+                }`}>
+                  {task.priority}
+                </span>
+                {task.due_date && (
+                  <>
+                    <span className="text-[10px] text-black/20">•</span>
+                    <span className="text-[10px] text-[#666666]">Vence: {new Date(task.due_date).toLocaleDateString()}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-1.5">
+              {(task.assignees || []).slice(0, 3).map((name: string, i: number) => (
+                <div 
+                  key={i} 
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white text-white bg-[#222222]"
+                  title={name}
+                >
+                  {name.split(' ').map(n => n[0]).join('')}
+                </div>
+              ))}
+            </div>
+            <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+              <ArrowLeft size={16} className="-rotate-90 text-[#999]" />
+            </div>
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div className="px-4 md:px-10 pb-6 pt-2 border-t border-black/5 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex flex-col gap-4">
+              {task.description ? (
+                <div className="bg-black/5 p-4 rounded-2xl">
+                  <p className="text-xs text-[#666666] leading-relaxed italic">{task.description}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-[#999] italic">Sin descripción detallada.</p>
+              )}
+              
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-[#999] uppercase tracking-wider">Horas Est.</span>
+                  <span className="text-xs font-medium text-[#1A1A1A]">{task.hours || 0}h</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-[#999] uppercase tracking-wider">Creada</span>
+                  <span className="text-xs font-medium text-[#1A1A1A]">{new Date(task.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-[#999] uppercase tracking-wider">ID</span>
+                  <span className="text-[10px] font-mono text-[#999]">{task.id.substring(0,8)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
@@ -433,194 +1023,6 @@ export default function ProjectDetail() {
             </div>
           </div>
 
-          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex items-center gap-3">
-                <h4 className="text-xl font-medium text-[#1A1A1A]">Tareas del Proyecto</h4>
-                <div className="flex bg-black/5 p-1 rounded-full border border-black/5">
-                  <button 
-                    onClick={() => setTaskGrouping('status')}
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${taskGrouping === 'status' ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#666666] hover:text-[#1A1A1A]'}`}
-                  >
-                    POR ESTADO
-                  </button>
-                  <button 
-                    onClick={() => setTaskGrouping('priority')}
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${taskGrouping === 'priority' ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#666666] hover:text-[#1A1A1A]'}`}
-                  >
-                    POR PRIORIDAD
-                  </button>
-                </div>
-              </div>
-              <Link to="/kanban" className="text-sm font-medium text-[#FFB020] hover:underline flex items-center gap-1">
-                Ver Tablero <ArrowLeft size={14} className="rotate-180" />
-              </Link>
-            </div>
-
-            {/* Quick Stats / Indicators */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Totales', val: projectTasks.length, color: 'bg-black/5 text-[#1A1A1A]' },
-                { label: 'Pendientes', val: projectTasks.filter(t => t.status === 'todo').length, color: 'bg-black/5 text-[#666666]' },
-                { label: 'En Curso', val: projectTasks.filter(t => t.status === 'in-progress' || t.status === 'review').length, color: 'bg-[#FFD166]/20 text-[#1A1A1A]' },
-                { label: 'Completadas', val: projectTasks.filter(t => t.status === 'done').length, color: 'bg-green-500/10 text-green-700' },
-              ].map((stat, i) => (
-                <div key={i} className={`p-4 rounded-2xl ${stat.color} border border-black/5 flex flex-col gap-1`}>
-                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">{stat.label}</span>
-                  <span className="text-2xl font-medium">{stat.val}</span>
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex flex-col gap-6">
-              {projectTasks.length === 0 ? (
-                <div className="p-10 text-center text-[#666666] italic bg-black/5 rounded-2xl border border-dashed border-black/10">
-                  Usa el tablero Kanban para asignar y gestionar tareas de este proyecto.
-                </div>
-              ) : (
-                <div className="flex flex-col gap-8">
-                  {/* Grouped Content */}
-                  {(taskGrouping === 'status' ? ['todo', 'in-progress', 'review', 'done'] : ['Alta', 'Media', 'Baja']).map((group) => {
-                    const filteredTasks = projectTasks.filter(t => (taskGrouping === 'status' ? t.status : t.priority) === group);
-                    if (filteredTasks.length === 0) return null;
-
-                    return (
-                      <div key={group} className="flex flex-col gap-4">
-                        <div className="flex items-center gap-3 px-2">
-                          <div className={`w-1.5 h-6 rounded-full ${
-                            taskGrouping === 'status' ? (
-                              group === 'done' ? 'bg-green-400' :
-                              group === 'in-progress' ? 'bg-[#FFD166]' :
-                              group === 'review' ? 'bg-blue-400' : 'bg-black/10'
-                            ) : (
-                              group === 'Alta' ? 'bg-red-400' :
-                              group === 'Media' ? 'bg-[#FFD166]' : 'bg-blue-400'
-                            )
-                          }`} />
-                          <h5 className="text-xs font-bold text-[#1A1A1A] uppercase tracking-widest flex items-center gap-2">
-                            {taskGrouping === 'status' ? (
-                              group === 'todo' ? 'Por Hacer' :
-                              group === 'in-progress' ? 'En Progreso' :
-                              group === 'review' ? 'En Revisión' : 'Completado'
-                            ) : group}
-                            <span className="text-[#999] font-normal">({filteredTasks.length})</span>
-                          </h5>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3">
-                          {filteredTasks.map((task) => {
-                            const isExpanded = expandedTasks.includes(task.id);
-                            return (
-                              <div 
-                                key={task.id} 
-                                className={`flex flex-col bg-white/40 rounded-3xl border border-black/5 hover:bg-white/60 transition-all overflow-hidden ${isExpanded ? 'ring-2 ring-[#FFD166]/30 bg-white/80' : ''}`}
-                              >
-                                <div 
-                                  className="flex items-center justify-between p-4 cursor-pointer"
-                                  onClick={() => setExpandedTasks(prev => isExpanded ? prev.filter(id => id !== task.id) : [...prev, task.id])}
-                                >
-                                  <div className="flex items-center gap-4">
-                                    <div className={`w-2 h-2 rounded-full ${
-                                      task.status === 'done' ? 'bg-green-400' :
-                                      task.status === 'in-progress' ? 'bg-[#FFD166]' :
-                                      task.status === 'review' ? 'bg-blue-400' : 'bg-black/20'
-                                    }`} />
-                                    <div>
-                                      <p className="text-sm font-medium text-[#1A1A1A]">{task.title}</p>
-                                      <div className="flex items-center gap-2 mt-0.5">
-                                        <span className={`text-[10px] font-bold uppercase ${
-                                          task.priority === 'Alta' ? 'text-red-500' : 
-                                          task.priority === 'Media' ? 'text-[#FFB020]' : 'text-blue-500'
-                                        }`}>
-                                          {task.priority}
-                                        </span>
-                                        {task.due_date && (
-                                          <>
-                                            <span className="text-[10px] text-black/20">•</span>
-                                            <span className="text-[10px] text-[#666666]">Vence: {new Date(task.due_date).toLocaleDateString()}</span>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex -space-x-1.5">
-                                      {(task.assignees || []).slice(0, 3).map((name: string, i: number) => (
-                                        <div 
-                                          key={i} 
-                                          className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white text-white bg-[#222222]"
-                                          title={name}
-                                        >
-                                          {name.split(' ').map(n => n[0]).join('')}
-                                        </div>
-                                      ))}
-                                    </div>
-                                    <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                      <ArrowLeft size={16} className="-rotate-90 text-[#999]" />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {isExpanded && (
-                                  <div className="px-4 md:px-10 pb-6 pt-2 border-t border-black/5 animate-in slide-in-from-top-2 duration-300">
-                                    <div className="flex flex-col gap-4">
-                                      {task.description ? (
-                                        <div className="bg-black/5 p-4 rounded-2xl">
-                                          <p className="text-xs text-[#666666] leading-relaxed italic">{task.description}</p>
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-[#999] italic">Sin descripción detallada.</p>
-                                      )}
-                                      
-                                      <div className="flex items-center gap-6">
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-[9px] font-bold text-[#999] uppercase tracking-wider">Horas Est.</span>
-                                          <span className="text-xs font-medium text-[#1A1A1A]">{task.hours || 0}h</span>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-[9px] font-bold text-[#999] uppercase tracking-wider">Creada</span>
-                                          <span className="text-xs font-medium text-[#1A1A1A]">{new Date(task.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-[9px] font-bold text-[#999] uppercase tracking-wider">ID</span>
-                                          <span className="text-[10px] font-mono text-[#999]">{task.id.substring(0,8)}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Legend */}
-            <div className="pt-6 border-t border-black/5 flex flex-wrap gap-6 items-center justify-center bg-black/2 p-4 rounded-2xl">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-400" />
-                <span className="text-[10px] font-bold text-[#666666] uppercase">Completado</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#FFD166]" />
-                <span className="text-[10px] font-bold text-[#666666] uppercase">En Progreso</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-400" />
-                <span className="text-[10px] font-bold text-[#666666] uppercase">Revisión / Media</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-400" />
-                <span className="text-[10px] font-bold text-[#666666] uppercase">Alta Prioridad</span>
-              </div>
-            </div>
-          </div>
-
           {/* AI Analysis Result Card */}
           {project.project_analysis && (
             <div className="bg-gradient-to-br from-[#1A1A1A] to-[#2A2A2A] rounded-[32px] border border-white/10 shadow-lg p-8 flex flex-col gap-6 text-white relative overflow-hidden">
@@ -671,7 +1073,7 @@ export default function ProjectDetail() {
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold text-[#FFD166] uppercase tracking-wider">Áreas Afectadas</span>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {project.project_analysis.areas.map((area, idx) => (
+                      {project.project_analysis.areas.map((area: string, idx: number) => (
                         <span key={idx} className="text-xs font-medium bg-black/30 px-2 py-1 rounded-md text-white/80">{area}</span>
                       ))}
                     </div>
@@ -687,6 +1089,372 @@ export default function ProjectDetail() {
               </div>
             </div>
           )}
+
+          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <h4 className="text-xl font-medium text-[#1A1A1A]">Tareas del Proyecto</h4>
+                <div className="flex bg-black/5 p-1 rounded-full border border-black/5">
+                  <button 
+                    onClick={() => setTaskGrouping('status')}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${taskGrouping === 'status' ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#666666] hover:text-[#1A1A1A]'}`}
+                  >
+                    POR ESTADO
+                  </button>
+                  <button 
+                    onClick={() => setTaskGrouping('priority')}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${taskGrouping === 'priority' ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#666666] hover:text-[#1A1A1A]'}`}
+                  >
+                    POR PRIORIDAD
+                  </button>
+                </div>
+              </div>
+              <Link to="/kanban" className="text-sm font-medium text-[#FFB020] hover:underline flex items-center gap-1">
+                Ver Tablero <ArrowLeft size={14} className="rotate-180" />
+              </Link>
+            </div>
+
+            {/* Quick Stats / Indicators */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Totales', val: projectTasks.length, color: 'bg-black/5 text-[#1A1A1A]' },
+                { label: 'Pendientes', val: projectTasks.filter(t => t.status === 'todo').length, color: 'bg-black/5 text-[#666666]' },
+                { label: 'En Curso', val: projectTasks.filter(t => t.status === 'in-progress' || t.status === 'review').length, color: 'bg-[#FFD166]/20 text-[#1A1A1A]' },
+                { label: 'Completadas', val: projectTasks.filter(t => t.status === 'done').length, color: 'bg-green-500/10 text-green-700' },
+              ].map((stat, i) => (
+                <div key={i} className={`p-4 rounded-2xl ${stat.color} border border-black/5 flex flex-col gap-1`}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">{stat.label}</span>
+                  <span className="text-2xl font-medium">{stat.val}</span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex flex-col gap-6">
+              {unlinkedTasks.length === 0 ? (
+                <div className="p-10 text-center text-[#666666] italic bg-black/5 rounded-2xl border border-dashed border-black/10">
+                  Usa el tablero Kanban para asignar y gestionar tareas de este proyecto. (Tareas asociadas a hitos se muestran debajo).
+                </div>
+              ) : (
+                <div className="flex flex-col gap-8">
+                  {/* Grouped Content */}
+                  {(taskGrouping === 'status' ? ['todo', 'in-progress', 'review', 'done'] : ['Alta', 'Media', 'Baja']).map((group) => {
+                    const filteredTasks = unlinkedTasks.filter(t => (taskGrouping === 'status' ? t.status : t.priority) === group);
+                    if (filteredTasks.length === 0) return null;
+
+                    return (
+                      <div key={group} className="flex flex-col gap-4">
+                        <div className="flex items-center gap-3 px-2">
+                          <div className={`w-1.5 h-6 rounded-full ${
+                            taskGrouping === 'status' ? (
+                              group === 'done' ? 'bg-green-400' :
+                              group === 'in-progress' ? 'bg-[#FFD166]' :
+                              group === 'review' ? 'bg-blue-400' : 'bg-black/10'
+                            ) : (
+                              group === 'Alta' ? 'bg-red-400' :
+                              group === 'Media' ? 'bg-[#FFD166]' : 'bg-blue-400'
+                            )
+                          }`} />
+                          <h5 className="text-xs font-bold text-[#1A1A1A] uppercase tracking-widest flex items-center gap-2">
+                            {taskGrouping === 'status' ? (
+                              group === 'todo' ? 'Por Hacer' :
+                              group === 'in-progress' ? 'En Progreso' :
+                              group === 'review' ? 'En Revisión' : 'Completado'
+                            ) : group}
+                            <span className="text-[#999] font-normal">({filteredTasks.length})</span>
+                          </h5>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          {filteredTasks.map(task => renderTaskItem(task))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            </div>
+
+          {/* Plan de Hitos y Facturación */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-[#FFD166]/20 rounded-xl text-[#FFB020]">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h4 className="text-xl font-medium text-[#1A1A1A]">Plan de Hitos y Cobros</h4>
+                  <p className="text-xs text-[#666666] mt-0.5">Control de entregables, cobros por avance e importación inteligente de cronogramas.</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 w-full sm:w-auto flex-wrap">
+                <label className="flex items-center justify-center gap-2 bg-[#FFD166] hover:bg-[#FFC033] text-[#1A1A1A] px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0">
+                  {uploadingPdf ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={14} />
+                      Cargar Cronograma (PDF)
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handlePdfUpload}
+                    disabled={uploadingPdf}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  onClick={() => {
+                    setEditingMilestone({
+                      title: '',
+                      description: '',
+                      type: 'delivery',
+                      estimated_date: new Date().toISOString().split('T')[0],
+                      real_date: null,
+                      completed: false,
+                      amount: null,
+                      billing_confirmed: false
+                    });
+                    setIsMilestoneModalOpen(true);
+                  }}
+                  className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-sm shrink-0"
+                >
+                  <Plus size={14} />
+                  Nuevo Hito
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-black/2 border border-black/5 flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Avance del Proyecto</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-medium text-[#1A1A1A]">
+                    {milestones.length > 0 ? Math.round((milestones.filter(m => m.completed).length / milestones.length) * 100) : 0}%
+                  </span>
+                  <span className="text-xs text-[#666666]">
+                    ({milestones.filter(m => m.completed).length}/{milestones.length} hitos)
+                  </span>
+                </div>
+                <div className="w-full bg-black/5 rounded-full h-1.5 mt-1">
+                  <div
+                    className="h-1.5 rounded-full bg-[#FFD166]"
+                    style={{ width: `${milestones.length > 0 ? (milestones.filter(m => m.completed).length / milestones.length) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-black/2 border border-black/5 flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Cobros por Avances</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-medium text-emerald-600">
+                    ${milestones.filter(m => m.billing_confirmed).reduce((acc, m) => acc + (m.amount || 0), 0).toLocaleString()}
+                  </span>
+                  <span className="text-xs text-[#666666]">
+                    de ${(project.budget || 0).toLocaleString()} USD
+                  </span>
+                </div>
+                <div className="w-full bg-black/5 rounded-full h-1.5 mt-1">
+                  <div
+                    className="h-1.5 rounded-full bg-emerald-500"
+                    style={{
+                      width: `${(project.budget || 0) > 0
+                        ? (milestones.filter(m => m.billing_confirmed).reduce((acc, m) => acc + (m.amount || 0), 0) / (project.budget || 1)) * 100
+                        : 0}%`
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-black/2 border border-black/5 flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Próximo Vencimiento</span>
+                {milestones.filter(m => !m.completed).length > 0 ? (
+                  (() => {
+                    const next = [...milestones]
+                      .filter(m => !m.completed)
+                      .sort((a, b) => new Date(a.estimated_date).getTime() - new Date(b.estimated_date).getTime())[0];
+                    return (
+                      <>
+                        <span className="text-sm font-medium text-[#1A1A1A] truncate" title={next.title}>
+                          {next.title}
+                        </span>
+                        <span className="text-xs text-[#666666] flex items-center gap-1 mt-0.5">
+                          <Calendar size={12} />
+                          Est: {new Date(next.estimated_date).toLocaleDateString()}
+                        </span>
+                      </>
+                    );
+                  })()
+                ) : (
+                  <span className="text-sm font-medium text-[#666666] italic">No hay hitos pendientes</span>
+                )}
+              </div>
+            </div>
+
+            {/* Milestones List */}
+            {milestones.length === 0 ? (
+              <div className="p-10 text-center text-[#666666] italic bg-black/2 rounded-2xl border border-dashed border-black/10 flex flex-col items-center gap-3">
+                <FileText size={40} className="text-black/20" />
+                <div>
+                  <p className="font-medium text-sm text-[#1A1A1A]">No hay hitos cargados</p>
+                  <p className="text-xs text-[#666666] mt-1">Carga un PDF del plan de trabajo o crea hitos manualmente.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-black/5 text-[10px] font-bold text-[#666666] uppercase tracking-wider">
+                      <th className="py-3 px-2 w-12 text-center">Estado</th>
+                      <th className="py-3 px-3">Hito / Entregable</th>
+                      <th className="py-3 px-3">Tipo</th>
+                      <th className="py-3 px-3">Estimada</th>
+                      <th className="py-3 px-3">Real</th>
+                      <th className="py-3 px-3 text-right">Monto</th>
+                      <th className="py-3 px-3 text-center">Cobro</th>
+                      <th className="py-3 px-3 w-16 text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...milestones]
+                      .sort((a, b) => new Date(a.estimated_date).getTime() - new Date(b.estimated_date).getTime())
+                      .map((m) => {
+                        const hasAmount = m.amount && m.amount > 0;
+                        const isBillingType = m.type === 'billing' || m.type === 'both';
+                        const linkedTasks = projectTasks.filter(t => t.tags && Array.isArray(t.tags) && t.tags.includes(`milestone:${m.id}`));
+                        const isExpanded = expandedMilestones[m.id];
+                        return (
+                          <Fragment key={m.id}>
+                            <tr className="border-b border-black/5 hover:bg-black/2 transition-colors group">
+                              <td className="py-4 px-2 text-center">
+                                <button
+                                  onClick={() => handleToggleCompleted(m)}
+                                  className={`p-1 rounded-full transition-colors ${
+                                    m.completed ? 'text-green-500' : 'text-black/10 hover:text-black/30'
+                                  }`}
+                                >
+                                  <CheckCircle size={20} className={m.completed ? 'fill-green-500/10' : ''} />
+                                </button>
+                              </td>
+                              <td className="py-4 px-3 max-w-[250px]">
+                                <div className="flex items-center gap-2">
+                                  {linkedTasks.length > 0 && (
+                                    <button 
+                                      onClick={() => toggleMilestoneExpanded(m.id)}
+                                      className="p-1 hover:bg-black/5 rounded text-[#666666] transition-transform"
+                                      style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                                    >
+                                      <ChevronRight size={14} />
+                                    </button>
+                                  )}
+                                  <div>
+                                    <p className={`text-sm font-medium ${m.completed ? 'line-through text-[#999]' : 'text-[#1A1A1A]'}`}>
+                                      {m.title}
+                                    </p>
+                                    {m.description && (
+                                      <p className="text-xs text-[#666666] mt-0.5 line-clamp-2" title={m.description}>
+                                        {m.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 px-3">
+                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                  m.type === 'delivery' ? 'bg-blue-500/10 text-blue-700 border-blue-500/20' :
+                                  m.type === 'billing' ? 'bg-green-500/10 text-green-700 border-green-500/20' :
+                                  'bg-purple-500/10 text-purple-700 border-purple-500/20'
+                                }`}>
+                                  {m.type === 'delivery' ? 'Entregable' : m.type === 'billing' ? 'Pago' : 'Mixto'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-3 text-xs text-[#1A1A1A]">
+                                {new Date(m.estimated_date).toLocaleDateString()}
+                              </td>
+                              <td className="py-4 px-3">
+                                {m.completed ? (
+                                  <input
+                                    type="date"
+                                    value={m.real_date || ''}
+                                    onChange={(e) => handleUpdateRealDate(m.id, e.target.value || null)}
+                                    className="text-xs bg-white border border-black/10 rounded-lg px-2 py-1 outline-none text-[#1A1A1A]"
+                                  />
+                                ) : (
+                                  <span className="text-xs text-[#999] italic">Pendiente</span>
+                                )}
+                              </td>
+                              <td className="py-4 px-3 text-sm font-medium text-[#1A1A1A] text-right">
+                                {hasAmount ? `$${m.amount?.toLocaleString()} USD` : '-'}
+                              </td>
+                              <td className="py-4 px-3 text-center">
+                                {isBillingType && m.completed ? (
+                                  <button
+                                    onClick={() => handleConfirmPayment(m)}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider transition-all border ${
+                                      m.billing_confirmed
+                                        ? 'bg-green-500 text-white border-green-600 hover:bg-rose-600 hover:border-rose-700 hover:content-["Deshacer"]'
+                                        : 'bg-white text-[#1A1A1A] border-black/10 hover:border-[#FFD166] hover:bg-[#FFD166]/10'
+                                    }`}
+                                  >
+                                    {m.billing_confirmed ? 'COBRADO ✓' : 'CONFIRMAR'}
+                                  </button>
+                                ) : isBillingType ? (
+                                  <span className="text-[10px] text-[#999] font-bold tracking-wider uppercase">Completa Hito</span>
+                                ) : (
+                                  <span className="text-xs text-[#999]">-</span>
+                                )}
+                              </td>
+                              <td className="py-4 px-3 text-center">
+                                <div className="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={() => {
+                                      setEditingMilestone(m);
+                                      setIsMilestoneModalOpen(true);
+                                    }}
+                                    className="p-1 hover:bg-black/5 rounded text-[#666666] hover:text-[#1A1A1A]"
+                                    title="Editar"
+                                  >
+                                    <Edit3 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteMilestone(m.id)}
+                                    className="p-1 hover:bg-red-50 rounded text-[#666666] hover:text-red-600"
+                                    title="Eliminar"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {isExpanded && linkedTasks.length > 0 && (
+                              <tr className="bg-black/2 border-b border-black/5">
+                                <td colSpan={8} className="p-4">
+                                  <div className="bg-white rounded-xl border border-black/5 p-4 pl-12 shadow-sm">
+                                    <h5 className="text-[10px] font-bold text-[#666666] uppercase tracking-wider mb-3">Tareas Vinculadas</h5>
+                                    <div className="flex flex-col gap-3">
+                                      {linkedTasks.map(task => renderTaskItem(task))}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+
         </div>
 
         <div className="lg:col-span-1 flex flex-col gap-6">
@@ -772,6 +1540,8 @@ export default function ProjectDetail() {
 
       {editModal}
       {teamModal}
+      {previewImportModal}
+      {milestoneManualModal}
 
       {/* AI Agent Progress Panel */}
       {showAgentPanel && createPortal(

@@ -12,6 +12,12 @@
       "skillPath": "skills/apolloio/SKILL.md",
       "computedHash": "ece18d024029beda10854685ab8141ef7afe31a2ffd638ff5c784565ae68dbbb"
     },
+    "design-taste-frontend": {
+      "source": "leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "899b84384f74f540ea5284d9b2e9234e050998b42eacc805410b518d4226c0b3"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
@@ -21,7 +27,7 @@
       "source": "anthropics/skills",
       "sourceType": "github",
       "skillPath": "skills/frontend-design/SKILL.md",
-      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+      "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
     },
     "python-performance-optimization": {
       "source": "wshobson/agents",

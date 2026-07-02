@@ -9,7 +9,6 @@ import {
 import { useReactToPrint } from "react-to-print";
 import { supabase } from "../lib/supabase";
 import { analyzeWithGemini } from "../lib/gemini";
-import BudgetPDFTemplate from "../components/BudgetPDFTemplate";
 import ProposalPDFTemplate from "../components/ProposalPDFTemplate";
 import { sendNotification } from "../lib/notifications";
 import { computeArielyPackages } from "../lib/ariely-engine";
@@ -106,9 +105,7 @@ export default function SmartQuoter() {
     const [isIdLoading, setIsIdLoading] = useState(false);
 
     const printRef = useRef<HTMLDivElement>(null);
-    const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: 'Propuesta_IngentIA' });
-    const proposalPrintRef = useRef<HTMLDivElement>(null);
-    const handleProposalPrint = useReactToPrint({ contentRef: proposalPrintRef, documentTitle: 'Propuesta_Conductual_IngentIA' });
+    const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: 'Propuesta_Unificada_IngentIA' });
 
     useEffect(() => {
         fetchClientsAndProjects();
@@ -659,11 +656,6 @@ export default function SmartQuoter() {
                                                             <Save size={16} /> 
                                                             Guardar Registro
                                                         </button>
-                                                        <button onClick={() => handlePrint()}
-                                                            className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-all shadow-md group w-full sm:w-auto">
-                                                            <Download size={16} className="group-hover:translate-y-0.5 transition-transform" /> 
-                                                            Exportar PDF
-                                                        </button>
                                                     </div>
                                                 </div>
 
@@ -807,9 +799,9 @@ export default function SmartQuoter() {
                                                         Previsualización de la arquitectura conductual para reducir el dolor de pago y maximizar la conversión.
                                                     </p>
                                                 </div>
-                                                <button onClick={() => handleProposalPrint()}
-                                                    className="flex items-center gap-2 bg-[#008CA4] hover:bg-[#007a90] text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-md group shrink-0">
-                                                    <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                                                <button onClick={() => handlePrint()}
+                                                    className="flex items-center gap-2 px-6 py-3 bg-[#00AEC9] hover:bg-[#0090A6] text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-[#00AEC9]/20">
+                                                    <Download size={18} />
                                                     Descargar Propuesta
                                                 </button>
                                             </div>
@@ -923,25 +915,17 @@ export default function SmartQuoter() {
                 </main>
             </div>
 
-            {/* Hidden PDF Template */}
-            <div className="absolute opacity-0 pointer-events-none -z-50 -left-[9999px] -top-[9999px]">
-                {results && (
-                    <BudgetPDFTemplate
-                        ref={printRef}
-                        formData={pdfFormData}
-                        result={pdfResult}
-                    />
-                )}
-            </div>
-
             {/* Hidden Proposal PDF Template */}
-            <div className="absolute opacity-0 pointer-events-none -z-50 -left-[9999px] -top-[9999px]">
-                {results && arielyResult && (
+            <div style={{ display: 'none' }}>
+                {results && (
                     <ProposalPDFTemplate
-                        ref={proposalPrintRef}
-                        formData={pdfFormData}
-                        result={pdfResult ?? results}
-                        arielyResult={arielyResult}
+                        ref={printRef}
+                        formData={{
+                            clientName: dbClients.find(c => c.id === clientId)?.name || 'Cliente',
+                            projectName: dbProjects.find(p => p.id === projectId)?.name || 'Proyecto',
+                        }}
+                        result={{ ...results, selectedModules }}
+                        arielyResult={arielyResult || computeArielyPackages(results, analysisData, dbClients.find(c => c.id === clientId)?.name || 'Cliente')}
                     />
                 )}
             </div>

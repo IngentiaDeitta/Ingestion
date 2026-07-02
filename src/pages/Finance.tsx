@@ -3,7 +3,7 @@ import {
   MoreVertical, Trash2, Tag, TrendingUp, Clock, Zap, CheckCircle2, Edit2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import { supabase } from '../lib/supabase';
 import {
@@ -27,6 +27,8 @@ interface Transaction {
   project_id?: string;
   client_id?: string;
   fund_source?: string;
+  category?: string | null;
+  items?: any;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -80,7 +82,117 @@ function buildMonthlyChartData(transactions: Transaction[]) {
   return data;
 }
 
+const getYearMonth = (dateStr: string) => {
+  const parts = dateStr.split('-');
+  return {
+    year: parseInt(parts[0], 10),
+    month: parseInt(parts[1], 10) - 1
+  };
+};
 
+const replicateCyclicExpenses = async (initialTrans: Transaction[]) => {
+  const cyclicExpenses = initialTrans.filter(t => t.type === 'expense' && t.category === 'cyclic');
+  if (cyclicExpenses.length === 0) return false;
+
+  const groups: Record<string, Transaction[]> = {};
+  cyclicExpenses.forEach(t => {
+    if (!groups[t.description]) {
+      groups[t.description] = [];
+    }
+    groups[t.description].push(t);
+  });
+
+  let insertedAny = false;
+  const localTrans = [...initialTrans];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  for (const description of Object.keys(groups)) {
+    const groupTxs = groups[description];
+    let oldestTx = groupTxs[0];
+    groupTxs.forEach(t => {
+      if (t.date < oldestTx.date) {
+        oldestTx = t;
+      }
+    });
+
+    const startYM = getYearMonth(oldestTx.date);
+    let iterYear = startYM.year;
+    let iterMonth = startYM.month;
+
+    while (true) {
+      iterMonth++;
+      if (iterMonth > 11) {
+        iterMonth = 0;
+        iterYear++;
+      }
+
+      if (iterYear > currentYear || (iterYear === currentYear && iterMonth > currentMonth)) {
+        break;
+      }
+
+      const exists = localTrans.some(t => {
+        if (t.description !== description || t.type !== 'expense') return false;
+        const ym = getYearMonth(t.date);
+        return ym.year === iterYear && ym.month === iterMonth;
+      });
+
+      if (!exists) {
+        const pastTxs = localTrans.filter(t => {
+          if (t.description !== description || t.type !== 'expense') return false;
+          const ym = getYearMonth(t.date);
+          return ym.year < iterYear || (ym.year === iterYear && ym.month < iterMonth);
+        });
+
+        if (pastTxs.length > 0) {
+          pastTxs.sort((a, b) => b.date.localeCompare(a.date));
+          const prevTx = pastTxs[0];
+          const prevDay = parseInt(prevTx.date.split('-')[2], 10);
+          
+          const newDate = new Date(iterYear, iterMonth, prevDay);
+          if (newDate.getMonth() !== iterMonth) {
+            newDate.setDate(0);
+          }
+
+          const yearStr = newDate.getFullYear();
+          const monthStr = String(newDate.getMonth() + 1).padStart(2, '0');
+          const dayStr = String(newDate.getDate()).padStart(2, '0');
+          const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
+
+          const newTxPayload = {
+            description: prevTx.description,
+            amount: prevTx.amount,
+            type: 'expense',
+            status: 'Paid',
+            date: dateStr,
+            currency: prevTx.currency,
+            tag: prevTx.tag || null,
+            client_id: prevTx.client_id || null,
+            project_id: prevTx.project_id || null,
+            fund_source: prevTx.fund_source || null,
+            items: prevTx.items || null,
+            category: 'cyclic'
+          };
+
+          const { data, error } = await supabase.from('finances').insert([newTxPayload]).select();
+          if (error) {
+            console.error('Error auto-replicating transaction:', error);
+          } else if (data && data[0]) {
+            const insertedTx = {
+              ...data[0],
+              currency: data[0].currency ?? 'USD'
+            };
+            localTrans.push(insertedTx);
+            insertedAny = true;
+          }
+        }
+      }
+    }
+  }
+
+  return insertedAny;
+};
 
 export default function Finance() {
   const { isAdmin } = useUser();
@@ -93,6 +205,7 @@ export default function Finance() {
   const [showFilters, setShowFilters] = useState(false);
   const [partnerBalances, setPartnerBalances] = useState<any[]>([]);
   const [expensesByTag, setExpensesByTag] = useState<any[]>([]);
+  const hasReplicated = useRef(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -105,7 +218,19 @@ export default function Finance() {
       ]);
 
       if (finResponse.error) throw finResponse.error;
-      const trans = (finResponse.data || []).map((t: any) => ({ ...t, currency: t.currency ?? 'USD' }));
+      let trans = (finResponse.data || []).map((t: any) => ({ ...t, currency: t.currency ?? 'USD' }));
+
+      if (!hasReplicated.current) {
+        hasReplicated.current = true;
+        const insertedAny = await replicateCyclicExpenses(trans);
+        if (insertedAny) {
+          const refetchResponse = await supabase.from('finances').select('*').order('date', { ascending: false });
+          if (!refetchResponse.error) {
+            trans = (refetchResponse.data || []).map((t: any) => ({ ...t, currency: t.currency ?? 'USD' }));
+          }
+        }
+      }
+
       setTransactions(trans);
 
       // Process Partner Balances
@@ -459,7 +584,14 @@ export default function Finance() {
                     <tr key={t.id} className="group hover:bg-black/[0.01] transition-colors">
                       <td className="px-8 py-5 whitespace-nowrap text-sm text-[#1A1A1A] font-medium">{new Date(t.date).toLocaleDateString()}</td>
                       <td className="px-8 py-5">
-                        <div className="text-sm text-[#1A1A1A] font-medium">{t.description}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="text-sm text-[#1A1A1A] font-medium">{t.description}</div>
+                          {t.category === 'cyclic' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-black/5 text-[#666666] uppercase tracking-wider">
+                              <Zap size={8} className="text-[#FFD166]" /> Cíclico
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-[#999] uppercase tracking-tighter">{t.status}</div>
                       </td>
                       <td className="px-8 py-5">

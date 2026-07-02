@@ -21,51 +21,53 @@ DATOS DEL CLIENTE Y PROYECTO:
 ANÁLISIS ESTRATÉGICO PREVIO (Generado por AI Solution Architect):
 ${JSON.stringify(input.solutionAnalysisJson, null, 2)}
 
-INSTRUCCIONES:
-Basándote en el Análisis Estratégico Previo provisto, debes inferir automáticamente el tamaño de la empresa (SME, Medium, Large) según la información de "company_info" y el tipo de servicio requerido (solo consultoría o consultoría + desarrollo) según los "features" (especialmente el "resolution_mode").
+INSTRUCCIONES ESTRATÉGICAS DE PRICING Y VENTA:
+1. El Módulo 1 (Consultoría Inicial/Discovery) debe funcionar como un "gancho" (entry point) de bajo riesgo financiero pero altísimo valor percibido para no espantar al cliente.
+2. El Módulo 2 (Implementación) debe tasarse según la complejidad real arquitectónica. No es lo mismo un simple workflow en n8n o mejoras en Excel (menor costo) que el desarrollo desde cero de una WebApp/CRM complejo (mayor costo).
+3. Todo presupuesto, por más alto que parezca, debe justificarse enfáticamente mediante el Retorno de Inversión (ROI). El cliente debe entender que el costo se repaga solo con los ahorros de ineficiencia o el aumento de ventas.
 
-Generá un presupuesto acorde al nivel de esfuerzo e impacto identificado en el análisis.
+Generá un presupuesto acorde al nivel de esfuerzo, la complejidad técnica de la arquitectura propuesta y el impacto identificado en el análisis.
 
 Respondé ÚNICAMENTE con un JSON válido (sin markdown, sin \`\`\`json, sin texto extra) con exactamente esta estructura:
 
 {
   "diagnosis": "Un resumen ejecutivo del diagnóstico, conectando los pain points clave con la solución arquitectónica propuesta en el análisis previo.",
-  "hoursStage1": <número de horas estimadas para la etapa de diagnóstico y reingeniería de procesos (AS-IS a TO-BE), entre 15 y 150>,
-  "hoursStage2": <número de horas estimadas para la etapa de implementación técnica/desarrollo de la arquitectura, entre 40 y 400>,
+  "hoursStage1": <número de horas estimadas para la etapa de diagnóstico y reingeniería de procesos (AS-IS a TO-BE), entre 10 y 80>,
+  "hoursStage2": <número de horas estimadas para la etapa de implementación técnica/desarrollo de la arquitectura, entre 20 y 400 según complejidad>,
   "labelStage1": "<nombre del hito 1, ej: Auditoría de Procesos y Diseño TO-BE>",
   "labelStage2": "<nombre del hito 2, ej: Implementación de Arquitectura de Solución>",
-  "roiEstimate": "<descripción del ROI estimado basado en los problemas resueltos y los features>",
-  "salesStrategy": "<estrategia de venta recomendada basándote en la industria y necesidades descubiertas, 2-3 oraciones>",
+  "roiEstimate": "<explicación contundente del ROI estimado. Demostrar cómo el costo del proyecto se repaga a sí mismo mediante ahorros operativos o incremento de ventas>",
+  "salesStrategy": "<estrategia de venta recomendada basándote en la industria y necesidades descubiertas, enfocada en usar el discovery como gancho, 2-3 oraciones>",
   "deliverables": ["<entregable 1>", "<entregable 2>", "<entregable 3>", "<entregable 4>", "<entregable 5>"],
   "risks": ["<riesgo técnico o de negocio 1>", "<riesgo 2>", "<riesgo 3>"],
-  "commercialNarrative": "<Una narrativa comercial profesional y muy persuasiva de 2-3 párrafos dirigida al equipo directivo del cliente. Debe conectar explícitamente los problemas actuales con el roadmap propuesto, explicando por qué esta arquitectura específica generará valor y retorno de inversión.>",
+  "commercialNarrative": "<Una narrativa comercial profesional y muy persuasiva de 2-3 párrafos dirigida al equipo directivo del cliente. Debe conectar explícitamente los problemas actuales con el roadmap propuesto, y justificar enfáticamente por qué la inversión requerida se amortizará rápidamente generando valor (ROI).>",
   "pricing": {
     "module1": {
       "description": "<descripción del módulo 1 (Consultoría y Diseño Estratégico)>",
-      "price": <precio en USD, inferir tamaño de empresa: SME 1000-3000, Medium 3000-8000, Large 7000-15000>,
-      "deliveryDays": <días de entrega, entre 10 y 45>
+      "price": <precio en USD como "gancho". SME: 500-1500, Medium: 1500-3000, Large: 3000-5000>,
+      "deliveryDays": <días de entrega, entre 10 y 30>
     },
     "module2": {
       "description": "<descripción del módulo 2 (Implementación técnica y Desarrollo)>",
-      "price": <precio en USD si el análisis requiere Desarrollo o un mix (App/IA), sino 0. SME 3000-8000, Medium 8000-25000, Large 20000-60000>,
+      "price": <precio en USD si requiere desarrollo. Si es automatización simple (n8n/Excel) para SME: 1000-3000. Si es WebApp/CRM/Desarrollo a medida para SME: 4000-10000. Escalar según Medium/Large y complejidad>,
       "pricingModel": "<modelo de pricing: 'Precio Fijo con 50% anticipo' o 'N/A' si es solo consultoría>"
     },
     "module3": {
       "description": "<descripción del módulo 3 (Evolución, Soporte y Hosting)>",
-      "monthlyPrice": <precio mensual en USD si aplica, sino 0. SME 200-500, Medium 500-2000, Large 1500-5000>
+      "monthlyPrice": <precio mensual en USD si aplica, sino 0. SME 150-400, Medium 400-1500, Large 1500-4000>
     },
     "totalInitialInvestment": <suma del precio de módulo 1 + módulo 2>
   },
   "financialEstimation": {
     "estimatedRevenue": <facturación anual estimada del cliente en USD, inferida de su industria y tamaño>,
     "revenueJustification": "<justificación del cálculo PxQ de facturación, 1-2 oraciones>",
-    "investmentToRevenueRatio": "<ratio inversión inicial / facturación, ej: 2.5% de la facturación anual>"
+    "investmentToRevenueRatio": "<ratio inversión inicial / facturación, ej: 1.5% de la facturación anual>"
   }
 }
 
 IMPORTANTE: 
 - Respondé SOLO con el JSON, sin ningún texto adicional.
-- Los precios deben ser coherentes con el tamaño y alcance descritos en el análisis previo.
+- Los precios deben ser estratégicos y coherentes con las instrucciones de pricing y la complejidad técnica (WebApp vs Automations).
 - Si el análisis indica que TODOS los features son "CONSULTORÍA", el módulo 2 price debe ser 0 y pricingModel "N/A", y módulo 3 monthlyPrice debe ser 0.
 - totalInitialInvestment debe ser la suma exacta de module1.price + module2.price.`;
 

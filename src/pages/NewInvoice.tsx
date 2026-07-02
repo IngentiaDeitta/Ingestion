@@ -44,10 +44,13 @@ export default function NewInvoice() {
   const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
   const [manualAmounts, setManualAmounts] = useState<Record<string, number>>({});
   const [includeTax, setIncludeTax] = useState(false);
+  const [isCyclic, setIsCyclic] = useState(false);
+  const [projectMilestones, setProjectMilestones] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     clientId: '',
     projectId: '',
+    milestoneId: '',
     date: new Date().toISOString().split('T')[0],
     invNumber: '',
     status: 'Pending',
@@ -55,6 +58,26 @@ export default function NewInvoice() {
     tag: '',
     fundSource: '',
   });
+
+  useEffect(() => { 
+    if (formData.projectId && type === 'income') {
+      const fetchMilestones = async () => {
+        const { data } = await supabase
+          .from('projects')
+          .select('project_analysis')
+          .eq('id', formData.projectId)
+          .single();
+        if (data?.project_analysis?.milestones) {
+          setProjectMilestones(data.project_analysis.milestones);
+        } else {
+          setProjectMilestones([]);
+        }
+      };
+      fetchMilestones();
+    } else {
+      setProjectMilestones([]);
+    }
+  }, [formData.projectId, type]);
 
   useEffect(() => { 
     fetchClientsProjectsAndPartners(); 
@@ -69,9 +92,22 @@ export default function NewInvoice() {
     }
     
     setType(data.type);
+    
+    let milestoneIdStr = '';
+    if (data.project_id && data.type === 'income') {
+      const { data: pData } = await supabase.from('projects').select('project_analysis').eq('id', data.project_id).single();
+      if (pData?.project_analysis?.milestones) {
+        const ms = pData.project_analysis.milestones;
+        setProjectMilestones(ms);
+        const linked = ms.find((m: any) => m.finance_id === data.id);
+        if (linked) milestoneIdStr = linked.id;
+      }
+    }
+
     setFormData({
       clientId: data.client_id || '',
       projectId: data.project_id || '',
+      milestoneId: milestoneIdStr,
       date: data.date,
       invNumber: data.description || '', 
       status: data.status || 'Pending',
@@ -103,6 +139,7 @@ export default function NewInvoice() {
     }
 
     if (!data.client_id && !data.project_id && data.type === 'expense') setIsIngentia(true);
+    setIsCyclic(data.category === 'cyclic');
   };
 
   const fetchClientsProjectsAndPartners = async () => {
@@ -147,6 +184,7 @@ export default function NewInvoice() {
         project_id: (!isIngentia && formData.projectId) ? formData.projectId : null,
         fund_source: (type === 'expense' || type === 'withdrawal') ? formData.fundSource : null,
         items: items, // Persist structured items
+        category: type === 'expense' && isCyclic ? 'cyclic' : null,
       };
 
       const { data: insertedData, error } = isEditing 
@@ -154,6 +192,42 @@ export default function NewInvoice() {
         : await supabase.from('finances').insert([payload]).select();
       
       if (error) throw error;
+      
+      const savedTransaction = insertedData?.[0];
+
+      // Vincular con hito del proyecto
+      if (type === 'income' && formData.projectId && savedTransaction) {
+         const { data: pData } = await supabase.from('projects').select('project_analysis').eq('id', formData.projectId).single();
+         if (pData?.project_analysis) {
+           let milestones = pData.project_analysis.milestones || [];
+           let changed = false;
+
+           // Desvincular cualquier hito que tuviera este finance_id y no sea el seleccionado
+           milestones = milestones.map((m: any) => {
+             if (m.finance_id === savedTransaction.id && m.id !== formData.milestoneId) {
+                changed = true;
+                return { ...m, billing_confirmed: false, finance_id: null };
+             }
+             return m;
+           });
+
+           // Vincular el hito seleccionado
+           if (formData.milestoneId) {
+             milestones = milestones.map((m: any) => {
+               if (m.id === formData.milestoneId) {
+                 changed = true;
+                 return { ...m, billing_confirmed: true, finance_id: savedTransaction.id, amount: savedTransaction.amount, real_date: savedTransaction.date };
+               }
+               return m;
+             });
+           }
+
+           if (changed) {
+             const updatedAnalysis = { ...pData.project_analysis, milestones };
+             await supabase.from('projects').update({ project_analysis: updatedAnalysis }).eq('id', formData.projectId);
+           }
+         }
+      }
 
       await sendNotification(
         isEditing ? 'Transacción Actualizada' : (type === 'income' ? 'Nueva Factura Generada' : (type === 'expense' ? 'Nuevo Gasto Registrado' : 'Retiro de Capital')),
@@ -351,6 +425,27 @@ export default function NewInvoice() {
           </div>
         )}
 
+        {/* Gasto Cíclico / Débito Automático */}
+        {type === 'expense' && (
+          <div className="flex items-center gap-3 pt-6 border-t border-black/5">
+            <input
+              type="checkbox"
+              id="isCyclic"
+              checked={isCyclic}
+              onChange={e => setIsCyclic(e.target.checked)}
+              className="w-5 h-5 rounded border-black/10 text-[#222222] focus:ring-black/5 accent-[#222222] cursor-pointer"
+            />
+            <div className="flex flex-col">
+              <label htmlFor="isCyclic" className="text-sm font-medium text-[#1A1A1A] cursor-pointer">
+                Gasto Cíclico (Débito Automático)
+              </label>
+              <span className="text-xs text-[#666666]">
+                Este gasto se replicará automáticamente todos los meses tomando por defecto el valor del mes anterior.
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* ── Sección eliminada de Asignación a Socios porque fundSource lo maneja ── */}
 
         {/* ── Sección: Origen del ingreso (cliente/proyecto para ingresos) ── */}
@@ -371,13 +466,32 @@ export default function NewInvoice() {
               <label className="text-sm font-medium text-[#1A1A1A]">Proyecto Asociado (Opcional)</label>
               <select
                 value={formData.projectId}
-                onChange={e => setFormData({ ...formData, projectId: e.target.value })}
+                onChange={e => setFormData({ ...formData, projectId: e.target.value, milestoneId: '' })}
                 className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none appearance-none"
               >
                 <option value="">Seleccionar proyecto...</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
+            
+            {formData.projectId && projectMilestones.length > 0 && (
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <label className="text-sm font-medium text-[#1A1A1A]">Hito Asociado (Opcional)</label>
+                <select
+                  value={formData.milestoneId}
+                  onChange={e => setFormData({ ...formData, milestoneId: e.target.value })}
+                  className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 outline-none appearance-none"
+                >
+                  <option value="">Sin hito asociado...</option>
+                  {projectMilestones.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.title} {m.billing_confirmed && m.finance_id !== id ? '(Ya cobrado)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-[#666666]">Al asociar un hito, este se marcará automáticamente como cobrado en el proyecto.</p>
+              </div>
+            )}
           </div>
         )}
 
