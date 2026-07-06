@@ -22,7 +22,7 @@ const BudgetPDFTemplate = forwardRef<HTMLDivElement, BudgetPDFTemplateProps>(
     if (!result) return null;
 
     const { selectedModules = ['module1'] } = result;
-    
+
     // Filter modules based on selection
     const modulesToRender = [];
     if (selectedModules.includes('module1')) {
@@ -70,11 +70,10 @@ const BudgetPDFTemplate = forwardRef<HTMLDivElement, BudgetPDFTemplateProps>(
       <div ref={ref} className="bg-white text-[#333333] font-sans overflow-hidden" style={{ width: '794px', height: '1122px', margin: '0 auto', boxSizing: 'border-box', position: 'relative', border: '1px solid #f0f0f0' }}>
         <style>
           {`
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap');
+            @import url('https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400,300&display=swap');
             
             .pdf-container {
-              font-family: 'Inter', sans-serif;
+              font-family: 'Satoshi', 'Plus Jakarta Sans', sans-serif;
               color: #333333;
               height: 100%;
               display: flex;
@@ -101,7 +100,7 @@ const BudgetPDFTemplate = forwardRef<HTMLDivElement, BudgetPDFTemplateProps>(
               transform: rotate(45deg);
             }
             .header-title {
-              font-family: 'Montserrat', sans-serif;
+              font-family: 'Satoshi', 'Plus Jakarta Sans', sans-serif;
               font-size: 48px;
               letter-spacing: 10px;
               text-transform: uppercase;
@@ -314,8 +313,8 @@ const BudgetPDFTemplate = forwardRef<HTMLDivElement, BudgetPDFTemplateProps>(
               <div className="module-pill">
                 <div className="pill-black">{module.id}</div>
                 <div>
-                    <div className="module-title">{module.title}</div>
-                    <div className="module-desc">{module.desc}</div>
+                  <div className="module-title">{module.title}</div>
+                  <div className="module-desc">{module.desc}</div>
                 </div>
               </div>
 
@@ -366,33 +365,33 @@ const BudgetPDFTemplate = forwardRef<HTMLDivElement, BudgetPDFTemplateProps>(
 
           {/* Notes */}
           <div className="footer-notes">
-             <h4 className="notes-title">Notas y condiciones</h4>
-             <ul className="notes-list">
-                <li>Los precios están expresados en USD. Se tomará el TC oficial correspondiente al día de pago.</li>
-                <li>Forma de pago: 30% anticipo, 70% contra entrega de hitos.</li>
-                <li>La validez de esta propuesta es de 30 días corridos a partir de la fecha de emisión.</li>
-             </ul>
+            <h4 className="notes-title">Notas y condiciones</h4>
+            <ul className="notes-list">
+              <li>Los precios están expresados en USD. Se tomará el TC oficial correspondiente al día de pago.</li>
+              <li>Forma de pago: 30% anticipo, 70% contra entrega de hitos.</li>
+              <li>La validez de esta propuesta es de 30 días corridos a partir de la fecha de emisión.</li>
+            </ul>
 
-             <div className="mt-4 flex items-center gap-3">
-                <div className="p-1.5 bg-orange-50 rounded-lg">
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                </div>
-                <div>
-                   <p className="font-bold text-[10px]">Validez de Oferta</p>
-                   <p className="text-[9px] text-[#888]">30 días desde {today}</p>
-                </div>
-             </div>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="p-1.5 bg-orange-50 rounded-lg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              </div>
+              <div>
+                <p className="font-bold text-[10px]">Validez de Oferta</p>
+                <p className="text-[9px] text-[#888]">30 días desde {today}</p>
+              </div>
+            </div>
           </div>
 
           {/* Signature */}
           <div className="signature-area">
-             <img 
-               src="/signature.png" 
-               alt="Firma" 
-               className="signature-img"
-             />
-             <p className="signature-name">Fernando Miceli</p>
-             <p className="signature-role">Socio Fundador</p>
+            <img
+              src="/signature.png"
+              alt="Firma"
+              className="signature-img"
+            />
+            <p className="signature-name">Fernando Miceli</p>
+            <p className="signature-role">Socio Fundador</p>
           </div>
 
           <div className="bottom-pattern"></div>
