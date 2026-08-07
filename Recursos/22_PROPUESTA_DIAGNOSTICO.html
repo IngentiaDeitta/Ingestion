@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Diagnóstico Operativo — {{EMPRESA}}</title>
+<!--
+  PLANTILLA · Carta Oferta del Diagnóstico Operativo
+  Reemplazar todos los {{PLACEHOLDERS}}. Generar PDF con:
+  python "..\..\Clientes\Elektro Korrosión - EK\html_to_pdf.py" 22_PROPUESTA_DIAGNOSTICO.html --wait 2500
+-->
+<style>
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Regular.otf") format("opentype");font-weight:400}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Medium.otf") format("opentype");font-weight:500}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Bold.otf") format("opentype");font-weight:700}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Black.otf") format("opentype");font-weight:900}
+:root{--ink:#0a0a0a;--muted:rgba(10,10,10,.62);--subtle:rgba(10,10,10,.40);--paper:#fff;--soft:#f5f6f8;--line:rgba(10,10,10,.10);--accent:#00A9C0;--accent-ink:#0089a0}
+@page{size:A4;margin:16mm 15mm 18mm}
+@page:first{margin:0}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:"Satoshi","Inter",system-ui,sans-serif;font-size:10.5pt;line-height:1.55}
+.cover{background:#000;color:#fff;padding:26mm 20mm;min-height:297mm;display:flex;flex-direction:column;position:relative;overflow:hidden;break-after:page}
+.cover::after{content:"";position:absolute;right:-20%;top:12%;width:80%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,.18),transparent 68%)}
+.ch{display:flex;justify-content:space-between;align-items:center;font-size:8pt;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45);position:relative;z-index:2}
+.mark{display:flex;align-items:center;gap:9px;color:#fff;letter-spacing:0;text-transform:none;font-size:13pt;font-weight:700}
+.mark i{display:block;width:5px;height:26px;background:#fff;border-radius:1px}
+.cb{margin-top:auto;position:relative;z-index:2}
+.pill{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.22);border-radius:100px;padding:7px 16px;font-size:8pt;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.85)}
+.pill b{width:6px;height:6px;border-radius:50%;background:#00E5FF;display:block}
+.cover h1{font-size:38pt;font-weight:900;letter-spacing:-.045em;line-height:1;margin:18px 0 0}
+.cover h1 em{font-style:normal;color:#00E5FF}
+.cover .sub{font-size:12pt;color:rgba(255,255,255,.62);max-width:64%;margin-top:14px}
+.cm{display:flex;gap:34px;margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,.14)}
+.cm div span{display:block;font-size:7.5pt;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.40);margin-bottom:3px}
+.cm div strong{font-size:10.5pt;color:#fff}
+.cf{margin-top:24mm;font-size:8pt;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.32);position:relative;z-index:2}
+h2{font-size:18pt;font-weight:900;letter-spacing:-.03em;margin:0 0 4px;break-after:avoid}
+h2 .n{color:var(--accent);margin-right:10px}
+.rule{height:2px;background:var(--ink);width:42px;margin:10px 0 16px;border-radius:2px}
+h3{font-size:11.5pt;font-weight:700;margin:20px 0 7px;break-after:avoid}
+p{margin:0 0 10px;color:var(--muted)}
+strong{color:var(--ink);font-weight:700}
+ul{margin:0 0 12px;padding-left:18px;color:var(--muted)}li{margin-bottom:5px}
+.eyebrow{font-size:7.5pt;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin-bottom:6px}
+table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:9pt}
+th{text-align:left;font-size:7.5pt;letter-spacing:.10em;text-transform:uppercase;color:var(--subtle);border-bottom:1.5px solid var(--ink);padding:0 10px 7px}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--muted)}
+td:first-child,th:first-child{padding-left:0}td:last-child,th:last-child{padding-right:0}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.callout{background:var(--soft);border-left:3px solid var(--accent);padding:14px 18px;margin:14px 0 18px;border-radius:0 8px 8px 0;break-inside:avoid}
+.callout p:last-child{margin-bottom:0}
+.dark{background:#0a0a0a;border-left-color:#00E5FF;color:rgba(255,255,255,.72)}
+.dark p{color:rgba(255,255,255,.72)}.dark strong{color:#fff}.dark .eyebrow{color:#00E5FF}
+.price{border:1.5px solid var(--ink);border-radius:14px;padding:22px 24px;margin:16px 0 18px;break-inside:avoid}
+.price .amt{font-size:34pt;font-weight:900;letter-spacing:-.045em;line-height:1}
+.price .amt small{font-size:13pt;font-weight:500;color:var(--subtle);letter-spacing:0}
+.price .note{font-size:9pt;color:var(--muted);margin-top:8px}
+.pb{break-before:page}
+.sign{display:flex;gap:60px;margin-top:34px;padding-top:16px}
+.sign div{flex:1;border-top:1px solid var(--ink);padding-top:7px;font-size:8.5pt;color:var(--subtle)}
+.foot{margin-top:24px;padding-top:12px;border-top:1px solid var(--line);font-size:8pt;color:var(--subtle)}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="ch"><div class="mark"><i></i>ingentia</div><div>Oferta N° {{NRO_OFERTA}}</div></div>
+  <div class="cb">
+    <div class="pill"><b></b>Diagnóstico Operativo</div>
+    <h1>El plano de<br>tu proceso, con<br><em>el número real</em>.</h1>
+    <p class="sub">Una semana de ingeniería para saber exactamente dónde y cuánto está perdiendo {{EMPRESA}} — y qué se puede recuperar.</p>
+    <div class="cm">
+      <div><span>Para</span><strong>{{EMPRESA}}</strong></div>
+      <div><span>At.</span><strong>{{CONTACTO}}</strong></div>
+      <div><span>Fecha</span><strong>{{FECHA}}</strong></div>
+      <div><span>Validez</span><strong>15 días</strong></div>
+    </div>
+  </div>
+  <div class="cf">Propuesta · Confidencial</div>
+</div>
+
+<section>
+<div class="eyebrow">01 · Lo que hablamos</div>
+<h2><span class="n">01</span>El problema que detectamos</h2>
+<div class="rule"></div>
+
+<p>{{RESUMEN_DOLOR}}</p>
+
+<h3>Lo que eso cuesta hoy</h3>
+<table>
+  <thead><tr><th>Variable</th><th class="num">Valor</th></tr></thead>
+  <tbody>
+    <tr><td>Horas perdidas por semana</td><td class="num">{{HORAS_SEMANA}} h</td></tr>
+    <tr><td>Personas afectadas</td><td class="num">{{PERSONAS}}</td></tr>
+    <tr><td>Costo hora cargado estimado</td><td class="num">USD {{COSTO_HORA}}</td></tr>
+    <tr><td><strong>Pérdida anual estimada</strong></td><td class="num"><strong>USD {{PERDIDA_ANUAL}}</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="eyebrow">Importante</div>
+  <p>Este número surge de lo que nos contaste en 30 minutos. <strong>Es una estimación, no un cálculo.</strong> El Diagnóstico Operativo existe justamente para convertirlo en un número firme y auditable — y para determinar qué parte de esa pérdida es efectivamente recuperable.</p>
+</div>
+</section>
+
+<section>
+<div class="eyebrow">02 · La propuesta</div>
+<h2><span class="n">02</span>Diagnóstico Operativo</h2>
+<div class="rule"></div>
+
+<p>Nadie opera a un paciente sin diagnóstico. Antes de proponerte construir nada, mapeamos tu proceso y te entregamos el plano completo: cómo funciona hoy, cómo debería funcionar y cuánto vale la diferencia.</p>
+
+<h3>Qué te llevás</h3>
+<table>
+  <thead><tr><th style="width:34%">Entregable</th><th>Contenido</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Diagrama de proceso As-Is</strong></td><td>El flujo real de la información hoy, con cada salto manual, cada retipeo y cada punto donde se pierde trazabilidad</td></tr>
+    <tr><td><strong>Diseño To-Be</strong></td><td>Cómo debería funcionar el proceso, con la lógica de automatización propuesta</td></tr>
+    <tr><td><strong>Cuantificación del impacto</strong></td><td>El cálculo firme de la pérdida anual y de lo efectivamente recuperable</td></tr>
+    <tr><td><strong>Recomendación de solución</strong></td><td>Qué construir, en qué orden, y el rango de inversión asociado</td></tr>
+  </tbody>
+</table>
+
+<h3>Cómo trabajamos — 7 días hábiles</h3>
+<table>
+  <thead><tr><th style="width:22%">Días</th><th>Actividad</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1 – 2</strong></td><td>Pre-análisis de la documentación que nos compartas</td></tr>
+    <tr><td><strong>3</strong></td><td>Sesión de relevamiento de 60 min con quien opera el proceso</td></tr>
+    <tr><td><strong>4 – 5</strong></td><td>Modelado lógico del proceso To-Be</td></tr>
+    <tr><td><strong>6 – 7</strong></td><td>Presentación de resultados y ROI — 30 min con la dirección</td></tr>
+  </tbody>
+</table>
+
+<h3>Alcance</h3>
+<p>Para poder entregar en una semana y con precio cerrado, el alcance es acotado y explícito:</p>
+<table>
+  <thead><tr><th style="width:40%">Incluye</th><th>Límite</th></tr></thead>
+  <tbody>
+    <tr><td>Procesos auditados</td><td><strong>Uno (1)</strong> — el proceso crítico que definamos juntos</td></tr>
+    <tr><td>Archivos muestra a analizar</td><td><strong>Hasta tres (3)</strong>. Por ejemplo: un reporte actual, un Excel modelo y un PDF de ejemplo</td></tr>
+    <tr><td>Entrevistas</td><td><strong>Una (1)</strong> sesión de 60 min + 30 min de presentación final</td></tr>
+  </tbody>
+</table>
+<p><strong>No incluye</strong> — se cotiza por separado: limpieza o migración de bases históricas, auditoría de procesos adicionales, análisis de más de tres archivos, y especificación técnica de desarrollo.</p>
+</section>
+
+<section class="pb">
+<div class="eyebrow">03 · Inversión</div>
+<h2><span class="n">03</span>Inversión</h2>
+<div class="rule"></div>
+
+<div class="price">
+  <div class="amt">USD 1.200 <small>— pago único</small></div>
+  <p class="note">Incluye las {{HORAS_DIAGNOSTICO}} horas de trabajo de dos ingenieros, los cuatro entregables y las dos sesiones con tu equipo.</p>
+</div>
+
+<div class="callout dark">
+  <div class="eyebrow">Se descuenta al 100%</div>
+  <p>Si después del Diagnóstico decidís que construyamos la solución con nosotros, <strong>los USD 1.200 se descuentan íntegramente</strong> de la inversión de implementación. En la práctica, si avanzás, el Diagnóstico no te costó nada.</p>
+  <p>Y si decidís no avanzar — o avanzar con otro proveedor — te quedás igual con el plano completo de tu proceso, diseñado por ingenieros. Es tuyo.</p>
+</div>
+
+<h3>Condiciones</h3>
+<table>
+  <tbody>
+    <tr><td style="width:34%"><strong>Forma de pago</strong></td><td>100% al inicio, contra aceptación de esta propuesta</td></tr>
+    <tr><td><strong>Plazo de entrega</strong></td><td>7 días hábiles desde la recepción de la documentación</td></tr>
+    <tr><td><strong>Validez de la oferta</strong></td><td>15 días corridos desde la fecha de emisión</td></tr>
+    <tr><td><strong>Aceptación</strong></td><td>Basta con responder este correo indicando conformidad, haciendo referencia a la Oferta N° {{NRO_OFERTA}}</td></tr>
+    <tr><td><strong>Aceptación de entregables</strong></td><td>Si no se reciben observaciones dentro de los 5 días hábiles posteriores a la presentación, los entregables se consideran aceptados</td></tr>
+    <tr><td><strong>Confidencialidad</strong></td><td>Toda la información compartida se trata como confidencial, por 5 años desde la finalización</td></tr>
+  </tbody>
+</table>
+
+<h3>Qué necesitamos de {{EMPRESA}}</h3>
+<ul>
+  <li>Designar un referente para coordinar la sesión de relevamiento</li>
+  <li>Los tres archivos muestra, antes del día 1</li>
+  <li>60 minutos de quien opera el proceso hoy</li>
+  <li>30 minutos de la dirección para la presentación final</li>
+</ul>
+
+<div class="sign">
+  <div>Ing. Fernando Miceli — CEO<br>IngentIA</div>
+  <div>Ing. Pedro Sequeira — CCO<br>IngentIA</div>
+</div>
+
+<div class="foot">
+  IngentIA · Ingeniería Operativa · Buenos Aires, Argentina<br>
+  contacto@ingentia.com.ar · ingentia.com.ar · Oferta N° {{NRO_OFERTA}} — {{FECHA}}
+</div>
+</section>
+
+</body>
+</html>

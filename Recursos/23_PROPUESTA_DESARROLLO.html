@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Propuesta de Implementación — {{EMPRESA}}</title>
+<!--
+  PLANTILLA · Propuesta de desarrollo post-Diagnóstico. Tres opciones con efecto anzuelo.
+  REGLA: la diferencia entre Opción B y Opción C nunca supera el 2% del valor de C.
+  Precios según 01_MANUAL_DE_PRECIOS_v1.md — validar margen >= 40% antes de enviar.
+  PDF: python "..\..\Clientes\Elektro Korrosión - EK\html_to_pdf.py" 23_PROPUESTA_DESARROLLO.html --wait 2500
+-->
+<style>
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Regular.otf") format("opentype");font-weight:400}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Medium.otf") format("opentype");font-weight:500}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Bold.otf") format("opentype");font-weight:700}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Black.otf") format("opentype");font-weight:900}
+:root{--ink:#0a0a0a;--muted:rgba(10,10,10,.62);--subtle:rgba(10,10,10,.40);--paper:#fff;--soft:#f5f6f8;--line:rgba(10,10,10,.10);--accent:#00A9C0;--accent-ink:#0089a0;--ok:#1F9E74}
+@page{size:A4;margin:16mm 15mm 18mm}
+@page:first{margin:0}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:"Satoshi","Inter",system-ui,sans-serif;font-size:10.5pt;line-height:1.55}
+.cover{background:#000;color:#fff;padding:26mm 20mm;min-height:297mm;display:flex;flex-direction:column;position:relative;overflow:hidden;break-after:page}
+.cover::after{content:"";position:absolute;right:-20%;top:12%;width:80%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,.18),transparent 68%)}
+.ch{display:flex;justify-content:space-between;align-items:center;font-size:8pt;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45);position:relative;z-index:2}
+.mark{display:flex;align-items:center;gap:9px;color:#fff;letter-spacing:0;text-transform:none;font-size:13pt;font-weight:700}
+.mark i{display:block;width:5px;height:26px;background:#fff;border-radius:1px}
+.cb{margin-top:auto;position:relative;z-index:2}
+.pill{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.22);border-radius:100px;padding:7px 16px;font-size:8pt;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.85)}
+.pill b{width:6px;height:6px;border-radius:50%;background:#00E5FF;display:block}
+.cover h1{font-size:38pt;font-weight:900;letter-spacing:-.045em;line-height:1;margin:18px 0 0}
+.cover h1 em{font-style:normal;color:#00E5FF}
+.cover .sub{font-size:12pt;color:rgba(255,255,255,.62);max-width:64%;margin-top:14px}
+.cm{display:flex;gap:34px;margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,.14)}
+.cm div span{display:block;font-size:7.5pt;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.40);margin-bottom:3px}
+.cm div strong{font-size:10.5pt;color:#fff}
+.cf{margin-top:24mm;font-size:8pt;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.32);position:relative;z-index:2}
+h2{font-size:18pt;font-weight:900;letter-spacing:-.03em;margin:0 0 4px;break-after:avoid}
+h2 .n{color:var(--accent);margin-right:10px}
+.rule{height:2px;background:var(--ink);width:42px;margin:10px 0 16px;border-radius:2px}
+h3{font-size:11.5pt;font-weight:700;margin:20px 0 7px;break-after:avoid}
+p{margin:0 0 10px;color:var(--muted)}strong{color:var(--ink);font-weight:700}
+ul{margin:0 0 12px;padding-left:18px;color:var(--muted)}li{margin-bottom:5px}
+.eyebrow{font-size:7.5pt;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin-bottom:6px}
+table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:9pt}
+th{text-align:left;font-size:7.5pt;letter-spacing:.10em;text-transform:uppercase;color:var(--subtle);border-bottom:1.5px solid var(--ink);padding:0 10px 7px;vertical-align:bottom}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--muted)}
+td:first-child,th:first-child{padding-left:0}td:last-child,th:last-child{padding-right:0}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.callout{background:var(--soft);border-left:3px solid var(--accent);padding:14px 18px;margin:14px 0 18px;border-radius:0 8px 8px 0;break-inside:avoid}
+.callout p:last-child{margin-bottom:0}
+.dark{background:#0a0a0a;border-left-color:#00E5FF;color:rgba(255,255,255,.72)}
+.dark p{color:rgba(255,255,255,.72)}.dark strong{color:#fff}.dark .eyebrow{color:#00E5FF}
+.roi{display:flex;gap:10px;margin:14px 0 18px;break-inside:avoid}
+.roi div{flex:1;border:1px solid var(--line);border-radius:12px;padding:14px}
+.roi span{display:block;font-size:7.5pt;letter-spacing:.12em;text-transform:uppercase;color:var(--subtle);margin-bottom:6px}
+.roi strong{display:block;font-size:19pt;font-weight:900;letter-spacing:-.04em;line-height:1}
+.roi strong.hl{color:var(--accent-ink)}
+.roi em{display:block;font-style:normal;font-size:8pt;color:var(--subtle);margin-top:5px}
+.opt{border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px;break-inside:avoid}
+.opt.target{border:2px solid var(--ink);background:var(--soft)}
+.opt-h{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-bottom:8px}
+.opt-h b{font-size:13pt;font-weight:900;letter-spacing:-.02em}
+.opt-h .p{font-size:17pt;font-weight:900;letter-spacing:-.04em;white-space:nowrap}
+.badge{display:inline-block;font-size:7pt;font-weight:700;letter-spacing:.10em;text-transform:uppercase;padding:3px 9px;border-radius:100px;background:var(--ink);color:#fff;margin-left:8px;vertical-align:middle}
+.badge.ok{background:var(--ok)}
+.opt ul{margin-bottom:0;font-size:9.5pt}
+.pb{break-before:page}
+.sign{display:flex;gap:60px;margin-top:34px;padding-top:16px}
+.sign div{flex:1;border-top:1px solid var(--ink);padding-top:7px;font-size:8.5pt;color:var(--subtle)}
+.foot{margin-top:24px;padding-top:12px;border-top:1px solid var(--line);font-size:8pt;color:var(--subtle)}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="ch"><div class="mark"><i></i>ingentia</div><div>Oferta N° {{NRO_OFERTA}}</div></div>
+  <div class="cb">
+    <div class="pill"><b></b>Propuesta de implementación</div>
+    <h1>De {{HORAS_SEMANA}} horas<br>por semana a<br><em>cero</em>.</h1>
+    <p class="sub">La solución que sale del Diagnóstico Operativo de {{EMPRESA}}, con el retorno calculado sobre tus propios números.</p>
+    <div class="cm">
+      <div><span>Para</span><strong>{{EMPRESA}}</strong></div>
+      <div><span>At.</span><strong>{{CONTACTO}}</strong></div>
+      <div><span>Fecha</span><strong>{{FECHA}}</strong></div>
+      <div><span>Validez</span><strong>15 días</strong></div>
+    </div>
+  </div>
+  <div class="cf">Propuesta · Confidencial</div>
+</div>
+
+<section>
+<div class="eyebrow">01 · El diagnóstico</div>
+<h2><span class="n">01</span>Lo que encontramos</h2>
+<div class="rule"></div>
+
+<p>{{RESUMEN_DIAGNOSTICO}}</p>
+
+<h3>El número, ahora firme</h3>
+<table>
+  <thead><tr><th>Concepto</th><th class="num">Anual</th></tr></thead>
+  <tbody>
+    <tr><td>Horas de personal en carga y conciliación manual</td><td class="num">USD {{COSTO_HORAS}}</td></tr>
+    <tr><td>{{CONCEPTO_2}}</td><td class="num">USD {{COSTO_2}}</td></tr>
+    <tr><td>{{CONCEPTO_3}}</td><td class="num">USD {{COSTO_3}}</td></tr>
+    <tr><td><strong>Pérdida anual verificada</strong></td><td class="num"><strong>USD {{PERDIDA_ANUAL}}</strong></td></tr>
+    <tr><td><strong>Recuperable con la solución propuesta</strong></td><td class="num"><strong>USD {{RECUPERABLE}}</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="roi">
+  <div><span>Inversión</span><strong>{{SETUP_C}}</strong><em>USD, pago único</em></div>
+  <div><span>Recupero anual</span><strong class="hl">{{RECUPERABLE}}</strong><em>USD por año</em></div>
+  <div><span>Se repaga en</span><strong>{{MESES_REPAGO}}</strong><em>meses</em></div>
+</div>
+
+<div class="callout dark">
+  <div class="eyebrow">El repago</div>
+  <p>El sistema te devuelve <strong>USD {{RECUPERABLE}}</strong> el primer año. La implementación cuesta <strong>USD {{SETUP_C}}</strong>. Eso significa que en el <strong>mes {{MESES_REPAGO}}</strong> el sistema ya se pagó solo con tu propio ahorro — y a partir de ahí es ganancia neta para {{EMPRESA}}.</p>
+</div>
+</section>
+
+<section>
+<div class="eyebrow">02 · La solución</div>
+<h2><span class="n">02</span>Qué vamos a construir</h2>
+<div class="rule"></div>
+
+<p>{{DESCRIPCION_SOLUCION}}</p>
+
+<table>
+  <thead><tr><th style="width:32%">Componente</th><th>Qué resuelve</th></tr></thead>
+  <tbody>
+    <tr><td><strong>{{COMPONENTE_1}}</strong></td><td>{{RESUELVE_1}}</td></tr>
+    <tr><td><strong>{{COMPONENTE_2}}</strong></td><td>{{RESUELVE_2}}</td></tr>
+    <tr><td><strong>{{COMPONENTE_3}}</strong></td><td>{{RESUELVE_3}}</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="eyebrow">Human-in-the-loop</div>
+  <p>La automatización procesa el volumen pesado en segundos, pero <strong>la validación final siempre pasa por tu equipo</strong> antes de impactar en clientes o en la facturación. Así se elimina el riesgo de que un error del sistema llegue afuera.</p>
+</div>
+
+<h3>Plazo</h3>
+<table>
+  <thead><tr><th style="width:22%">Semana</th><th>Hito</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1 – 2</strong></td><td>Arquitectura de datos y configuración del entorno</td></tr>
+    <tr><td><strong>3 – 4</strong></td><td>Construcción del núcleo funcional y prototipo navegable</td></tr>
+    <tr><td><strong>{{SEMANA_5}}</strong></td><td>Automatizaciones, integraciones y tablero</td></tr>
+    <tr><td><strong>{{SEMANA_FINAL}}</strong></td><td>Pruebas con tu equipo, ajustes y puesta en producción</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section class="pb">
+<div class="eyebrow">03 · Inversión</div>
+<h2><span class="n">03</span>Tres formas de avanzar</h2>
+<div class="rule"></div>
+
+<p>Los USD 1.200 del Diagnóstico Operativo ya abonados <strong>se descuentan del 100%</strong> en las tres opciones.</p>
+
+<div class="opt">
+  <div class="opt-h"><b>Opción A — Base</b><span class="p">USD {{SETUP_A}}</span></div>
+  <ul>
+    <li>Automatizaciones sobre las herramientas que ya usás</li>
+    <li>Resuelve la fricción administrativa más urgente</li>
+    <li>Sin desarrollo a medida ni interfaz propia</li>
+    <li>Abono de evolución: USD {{ABONO}}/mes desde el primer mes</li>
+  </ul>
+</div>
+
+<div class="opt">
+  <div class="opt-h"><b>Opción B — Desarrollo</b><span class="p">USD {{SETUP_B}}</span></div>
+  <ul>
+    <li>Todo lo de la Opción A</li>
+    <li>Desarrollo a medida completo, con interfaz propia y roles</li>
+    <li>Integraciones con tus sistemas actuales</li>
+    <li>Abono de evolución: USD {{ABONO}}/mes <strong>desde el primer mes</strong></li>
+  </ul>
+</div>
+
+<div class="opt target">
+  <div class="opt-h"><b>Opción C — Desarrollo + Soporte<span class="badge ok">Recomendada</span></b><span class="p">USD {{SETUP_C}}</span></div>
+  <ul>
+    <li>Todo lo de la Opción B</li>
+    <li><strong>3 meses de evolución y soporte bonificados</strong> — un ahorro directo de USD {{AHORRO_C}}</li>
+    <li>Acompañamiento en la adopción del equipo durante los primeros 90 días</li>
+    <li>Abono de evolución: USD {{ABONO}}/mes <strong>a partir del mes 4</strong></li>
+  </ul>
+</div>
+
+<div class="callout">
+  <p>La diferencia entre la Opción B y la Opción C es de <strong>USD {{DIF_BC}}</strong>. Por ese monto, la Opción C incluye tres meses de soporte y evolución valuados en <strong>USD {{AHORRO_C}}</strong> — que son justamente los meses en los que el equipo se está adaptando a la herramienta y más ajustes hacen falta.</p>
+</div>
+
+<h3>Condiciones</h3>
+<table>
+  <tbody>
+    <tr><td style="width:34%"><strong>Forma de pago</strong></td><td><strong>40%</strong> a la firma · <strong>30%</strong> contra entrega del prototipo · <strong>30%</strong> contra puesta en producción</td></tr>
+    <tr><td><strong>Abono de evolución</strong></td><td>USD {{ABONO}}/mes. Incluye hosting, monitoreo de integraciones, soporte, actualizaciones de seguridad y mejoras menores</td></tr>
+    <tr><td><strong>No incluye</strong></td><td>Licencias y suscripciones de terceros necesarias para el funcionamiento (IA, base de datos, API de WhatsApp), hardware, y pruebas de carga</td></tr>
+    <tr><td><strong>Cambios de alcance</strong></td><td>Todo desarrollo o funcionalidad que exceda lo validado en el prototipo se acuerda por adenda escrita</td></tr>
+    <tr><td><strong>Aceptación de entregables</strong></td><td>Si no se reciben observaciones dentro de los 5 días hábiles posteriores a cada entrega, se consideran aceptados</td></tr>
+    <tr><td><strong>Propiedad</strong></td><td>IngentIA conserva la propiedad intelectual del código fuente y la lógica desarrollada</td></tr>
+    <tr><td><strong>Validez</strong></td><td>15 días corridos desde la emisión</td></tr>
+    <tr><td><strong>Aceptación</strong></td><td>Responder este correo indicando conformidad y la opción elegida, con referencia a la Oferta N° {{NRO_OFERTA}}</td></tr>
+  </tbody>
+</table>
+
+<h3>Qué necesitamos de {{EMPRESA}}</h3>
+<ul>
+  <li>Un referente designado para validar entregas</li>
+  <li>Accesos a los sistemas y archivos que se integran, en los tiempos acordados</li>
+  <li>Disponibilidad del equipo operativo para las sesiones de validación del prototipo</li>
+  <li>Que los datos de origen estén depurados antes de cada cierre — la reclasificación automática opera sobre datos validados</li>
+</ul>
+
+<div class="sign">
+  <div>Ing. Fernando Miceli — CEO<br>IngentIA</div>
+  <div>Ing. Pedro Sequeira — CCO<br>IngentIA</div>
+</div>
+
+<div class="foot">
+  IngentIA · Ingeniería Operativa · Buenos Aires, Argentina<br>
+  contacto@ingentia.com.ar · ingentia.com.ar · Oferta N° {{NRO_OFERTA}} — {{FECHA}}
+</div>
+</section>
+
+</body>
+</html>

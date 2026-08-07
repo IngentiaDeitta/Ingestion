@@ -1,0 +1,16 @@
+semana,desde,hasta,fase,cuentas_meta,cuentas_real,emails_meta,emails_real,respuestas_meta,respuestas_real,reuniones_meta,reuniones_real,propuestas_meta,propuestas_real,cierres_meta,cierres_real,facturado_usd_meta,facturado_usd_real,bounce_pct,entregabilidad_pct,notas
+1,2026-07-28,2026-08-01,Fase 0 - Fundaciones + Piloto,10,,10,,1,,0,,0,,0,,1500,,,,Dominio ingentiatech.com autenticado (MX+SPF+DKIM+DMARC confirmado 29/07). PILOTO: ~10 emails manuales el jueves 30/07 desde pedro@ingentiatech.com para validar entregabilidad antes del ramp formal. Cerrar y facturar EK Modulo 1.
+2,2026-08-04,2026-08-08,Fase 1 - Activacion (warm-up sem.1),10,,30,,2,,1,,0,,0,,0,,,,Arranque formal del warm-up: 10 emails/dia, martes a jueves, 1 solo buzon. Contactar 5 aliados. Revisar resultado del piloto antes de escalar.
+3,2026-08-11,2026-08-15,Fase 1 - Activacion (warm-up sem.2),20,,60,,3,,1,,0,,0,,0,,,,Warm-up semana 2 (20/dia). Contactar 5 aliados restantes.
+4,2026-08-18,2026-08-22,Fase 1 - Activacion (warm-up sem.3),30,,90,,4,,1,,1,,0,,0,,,,Warm-up semana 3 (30/dia). Reactivar Dripcolor.
+5,2026-08-25,2026-08-29,Fase 1 - Activacion (regimen),40,,120,,5,,1,,1,,0,,0,,,,Volumen pleno 1 buzon (40/dia). Cierre de Fase 1.
+6,2026-09-01,2026-09-05,Fase 1 - Activacion (regimen),40,,120,,5,,1,,1,,0,,0,,,,Checkpoint dia 30 (aprox.): recalibrar benchmarks con datos reales del primer mes.
+7,2026-09-08,2026-09-12,Fase 2 - Diagnosticos,40,,120,,5,,1,,1,,1,,1200,,,,Primer Diagnostico cerrado. Construir A5 y A6.
+8,2026-09-15,2026-09-19,Fase 2 - Diagnosticos,40,,120,,5,,1,,1,,0,,0,,,,Ejecutar Diagnostico vendido. Avanzar EK Modulo 2.
+9,2026-09-22,2026-09-26,Fase 2 - Diagnosticos,40,,120,,5,,1,,1,,1,,1200,,,,Segundo Diagnostico cerrado.
+10,2026-09-29,2026-10-03,Fase 2 - Diagnosticos,40,,120,,5,,1,,1,,0,,0,,,,Cierre de Fase 2. Primera conversion a desarrollo.
+11,2026-10-06,2026-10-10,Fase 3 - Produccion,40,,120,,5,,1,,1,,1,,2400,,,,Tercer Diagnostico + primer desarrollo firmado. Gatillo colega dev.
+12,2026-10-13,2026-10-17,Fase 3 - Produccion,40,,120,,5,,1,,1,,0,,0,,,,Ejecucion de desarrollo. Evaluar gatillo SDR. Revisar si conviene upgrade de Apollo o 2do buzon.
+13,2026-10-20,2026-10-24,Fase 3 - Produccion,40,,120,,5,,1,,1,,1,,1200,,,,Cuarto Diagnostico cerrado.
+14,2026-10-27,2026-10-31,Fase 3 - Produccion,40,,120,,5,,1,,1,,1,,5000,,,,Hito EK Modulo 2. Checkpoint dia 90: continuidad o pivot del vertical.
+TOTAL,2026-07-28,2026-10-31,Trimestre,470,,1390,,46,,10,,10,,6,,12500,,,,"Arranque adelantado una semana (piloto 30/07, ramp formal desde 04/08) respecto del plan original (11/08). Volumen reducido por operar con 1 solo buzon; compensado con Apollo 1:1 manual, aliados y red personal."

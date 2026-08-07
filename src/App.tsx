@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
+import Propuestas from './pages/Propuestas';
+import ProposalDetail from './pages/ProposalDetail';
 import ProjectDetail from './pages/ProjectDetail';
 import NewProject from './pages/NewProject';
 import Clients from './pages/Clients';
@@ -12,6 +14,9 @@ import NewInvoice from './pages/NewInvoice';
 import Kanban from './pages/Kanban';
 import SmartQuoter from './pages/SmartQuoter';
 import SolutionArchitect from './pages/SolutionArchitect';
+import Leads from './pages/Leads';
+import LeadDetail from './pages/LeadDetail';
+import Radiografia from './pages/Radiografia';
 // Reports section removed — content merged into Finance
 import Team from './pages/Team';
 import Settings from './pages/Settings';
@@ -36,9 +41,14 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/propuestas" element={<Propuestas />} />
+            <Route path="/propuestas/:id" element={<ProposalDetail />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/new" element={<NewProject />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/leads/:id" element={<LeadDetail />} />
+            <Route path="/radiografia/:id" element={<Radiografia />} />
             <Route path="/clients" element={<Clients />} />
             <Route path="/clients/new" element={<NewClient />} />
             <Route path="/clients/:id" element={<ClientDetail />} />

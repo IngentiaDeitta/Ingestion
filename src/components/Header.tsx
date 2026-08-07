@@ -1,4 +1,4 @@
-import { Search, Bell, Plus, ChevronDown, User, LogOut, Settings as SettingsIcon, MessageSquare, Trash2, Menu } from 'lucide-react';
+import { Search, Bell, Plus, ChevronDown, User, LogOut, Settings as SettingsIcon, MessageSquare, Trash2, Menu, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -24,6 +24,9 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Capacity state
+  const [capacityAlert, setCapacityAlert] = useState<{isOver: boolean, msg: string}>({isOver: false, msg: 'Capacidad OK'});
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -93,10 +96,39 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
       })
       .subscribe();
 
+    fetchCapacity();
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchCapacity = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('archetype, status');
+      
+      if (error) throw error;
+      
+      const activeProjects = data.filter(p => p.status !== 'Completado' && p.status !== 'Cancelado' && p.status !== 'Perdido');
+      const ssCount = activeProjects.filter(p => p.archetype === 'Small & Standard (S&S)').length;
+      const mediumCount = activeProjects.filter(p => p.archetype === 'Medium').length;
+      const nomCount = activeProjects.filter(p => p.archetype === 'Nominado').length;
+
+      let isOver = false;
+      if (ssCount > 3 || mediumCount > 2 || (nomCount >= 1 && ssCount >= 1)) {
+        isOver = true;
+      }
+      
+      setCapacityAlert({
+        isOver,
+        msg: isOver ? 'Límite in-house superado. Requiere tercerización' : 'Capacidad In-House OK'
+      });
+    } catch (err) {
+      console.error('Error fetching capacity:', err);
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -281,6 +313,8 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
           </div>
         )}
       </div>
+
+
 
       {/* Right Actions */}
       <div className="flex items-center gap-3 md:gap-6 ml-auto">

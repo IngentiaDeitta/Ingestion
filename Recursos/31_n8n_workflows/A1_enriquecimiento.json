@@ -1,0 +1,217 @@
+{
+  "name": "A1 · Enriquecimiento de cuentas (IngentIA)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Ejecutar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-460, 300]
+    },
+    {
+      "parameters": {
+        "content": "## A1 · Enriquecimiento de cuentas\n\n**Entrada:** tabla `cuentas` en Supabase con `estado = PENDIENTE`\n**Salida:** cuentas con dominio, headcount y decisor, o descartadas con motivo\n\n### Antes de ejecutar\n1. Cargar credencial `Apollo API` (header `x-api-key`)\n2. Cargar credencial de Supabase\n3. Importar `10a_cuentas_prioritarias.csv` a la tabla `cuentas`\n4. **Verificar la versión de los endpoints de Apollo antes del primer uso**\n\n### Economía de créditos\n- Organization Lookup → **gratis**\n- People Search → **paga**\n\nEl filtro de tamaño corre ANTES del paso pago.\nCon 75 créditos disponibles, filtrar después de revelar es tirar el trimestre.",
+        "height": 460,
+        "width": 380
+      },
+      "id": "nota-doc",
+      "name": "Documentación",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-900, 140]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "cuentas",
+        "returnAll": false,
+        "limit": 100,
+        "filters": {
+          "conditions": [
+            { "keyName": "estado", "condition": "eq", "keyValue": "PENDIENTE" }
+          ]
+        }
+      },
+      "id": "supabase-read",
+      "name": "Leer cuentas pendientes",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-240, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop",
+      "name": "Una cuenta por vez",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [-20, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/mixed_companies/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  q_organization_name: $json.empresa,\n  organization_locations: ['Argentina'],\n  per_page: 5,\n  page: 1\n}) }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "apollo-org",
+      "name": "Apollo · buscar organización",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 300],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Elegir el mejor match y evaluar el ICP ANTES de gastar creditos.\nconst ICP_MIN = 15;\nconst ICP_MAX = 80;\nconst NAICS_OK = ['311','322','325','326','332','333','335','336'];\nconst AMBA = ['buenos aires','ciudad autonoma de buenos aires','caba','capital federal','san isidro','vicente lopez','tigre','san fernando','pilar','escobar','malvinas argentinas','general san martin','san martin','tres de febrero','moron','hurlingham','ituzaingo','la matanza','merlo','moreno','avellaneda','lanus','quilmes','lomas de zamora','esteban echeverria','ezeiza','berazategui','florencio varela'];\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const cuenta = $('Una cuenta por vez').first().json;\n  const orgs = item.json?.organizations || [];\n\n  if (orgs.length === 0) {\n    out.push({ json: { ...cuenta, estado: 'DESCARTADA', motivo_descarte: 'SIN_DATO', nota_a1: 'Sin match en Apollo. Candidata para padron de camara (ADIMRA/CADIEEL).' } });\n    continue;\n  }\n\n  // Mejor match por similitud de nombre\n  const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').replace(/\\b(sa|srl|sas|sacif|saic|sca|sh)\\b/g,'').trim();\n  const target = norm(cuenta.empresa);\n  const org = orgs.sort((a,b) => {\n    const sa = norm(a.name) === target ? 2 : (norm(a.name).includes(target) || target.includes(norm(a.name)) ? 1 : 0);\n    const sb = norm(b.name) === target ? 2 : (norm(b.name).includes(target) || target.includes(norm(b.name)) ? 1 : 0);\n    return sb - sa;\n  })[0];\n\n  const empleados = org.estimated_num_employees ?? null;\n  const naics = (org.naics_codes || []).map(c => String(c).substring(0,3));\n  const ubic = `${org.city || ''} ${org.state || ''}`.toLowerCase();\n\n  const base = {\n    ...cuenta,\n    apollo_org_id: org.id,\n    dominio: org.primary_domain || org.website_url || '',\n    empleados,\n    industria_naics: (org.naics_codes || []).join(','),\n    anio_fundacion: org.founded_year || null,\n    linkedin_empresa: org.linkedin_url || '',\n    ciudad_apollo: org.city || '',\n    provincia_apollo: org.state || ''\n  };\n\n  // ---- Filtros que protegen los creditos ----\n  if (empleados !== null && (empleados < ICP_MIN || empleados > ICP_MAX)) {\n    out.push({ json: { ...base, estado: 'DESCARTADA', motivo_descarte: 'TAMANO', nota_a1: `${empleados} empleados, fuera del rango ${ICP_MIN}-${ICP_MAX}` } });\n    continue;\n  }\n  if (naics.length > 0 && !naics.some(c => NAICS_OK.includes(c))) {\n    out.push({ json: { ...base, estado: 'DESCARTADA', motivo_descarte: 'RUBRO', nota_a1: `NAICS ${naics.join(',')} fuera del ICP` } });\n    continue;\n  }\n  if (ubic.trim() && !AMBA.some(z => ubic.includes(z))) {\n    out.push({ json: { ...base, estado: 'DESCARTADA', motivo_descarte: 'ZONA', nota_a1: `HQ en ${ubic.trim()}, fuera de AMBA` } });\n    continue;\n  }\n\n  // ---- Score del ICP con datos reales ----\n  let score = 0;\n  if (empleados !== null && empleados >= ICP_MIN && empleados <= ICP_MAX) score += 3;\n  if (naics.some(c => NAICS_OK.includes(c))) score += 3;\n  if (AMBA.some(z => ubic.includes(z))) score += 2;\n  if (base.dominio) score += 1;\n\n  out.push({ json: { ...base, score_icp_real: score, estado: 'APTA_PARA_REVELAR' } });\n}\n\nreturn out;"
+      },
+      "id": "filtro-icp",
+      "name": "Filtrar ICP (antes de gastar)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.estado }}",
+              "rightValue": "APTA_PARA_REVELAR",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-apta",
+      "name": "¿Pasó el filtro?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "content": "### ⏸️ PUNTO DE CONTROL\n\nAntes de habilitar la rama paga:\n\n**Fernando o Pedro deben autorizar el lote**, sabiendo cuántas cuentas son y cuántos créditos consume.\n\nEl nodo de espera queda activo a propósito. No lo saques.",
+        "height": 220,
+        "width": 300,
+        "color": 3
+      },
+      "id": "nota-control",
+      "name": "Nota control humano",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [840, 60]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "id": "wait-approval",
+      "name": "⏸️ Esperar autorización del lote",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [880, 220],
+      "webhookId": "a1-aprobacion-lote"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/mixed_people/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  organization_ids: [$json.apollo_org_id],\n  person_titles: ['Owner','Founder','CEO','Gerente General','Director General','Socio Gerente','Gerente de Operaciones','Gerente de Planta','Gerente de Produccion','Gerente Administrativo','CFO'],\n  contact_email_status: ['verified'],\n  per_page: 3,\n  page: 1\n}) }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "apollo-people",
+      "name": "Apollo · revelar decisor (PAGO)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 220],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "supresiones",
+        "returnAll": true
+      },
+      "id": "supabase-supresiones",
+      "name": "Leer supresiones",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1320, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Elegir un decisor por cuenta y cruzar contra supresiones.\nconst PRIORIDAD = [\n  ['owner','founder','dueno','socio gerente','ceo','gerente general','director general'],\n  ['gerente administrativo','administracion y finanzas','cfo','director financiero'],\n  ['gerente de operaciones','gerente de planta','jefe de planta','gerente de produccion']\n];\nconst ROL_GENERICO = /^(info|ventas|administracion|contacto|comercial|compras)@/i;\n\nconst supresiones = new Set(\n  $('Leer supresiones').all().map(i => (i.json.email || '').toLowerCase())\n);\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const cuenta = $('¿Pasó el filtro?').first().json;\n  const people = item.json?.people || item.json?.contacts || [];\n\n  const validos = people.filter(p =>\n    p.email &&\n    p.email_status === 'verified' &&\n    !ROL_GENERICO.test(p.email) &&\n    !supresiones.has(p.email.toLowerCase())\n  );\n\n  if (validos.length === 0) {\n    out.push({ json: { ...cuenta, estado: 'SIN_DECISOR', nota_a1: 'Sin email verificado. Derivar a cola de llamada telefonica (creditos de direct dial).' } });\n    continue;\n  }\n\n  const rank = p => {\n    const t = (p.title || '').toLowerCase();\n    for (let i = 0; i < PRIORIDAD.length; i++) {\n      if (PRIORIDAD[i].some(k => t.includes(k))) return i;\n    }\n    return 99;\n  };\n  const d = validos.sort((a, b) => rank(a) - rank(b))[0];\n\n  const t = (d.title || '').toLowerCase();\n  let persona = 'ADMIN';\n  if (PRIORIDAD[0].some(k => t.includes(k))) persona = 'DUENO';\n  else if (PRIORIDAD[2].some(k => t.includes(k))) persona = 'PLANTA';\n\n  out.push({ json: {\n    ...cuenta,\n    estado: 'ENRIQUECIDA',\n    decisor_nombre: `${d.first_name || ''} ${d.last_name || ''}`.trim(),\n    decisor_cargo: d.title || '',\n    decisor_email: d.email,\n    decisor_linkedin: d.linkedin_url || '',\n    decisor_telefono: d.phone_numbers?.[0]?.sanitized_number || '',\n    persona,\n    enriquecida_at: new Date().toISOString()\n  }});\n}\n\nreturn out;"
+      },
+      "id": "elegir-decisor",
+      "name": "Elegir decisor y cruzar supresiones",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 220]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "cuentas",
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "supabase-write-ok",
+      "name": "Guardar cuenta enriquecida",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1760, 220]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "cuentas",
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "supabase-write-desc",
+      "name": "Guardar descarte",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [880, 440]
+    }
+  ],
+  "connections": {
+    "Ejecutar manualmente": { "main": [[{ "node": "Leer cuentas pendientes", "type": "main", "index": 0 }]] },
+    "Leer cuentas pendientes": { "main": [[{ "node": "Una cuenta por vez", "type": "main", "index": 0 }]] },
+    "Una cuenta por vez": { "main": [[], [{ "node": "Apollo · buscar organización", "type": "main", "index": 0 }]] },
+    "Apollo · buscar organización": { "main": [[{ "node": "Filtrar ICP (antes de gastar)", "type": "main", "index": 0 }]] },
+    "Filtrar ICP (antes de gastar)": { "main": [[{ "node": "¿Pasó el filtro?", "type": "main", "index": 0 }]] },
+    "¿Pasó el filtro?": {
+      "main": [
+        [{ "node": "⏸️ Esperar autorización del lote", "type": "main", "index": 0 }],
+        [{ "node": "Guardar descarte", "type": "main", "index": 0 }]
+      ]
+    },
+    "⏸️ Esperar autorización del lote": { "main": [[{ "node": "Apollo · revelar decisor (PAGO)", "type": "main", "index": 0 }]] },
+    "Apollo · revelar decisor (PAGO)": { "main": [[{ "node": "Leer supresiones", "type": "main", "index": 0 }]] },
+    "Leer supresiones": { "main": [[{ "node": "Elegir decisor y cruzar supresiones", "type": "main", "index": 0 }]] },
+    "Elegir decisor y cruzar supresiones": { "main": [[{ "node": "Guardar cuenta enriquecida", "type": "main", "index": 0 }]] },
+    "Guardar cuenta enriquecida": { "main": [[{ "node": "Una cuenta por vez", "type": "main", "index": 0 }]] },
+    "Guardar descarte": { "main": [[{ "node": "Una cuenta por vez", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "instanceId": "ingentia-plan-90d" },
+  "tags": [{ "name": "IngentIA" }, { "name": "Comercial" }, { "name": "A1" }]
+}

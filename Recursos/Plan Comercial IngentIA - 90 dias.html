@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Plan Comercial IngentIA — 90 días</title>
+<style>
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Regular.otf") format("opentype");font-weight:400;font-style:normal}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Medium.otf") format("opentype");font-weight:500;font-style:normal}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Bold.otf") format("opentype");font-weight:700;font-style:normal}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Black.otf") format("opentype");font-weight:900;font-style:normal}
+
+:root{
+  --ink:#0a0a0a; --ink-muted:rgba(10,10,10,.62); --ink-subtle:rgba(10,10,10,.40);
+  --paper:#ffffff; --paper-soft:#f5f6f8; --line:rgba(10,10,10,.10); --line-strong:rgba(10,10,10,.20);
+  --accent:#00A9C0; --accent-ink:#0089a0; --blue:#4A7DC9;
+  --ok:#1F9E74; --warn:#C87A11; --bad:#D6455A;
+  --sans:"Satoshi","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+
+@page{size:A4;margin:16mm 14mm 18mm}
+@page:first{margin:0}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--sans);
+  font-size:10.5pt; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- COVER ---------- */
+.cover{
+  background:#000; color:#fff; padding:28mm 20mm 20mm; min-height:297mm;
+  display:flex; flex-direction:column; position:relative; overflow:hidden;
+  break-after:page;
+}
+.cover::after{
+  content:""; position:absolute; right:-18%; top:8%; width:78%; aspect-ratio:1;
+  border-radius:50%; background:radial-gradient(circle,rgba(0,229,255,.20),transparent 68%);
+}
+.cover-head{display:flex; justify-content:space-between; align-items:center; font-size:8pt;
+  letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.45); position:relative; z-index:2}
+.mark{display:flex; align-items:center; gap:9px; color:#fff; letter-spacing:0; text-transform:none; font-size:13pt; font-weight:700}
+.mark i{display:block; width:5px; height:26px; background:#fff; border-radius:1px}
+.cover-body{margin-top:auto; position:relative; z-index:2}
+.pill{display:inline-flex; align-items:center; gap:8px; border:1px solid rgba(255,255,255,.22);
+  border-radius:100px; padding:7px 16px; font-size:8pt; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.85)}
+.pill b{width:6px; height:6px; border-radius:50%; background:#00E5FF; display:block}
+.cover h1{font-size:40pt; font-weight:900; letter-spacing:-.045em; line-height:.98; margin:18px 0 0}
+.cover h1 em{font-style:normal; color:#00E5FF}
+.cover .sub{font-size:12pt; color:rgba(255,255,255,.62); max-width:62%; margin-top:14px; line-height:1.5}
+.cover-meta{display:flex; gap:36px; margin-top:34px; padding-top:20px; border-top:1px solid rgba(255,255,255,.14)}
+.cover-meta div span{display:block; font-size:7.5pt; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.40); margin-bottom:3px}
+.cover-meta div strong{font-size:10.5pt; font-weight:700; color:#fff}
+.cover-foot{margin-top:26mm; font-size:8pt; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.32); position:relative; z-index:2}
+
+/* ---------- STRUCTURE ---------- */
+section{break-inside:auto}
+h2{
+  font-size:19pt; font-weight:900; letter-spacing:-.03em; line-height:1.12;
+  margin:0 0 4px; padding-top:6px; break-after:avoid;
+}
+h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; margin-right:10px}
+.rule{height:2px; background:var(--ink); width:44px; margin:10px 0 18px; border-radius:2px}
+h3{font-size:12pt; font-weight:700; letter-spacing:-.01em; margin:22px 0 8px; break-after:avoid}
+h4{font-size:10pt; font-weight:700; margin:16px 0 6px; break-after:avoid}
+p{margin:0 0 10px; color:var(--ink-muted)}
+p strong,li strong,td strong{color:var(--ink); font-weight:700}
+ul,ol{margin:0 0 12px; padding-left:18px; color:var(--ink-muted)}
+li{margin-bottom:5px}
+a{color:var(--accent-ink); text-decoration:none}
+.eyebrow{font-size:7.5pt; letter-spacing:.16em; text-transform:uppercase; color:var(--accent-ink); font-weight:700; margin-bottom:6px}
+code,.mono{font-family:var(--mono); font-size:.88em; background:var(--paper-soft); padding:1px 5px; border-radius:4px; color:var(--ink)}
+.page-break{break-before:page}
+
+/* ---------- TABLES ---------- */
+table{width:100%; border-collapse:collapse; margin:8px 0 16px; font-size:9pt; break-inside:auto}
+thead{display:table-header-group}
+tr{break-inside:avoid}
+th{
+  text-align:left; font-weight:700; font-size:7.5pt; letter-spacing:.10em; text-transform:uppercase;
+  color:var(--ink-subtle); border-bottom:1.5px solid var(--ink); padding:0 10px 7px; vertical-align:bottom;
+}
+td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink-muted)}
+td:first-child,th:first-child{padding-left:0}
+td:last-child,th:last-child{padding-right:0}
+.num-col{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+tr.total td{border-top:1.5px solid var(--ink); border-bottom:none; color:var(--ink); font-weight:700; font-size:10pt}
+
+/* ---------- COMPONENTS ---------- */
+.callout{
+  background:var(--paper-soft); border-left:3px solid var(--accent);
+  padding:14px 18px; margin:14px 0 18px; border-radius:0 8px 8px 0; break-inside:avoid;
+}
+.callout p:last-child{margin-bottom:0}
+.callout .eyebrow{margin-bottom:5px}
+.callout.warn{border-left-color:var(--warn)}
+.callout.dark{background:#0a0a0a; border-left-color:#00E5FF; color:rgba(255,255,255,.72)}
+.callout.dark p{color:rgba(255,255,255,.72)}
+.callout.dark strong{color:#fff}
+.callout.dark .eyebrow{color:#00E5FF}
+
+.kpis{display:flex; gap:10px; margin:14px 0 18px; break-inside:avoid}
+.kpi{flex:1; border:1px solid var(--line); border-radius:12px; padding:14px}
+.kpi span{display:block; font-size:7.5pt; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-subtle); margin-bottom:6px}
+.kpi strong{display:block; font-size:20pt; font-weight:900; letter-spacing:-.04em; line-height:1; color:var(--ink)}
+.kpi strong.hl{color:var(--accent-ink)}
+.kpi em{display:block; font-style:normal; font-size:8pt; color:var(--ink-subtle); margin-top:5px}
+
+.phase{border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:12px; break-inside:avoid}
+.phase-head{display:flex; align-items:baseline; gap:12px; margin-bottom:8px}
+.phase-head b{font-size:11.5pt; font-weight:900; letter-spacing:-.02em}
+.phase-head span{font-size:8pt; letter-spacing:.10em; text-transform:uppercase; color:var(--accent-ink); font-weight:700}
+.phase ul{margin-bottom:0}
+
+.tag{display:inline-block; font-size:7.5pt; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:2px 8px; border-radius:100px; white-space:nowrap}
+.tag.ok{background:rgba(31,158,116,.12); color:var(--ok)}
+.tag.warn{background:rgba(200,122,17,.12); color:var(--warn)}
+.tag.bad{background:rgba(214,69,90,.12); color:var(--bad)}
+.tag.neutral{background:var(--paper-soft); color:var(--ink-subtle)}
+
+.footer-note{margin-top:26px; padding-top:14px; border-top:1px solid var(--line); font-size:8pt; color:var(--ink-subtle)}
+</style>
+</head>
+<body>
+
+<!-- ============ PORTADA ============ -->
+<div class="cover">
+  <div class="cover-head">
+    <div class="mark"><i></i>ingentia</div>
+    <div>Documento interno · Socios</div>
+  </div>
+  <div class="cover-body">
+    <div class="pill"><b></b>Plan de acción · Q3 2026</div>
+    <h1>De la estrategia<br>escrita a la <em>máquina<br>funcionando</em>.</h1>
+    <p class="sub">Plan comercial de 90 días para el trimestre agosto–octubre 2026: metas medibles, precios congelados y un embudo automatizado sobre un solo vertical.</p>
+    <div class="cover-meta">
+      <div><span>Período</span><strong>Ago – Oct 2026</strong></div>
+      <div><span>Vertical</span><strong>Industrial GBA</strong></div>
+      <div><span>Destinatarios</span><strong>Fernando · Pedro</strong></div>
+      <div><span>Versión</span><strong>1.0 — 27/07/2026</strong></div>
+    </div>
+  </div>
+  <div class="cover-foot">Plan Comercial · 90 días · Confidencial</div>
+</div>
+
+<!-- ============ 1. DÓNDE ESTAMOS ============ -->
+<section>
+<div class="eyebrow">01 · Punto de partida</div>
+<h2><span class="num">01</span>Dónde estamos parados hoy</h2>
+<div class="rule"></div>
+
+<p>La primera reunión de IngentIA fue el <strong>16 de febrero de 2026</strong>. A hoy, 27 de julio, pasaron <strong>5 meses y 11 días</strong> y el ingreso total percibido es de <strong>USD 1.000</strong>: el anticipo del Módulo 1 de Elektro Korrosión. Un cliente pago, un contrato firmado y ningún proceso comercial corriendo.</p>
+
+<div class="kpis">
+  <div class="kpi"><span>Tiempo transcurrido</span><strong>5,4</strong><em>meses desde el inicio</em></div>
+  <div class="kpi"><span>Ingreso acumulado</span><strong class="hl">$1.000</strong><em>USD — anticipo EK</em></div>
+  <div class="kpi"><span>Clientes pagos</span><strong>1</strong><em>Elektro Korrosión</em></div>
+  <div class="kpi"><span>Pipeline activo</span><strong>0</strong><em>oportunidades en curso</em></div>
+</div>
+
+<h3>El contrato de Elektro Korrosión</h3>
+<p>Oferta N° 1/2026 del 13/04/2026: USD 7.500 por Módulos 1 y 2, más USD 150 mensuales por el Módulo 3.</p>
+
+<table>
+  <thead><tr><th>Hito</th><th class="num-col">Monto</th><th>Estado</th></tr></thead>
+  <tbody>
+    <tr><td>Anticipo inicio Módulo 1</td><td class="num-col">USD 1.000</td><td><span class="tag ok">Cobrado</span></td></tr>
+    <tr><td><strong>Contra entrega Módulo 1</strong></td><td class="num-col"><strong>USD 1.500</strong></td><td><span class="tag warn">En curso — cerrando Fase I</span></td></tr>
+    <tr><td>Contra entrega Módulo 2</td><td class="num-col">USD 5.000</td><td><span class="tag neutral">Pendiente</span></td></tr>
+    <tr><td>Módulo 3 — soporte y evolución</td><td class="num-col">USD 150 / mes</td><td><span class="tag neutral">No iniciado</span></td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <div class="eyebrow">Problema de diseño de cobranza</div>
+  <p>El <strong>67% del contrato (USD 5.000 de 7.500) se cobra recién contra entrega del último módulo</strong>. Para una empresa de dos socios sin colchón financiero, esto es una trampa de caja. No se toca EK retroactivamente, pero <strong>no se repite en ningún contrato nuevo</strong>.</p>
+</div>
+
+<h3>La estrategia documentada se contradice a sí misma</h3>
+<p>Hay tres documentos de estrategia vigentes en simultáneo que dicen cosas distintas sobre lo mismo. Mientras eso siga así, no hay cotización en 48 horas, no hay material para delegar y no hay nada que medir.</p>
+
+<table>
+  <thead><tr><th>Tema</th><th>Playbook v6.0</th><th>Estrategia v5</th><th>Web + Guion</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Diagnóstico</strong></td><td>Pago, USD 1.200, descontable</td><td>Pago, USD 800–1.200</td><td>"Gratuito, 30 min"</td></tr>
+    <tr><td><strong>Desarrollo</strong></td><td>Arquetipos S&amp;S / Medium / Nominado</td><td>Fijos 3.800 / 6.800 / 6.900</td><td>Sin precio</td></tr>
+    <tr><td><strong>Comisiones</strong></td><td>5 / 10 / 15% con topes</td><td>15% plano, tope 1.050</td><td>—</td></tr>
+    <tr><td><strong>Vertical mes 1</strong></td><td>Clínicas</td><td>Autopartistas GBA</td><td>Genérico "PyME"</td></tr>
+  </tbody>
+</table>
+</section>
+
+<!-- ============ 2. DECISIONES ============ -->
+<section class="page-break">
+<div class="eyebrow">02 · Decisiones</div>
+<h2><span class="num">02</span>Lo que queda congelado</h2>
+<div class="rule"></div>
+
+<p>Estas siete decisiones dejan de discutirse. Todo el material operativo se construye sobre ellas.</p>
+
+<table>
+  <thead><tr><th style="width:26%">Decisión</th><th>Qué significa</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1. Un solo vertical</strong></td><td>Industrial y metalmecánica de GBA, empresas de 15 a 80 empleados. Es donde está el único caso real, el background de los socios y la mayor densidad de cuentas disponibles. Atacar varios nichos en paralelo es lo que hoy diluye el esfuerzo.</td></tr>
+    <tr><td><strong>2. Base de leads de EK</strong></td><td>Con la autorización de EK disponible, se usa donde efectivamente sirve: como fuente de razones sociales a enriquecer, no como lista de envío directa.</td></tr>
+    <tr><td><strong>3. Diagnóstico pago</strong></td><td>USD 1.200, 100% descontable del desarrollo. Filtra curiosos y financia el descubrimiento sin comprometer margen.</td></tr>
+    <tr><td><strong>4. Rol comercial: SDR</strong></td><td>El contacto que se suma genera reuniones calificadas. Pedro sigue cerrando. El SDR no cotiza, no negocia y no promete alcance.</td></tr>
+    <tr><td><strong>5. Nomenclatura corregida</strong></td><td>Los 30 minutos sin cargo son el primer contacto, no el Diagnóstico. Se renombran para eliminar la ambigüedad.</td></tr>
+    <tr><td><strong>6. Todo lo masivo se automatiza</strong></td><td>Siete agentes cubren enriquecimiento, personalización, envío, triage, brief, propuesta y reporte. Salida siempre personalizada y profesional, con validación humana.</td></tr>
+    <tr><td><strong>7. Telemetría e Inventario QR no se computan</strong></td><td>Quedan como oportunidades del roadmap. La meta del trimestre se construye sobre clientes nuevos.</td></tr>
+  </tbody>
+</table>
+
+<h3>La corrección de nomenclatura</h3>
+<p>Este es el origen de la confusión entre lo que promete la web y lo que dice el Playbook.</p>
+
+<table>
+  <thead><tr><th style="width:30%">Antes</th><th style="width:26%">Pasa a llamarse</th><th>Qué es</th></tr></thead>
+  <tbody>
+    <tr><td>"Diagnóstico gratuito de 30 min" · CTA "Agendar diagnóstico"</td><td><strong>Radiografía Operativa</strong><br>30 min, sin cargo</td><td>Primer contacto. Califica al prospecto, cuantifica el dolor en pesos y ancla la expectativa de inversión.</td></tr>
+    <tr><td>"Diagnóstico Funcional / Operativo"</td><td><strong>Diagnóstico Operativo</strong><br>USD 1.200, descontable</td><td>Producto pago con entregable propio: mapa As-Is / To-Be y ROI cuantificado.</td></tr>
+  </tbody>
+</table>
+<p>La palabra "diagnóstico" deja de usarse sola para la reunión gratuita. Se corrige en web, brochure, guion de presentación y el nombre del evento en cal.com.</p>
+</section>
+
+<!-- ============ 3. METAS ============ -->
+<section class="page-break">
+<div class="eyebrow">03 · Metas</div>
+<h2><span class="num">03</span>Metas del trimestre</h2>
+<div class="rule"></div>
+
+<h3>Caja — agosto a octubre 2026</h3>
+<table>
+  <thead><tr><th>Fuente</th><th class="num-col">Piso</th><th class="num-col">Objetivo</th><th class="num-col">Stretch</th></tr></thead>
+  <tbody>
+    <tr><td>Hito Módulo 1 EK <em>(ya devengado)</em></td><td class="num-col">1.500</td><td class="num-col">1.500</td><td class="num-col">1.500</td></tr>
+    <tr><td>Hito Módulo 2 EK</td><td class="num-col">—</td><td class="num-col">5.000</td><td class="num-col">5.000</td></tr>
+    <tr><td>Diagnósticos Operativos nuevos</td><td class="num-col">2.400</td><td class="num-col">4.800</td><td class="num-col">7.200</td></tr>
+    <tr><td>Desarrollos nuevos <em>(neto del crédito)</em></td><td class="num-col">—</td><td class="num-col">1.500</td><td class="num-col">3.600</td></tr>
+    <tr class="total"><td>Total trimestre (USD)</td><td class="num-col">3.900</td><td class="num-col">12.800</td><td class="num-col">17.300</td></tr>
+  </tbody>
+</table>
+
+<div class="kpis">
+  <div class="kpi"><span>MRR al 31/10 · piso</span><strong>$150</strong><em>sólo EK Módulo 3</em></div>
+  <div class="kpi"><span>MRR al 31/10 · objetivo</span><strong class="hl">$650</strong><em>EK + 2 abonos nuevos</em></div>
+  <div class="kpi"><span>MRR al 31/10 · stretch</span><strong>$900</strong><em>EK + 3 abonos nuevos</em></div>
+</div>
+
+<h3>Correcciones de pricing hacia adelante</h3>
+<ul>
+  <li><strong>Abono mensual mínimo de USD 250</strong> en todo contrato nuevo. El de EK quedó en 150 y es la única recurrencia que existe hoy.</li>
+  <li><strong>Cronograma de cobro 40 / 30 / 30</strong>: 40% al inicio, 30% en hito intermedio, 30% contra entrega. Nunca más 13 / 20 / 67.</li>
+  <li><strong>Margen neto mínimo del 40%</strong> validado antes de enviar cada propuesta.</li>
+  <li><strong>Nunca se vende sin abono mensual.</strong> Sin recurrencia no hay empresa, hay proyectos sueltos.</li>
+</ul>
+
+<h3>Actividad — lo único 100% controlable</h3>
+<p>Estas son las métricas que se auditan todas las semanas. Los resultados dependen del mercado; la actividad, no.</p>
+<table>
+  <thead><tr><th>Métrica</th><th class="num-col">Trimestre</th><th class="num-col">Mensual</th><th class="num-col">Semanal</th></tr></thead>
+  <tbody>
+    <tr><td>Cuentas enriquecidas y cargadas en secuencia</td><td class="num-col">1.800</td><td class="num-col">600</td><td class="num-col">150</td></tr>
+    <tr><td>Radiografías Operativas (reuniones)</td><td class="num-col">30</td><td class="num-col">10</td><td class="num-col">2–3</td></tr>
+    <tr><td>Propuestas de Diagnóstico enviadas</td><td class="num-col">12</td><td class="num-col">4</td><td class="num-col">1</td></tr>
+    <tr><td>Diagnósticos Operativos cerrados</td><td class="num-col">4</td><td class="num-col">1–2</td><td class="num-col">—</td></tr>
+    <tr><td>Aliados contactados / firmados</td><td class="num-col">10 / 3</td><td class="num-col">—</td><td class="num-col">—</td></tr>
+  </tbody>
+</table>
+
+<h3>Conversión y tiempos de respuesta</h3>
+<p><strong>Benchmarks de arranque</strong> — se reemplazan por datos propios en el checkpoint del día 30:<br>
+Tasa de respuesta ≥ 5% · Contacto → Reunión ≥ 1,7% · Reunión → Propuesta ≥ 40% · Propuesta → Cierre ≥ 33% · Diagnóstico → Desarrollo ≥ 50%</p>
+
+<div class="callout">
+  <div class="eyebrow">SLA operativos</div>
+  <p>Respuesta a lead entrante en <strong>menos de 4 horas hábiles</strong> · cotización base sobre la mesa en <strong>menos de 48 horas</strong> · propuesta formal post-Diagnóstico en <strong>menos de 5 días hábiles</strong>. Un lead PyME frío se pierde si pasan más de 48 horas sin un número.</p>
+</div>
+</section>
+
+<!-- ============ 4. LA MÁQUINA ============ -->
+<section class="page-break">
+<div class="eyebrow">04 · Automatización</div>
+<h2><span class="num">04</span>La máquina: siete agentes</h2>
+<div class="rule"></div>
+
+<p>Principio rector: <strong>masividad automatizada, salida personalizada y profesional.</strong> Validación humana en todo lo que sale con la marca — el mismo principio <em>human-in-the-loop</em> que ya vendemos a los clientes. Stack: n8n sobre Docker, Supabase, Apollo y Claude.</p>
+
+<table>
+  <thead><tr><th style="width:8%">#</th><th style="width:26%">Agente</th><th>Qué hace</th></tr></thead>
+  <tbody>
+    <tr><td><strong>A1</strong></td><td><strong>Enriquecimiento de cuentas</strong></td><td>Toma la razón social, consulta Apollo y completa cargo, tamaño, rubro, web y decisor. Resuelve el 80% de cargos vacíos de la base heredada.</td></tr>
+    <tr><td><strong>A2</strong></td><td><strong>Investigación y personalización</strong></td><td>Por cuenta: lee web, LinkedIn y búsquedas laborales publicadas, y genera una primera línea verificable y específica más una hipótesis de dolor cuantificada. Pedro aprueba en lote.</td></tr>
+    <tr><td><strong>A3</strong></td><td><strong>Secuenciador de envío</strong></td><td>Ejecuta los 5 toques con límite diario, warm-up progresivo, pausa automática ante respuesta y respeto de opt-out.</td></tr>
+    <tr><td><strong>A4</strong></td><td><strong>Triage de respuestas</strong></td><td>Clasifica cada respuesta, redacta un borrador, avisa a Pedro por WhatsApp y ofrece la agenda de cal.com.</td></tr>
+    <tr><td><strong>A5</strong></td><td><strong>Pre-call brief</strong></td><td>Una hora antes de cada reunión genera un brief de una página: qué hace la empresa, tamaño, señales detectadas, hipótesis de dolor y preguntas a hacer.</td></tr>
+    <tr><td><strong>A6</strong></td><td><strong>Generador de propuesta</strong></td><td>Toma las notas del discovery y el dolor cuantificado, calcula ROI y repago, y arma la propuesta lista para enviar. Es lo que hace cumplible el SLA de 48 horas.</td></tr>
+    <tr><td><strong>A7</strong></td><td><strong>Sync de pipeline y reporte</strong></td><td>Cada evento escribe en el tablero y genera el reporte de KPIs de los viernes automáticamente.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout dark">
+  <div class="eyebrow">El hallazgo que cambia la ecuación</div>
+  <p>El Anexo B del contrato de EK, Fase IV, incluye textualmente <strong>"prospección inteligente de nuevos leads"</strong> y <strong>"seguimientos automáticos"</strong>. La máquina comercial de IngentIA y el Módulo 2 de EK <strong>son el mismo motor</strong>. Los agentes A1, A3, A4 y A7 se construyen una sola vez y sirven para tres cosas: cobrar el hito de EK, prospectar para nosotros, y tener una demo real que mostrar en cada reunión.</p>
+</div>
+
+<h3>Presupuesto del stack comercial</h3>
+<p>Apollo entre USD 49 y 99 al mes · dominio de envío secundario USD 12 al año · n8n autoalojado en Docker, ya operativo · Supabase · cal.com. <strong>Total aproximado: USD 60 a 120 mensuales.</strong></p>
+</section>
+
+<!-- ============ 5. FASES ============ -->
+<section class="page-break">
+<div class="eyebrow">05 · Ejecución</div>
+<h2><span class="num">05</span>Plan por fases</h2>
+<div class="rule"></div>
+
+<div class="phase">
+  <div class="phase-head"><b>Fase 0 — Fundaciones</b><span>28 jul – 8 ago</span></div>
+  <ul>
+    <li><strong>Cerrar y facturar el Módulo 1 de EK.</strong> Son USD 1.500 ya devengados y la caja más rápida disponible. Prioridad absoluta sobre todo lo demás.</li>
+    <li><strong>Comprar y calentar el dominio de envío secundario</strong>, con SPF, DKIM y DMARC. Es el ítem de mayor tiempo de espera: arranca el día 1 o el Mes 1 no tiene volumen.</li>
+    <li>Congelar precios en un manual único. Los documentos superados se archivan.</li>
+    <li>Extraer las cuentas semilla del segmento industrial de la base heredada.</li>
+    <li>Construir el agente A1 y correrlo sobre las primeras 300 cuentas para validar la tasa de enriquecimiento antes de escalar.</li>
+    <li><strong>Cerrar el acuerdo con la colega desarrolladora antes de necesitarla</strong>: tarifa, alcance, disponibilidad y NDA.</li>
+    <li>Corregir web, brochure, guion y cal.com con la nueva nomenclatura.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-head"><b>Fase 1 — Activación</b><span>11 ago – 5 sep</span></div>
+  <ul>
+    <li>Construir A2, A3 y A4. Lanzar la secuencia a 150 cuentas por semana, arrancando al 30% del volumen por el warm-up del dominio.</li>
+    <li>Contactar a los 10 aliados con el one-pager: estudios contables, consultores ISO y cámaras industriales.</li>
+    <li>Pedro bloquea tres franjas fijas de 2 horas semanales para llamadas y reuniones.</li>
+    <li>Reactivar Dripcolor con el nuevo encuadre: Radiografía Operativa y luego Diagnóstico pago.</li>
+    <li>Todo se carga en el tablero de pipeline desde el primer día. Lo que no se carga, no existe.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-head"><b>Fase 2 — Diagnósticos y cierre</b><span>8 sep – 3 oct</span></div>
+  <ul>
+    <li>Sostener el volumen outbound. La siembra de este mes es la caja de noviembre.</li>
+    <li>Construir A5 y A6 para poder cumplir el SLA de 48 horas.</li>
+    <li>Ejecutar los Diagnósticos vendidos con el alcance blindado: un solo proceso, tres archivos muestra, una entrevista de 60 minutos.</li>
+    <li>Avanzar el Módulo 2 de EK hacia el hito de USD 5.000.</li>
+    <li><strong>Checkpoint día 30:</strong> recalibrar todos los benchmarks con datos propios.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-head"><b>Fase 3 — Producción y caja</b><span>6 oct – 31 oct</span></div>
+  <ul>
+    <li>Convertir Diagnósticos en desarrollos.</li>
+    <li><strong>Gatillo de delegación:</strong> al firmar el segundo proyecto activo simultáneo se activa a la colega desarrolladora. Sin excepción.</li>
+    <li><strong>Gatillo de SDR:</strong> si el embudo sostiene 8 o más reuniones mensuales durante dos meses, se incorpora al SDR con su playbook ya escrito.</li>
+    <li><strong>Checkpoint día 90:</strong> decisión de continuidad o pivot del vertical.</li>
+  </ul>
+</div>
+</section>
+
+<!-- ============ 6. RIESGOS ============ -->
+<section class="page-break">
+<div class="eyebrow">06 · Riesgos</div>
+<h2><span class="num">06</span>Riesgos y salvaguardas</h2>
+<div class="rule"></div>
+
+<table>
+  <thead><tr><th style="width:28%">Riesgo</th><th style="width:12%">Impacto</th><th>Salvaguarda</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Cuello de botella de capacidad</strong></td><td><span class="tag bad">Crítico</span></td>
+      <td>El límite in-house es un Nominado más un proyecto chico, sobre 120–160 horas mensuales combinadas. EK CRM ya ocupa el slot Nominado. Con tres proyectos activos y sin la colega incorporada, <strong>se frena la prospección</strong>. No se vende lo que no se puede entregar.</td>
+    </tr>
+    <tr>
+      <td><strong>Quema del dominio corporativo</strong></td><td><span class="tag bad">Alto</span></td>
+      <td>Nunca se envía cold email desde ingentia.com.ar. Todo el outbound sale de un dominio secundario con warm-up progresivo de 3 a 4 semanas y autenticación completa.</td>
+    </tr>
+    <tr>
+      <td><strong>Base heredada de baja calidad</strong></td><td><span class="tag warn">Medio</span></td>
+      <td>El 80% de los registros no tiene cargo identificado y la auditoría propia le da un score de 58%. Se usa como fuente de razones sociales y se enriquece con A1 antes de cualquier envío.</td>
+    </tr>
+    <tr>
+      <td><strong>Concentración en un solo cliente</strong></td><td><span class="tag warn">Alto</span></td>
+      <td>El 100% del ingreso depende de EK. El plan entero apunta a romper esa dependencia; hasta lograrlo, cobrar los hitos de EK en tiempo es prioridad de caja.</td>
+    </tr>
+    <tr>
+      <td><strong>Fuga de horas en el Diagnóstico</strong></td><td><span class="tag warn">Medio</span></td>
+      <td>Alcance blindado por contrato: un proceso, tres archivos muestra, una entrevista de 60 minutos más 30 de presentación. La limpieza de históricos se cotiza aparte.</td>
+    </tr>
+    <tr>
+      <td><strong>Cumplimiento de datos personales</strong></td><td><span class="tag warn">Medio</span></td>
+      <td>Opt-out visible en cada email y registro de bajas, conforme a la Ley 25.326. Los datos de EK no se mezclan con los de IngentIA ni se comparten con terceros, según la cláusula 8 del contrato.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Criterio de continuidad al día 90</h3>
+<p>Si al 31 de octubre hay <strong>dos o más Diagnósticos pagos cerrados y al menos una conversión a desarrollo</strong>, se dobla la apuesta en el vertical industrial y se empieza a empaquetar el primer micro-SaaS. Por debajo de ese umbral, se pivota al vertical de Logística reutilizando toda la maquinaria, que es agnóstica al nicho.</p>
+
+<div class="callout">
+  <div class="eyebrow">Registro estratégico</div>
+  <p>Cada Diagnóstico cerrado se registra con industria, tipo de problema, valor anual detectado, precio ofrecido, precio aceptado y horas reales invertidas. <strong>Ese registro es lo que en seis meses permite productizar</strong> y dejar de cotizar cada proyecto desde cero.</p>
+</div>
+
+<div class="footer-note">
+  IngentIA · Plan Comercial 90 días · Versión 1.0 — 27 de julio de 2026 · Documento interno para discusión entre socios.
+</div>
+</section>
+
+</body>
+</html>

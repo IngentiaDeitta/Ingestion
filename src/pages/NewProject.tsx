@@ -14,7 +14,9 @@ export default function NewProject() {
     budget: '',
     start_date: '',
     due_date: '',
-    description: ''
+    description: '',
+    archetype: '',
+    source_ally: ''
   });
 
   useEffect(() => {
@@ -38,9 +40,12 @@ export default function NewProject() {
           budget: parseFloat(formData.budget) || 0,
           due_date: formData.due_date ? formatDate(formData.due_date) : '',
           description: formData.description,
+          archetype: formData.archetype,
+          source_ally: formData.source_ally || null,
           progress: 0,
           status: 'Preventa',
-          outcome: 'Propuesta'
+          outcome: 'Propuesta',
+          delegated_to: 'In-house'
         }]);
 
       if (error) throw error;
@@ -122,6 +127,33 @@ export default function NewProject() {
                 className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] pl-10 pr-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
               />
             </div>
+          </div>
+
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-[#1A1A1A]">Arquetipo del Proyecto</label>
+            <select 
+              required 
+              value={formData.archetype}
+              onChange={(e) => setFormData({ ...formData, archetype: e.target.value })}
+              className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all appearance-none"
+            >
+              <option value="">Clasificar arquetipo...</option>
+              <option value="Small & Standard (S&S)">Small & Standard (S&S)</option>
+              <option value="Medium">Medium</option>
+              <option value="Nominado">Nominado</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-[#1A1A1A]">Aliado Comercial / Origen (Opcional)</label>
+            <input 
+              type="text" 
+              placeholder="Ej. Partner X, Recomendación..." 
+              value={formData.source_ally}
+              onChange={(e) => setFormData({ ...formData, source_ally: e.target.value })}
+              className="w-full h-12 rounded-2xl border border-black/10 bg-white/50 text-[#1A1A1A] px-4 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all" 
+            />
           </div>
 
           <div className="flex flex-col gap-2">

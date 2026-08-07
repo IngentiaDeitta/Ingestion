@@ -4,7 +4,7 @@ import {
     Wand2, Database, Calculator, Microscope, Lightbulb, CheckCircle2,
     AlertTriangle, Copy, Plus, Loader2, DollarSign, Download, FileText,
     Briefcase, TrendingUp, Link as LinkIcon, BookOpen, Clock, BarChart2, Save,
-    Brain, Star, Gift, Anchor
+    Brain, Star, Gift, Anchor, ArrowLeft
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { supabase } from "../lib/supabase";
@@ -88,10 +88,16 @@ export default function SmartQuoter() {
     const [activeTab, setActiveTab] = useState<TabState>('strategy');
     const [results, setResults] = useState<AnalysisResult | null>(null);
     const [copied, setCopied] = useState(false);
-    const [dbClients, setDbClients] = useState<{id: string, name: string}[]>([]);
+    const [dbClients, setDbClients] = useState<{id: string, name: string, email: string | null}[]>([]);
     const [dbProjects, setDbProjects] = useState<{id: string, name: string, client: string}[]>([]);
     const [selectedModules, setSelectedModules] = useState<string[]>(['module1', 'module2', 'module3']);
     
+    // Value-Based Pricing state
+    const [annualSavings, setAnnualSavings] = useState(10000);
+    const [customSetupFee, setCustomSetupFee] = useState<number | null>(null);
+
+    const setupFee = customSetupFee !== null ? customSetupFee : (annualSavings * 0.25);
+
     // Save Quote State
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [saveFormData, setSaveFormData] = useState({
@@ -101,6 +107,8 @@ export default function SmartQuoter() {
         sent_date: ''
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
     const [searchParams] = useSearchParams();
     const [isIdLoading, setIsIdLoading] = useState(false);
 
@@ -202,7 +210,7 @@ export default function SmartQuoter() {
     };
 
     const fetchClientsAndProjects = async () => {
-        const { data: clientsData } = await supabase.from('clients').select('id, name').order('name');
+        const { data: clientsData } = await supabase.from('clients').select('id, name, email').order('name');
         setDbClients(clientsData || []);
         const { data: projectsData } = await supabase.from('projects').select('id, name, client').order('name');
         setDbProjects(projectsData || []);
@@ -221,16 +229,44 @@ export default function SmartQuoter() {
             
             if (error) throw error;
             if (data) {
-                setResults(data.content);
-                setSelectedModules(data.selected_modules || []);
-                setClientId(data.client_id);
-                setProjectId(data.project_id);
+                const content = data.content || {};
+                const safeContent: any = {
+                    hoursStage1: content.hoursStage1 ?? 20,
+                    labelStage1: content.labelStage1 ?? 'Diagnóstico y Mapeo AS-IS',
+                    hoursStage2: content.hoursStage2 ?? 80,
+                    labelStage2: content.labelStage2 ?? 'Desarrollo de Ecosistema TO-BE',
+                    diagnosis: content.diagnosis ?? 'Diagnóstico operativo y análisis de procesos.',
+                    deliverables: Array.isArray(content.deliverables) && content.deliverables.length > 0
+                        ? content.deliverables
+                        : ['Auditoría de procesos', 'Desarrollo e integraciones a medida', 'Capacitación y manuales'],
+                    risks: Array.isArray(content.risks) && content.risks.length > 0
+                        ? content.risks
+                        : ['Retraso en entrega de accesos', 'Resistencia al cambio en el equipo'],
+                    salesStrategy: content.salesStrategy ?? 'Enfocarse en la liberación de horas del equipo y recuperación de ROI.',
+                    commercialNarrative: content.commercialNarrative ?? 'Nuestra propuesta busca transformar el potencial operativo en un flujo de ingresos constante.',
+                    financialEstimation: content.financialEstimation || {
+                        estimatedRevenue: content.pricing?.totalInitialInvestment ? content.pricing.totalInitialInvestment * 5 : 25000,
+                        revenueJustification: 'Estimación basada en volumen operativo y optimización de procesos.',
+                        investmentToRevenueRatio: '4% de la facturación anual estimada'
+                    },
+                    pricing: content.pricing || {
+                        module1: { price: 600, description: 'Diagnóstico de procesos' },
+                        module2: { price: 1200, description: 'Desarrollo e integraciones' },
+                        module3: { monthlyPrice: 150, description: 'Mantenimiento evolutivo' },
+                        totalInitialInvestment: data.total_amount || 1800
+                    }
+                };
+
+                setResults(safeContent as AnalysisResult);
+                setSelectedModules(data.selected_modules || ['module1', 'module2', 'module3']);
+                setClientId(data.client_id || '');
+                setProjectId(data.project_id || '');
                 setAppState('results');
                 setActiveTab('budget');
             }
         } catch (error: any) {
             console.error('Error loading quote:', error);
-            alert('No se pudo cargar la cotización anterior');
+            alert('No se pudo cargar la cotización anterior: ' + error.message);
             setAppState('welcome');
         } finally {
             setIsIdLoading(false);
@@ -297,16 +333,38 @@ export default function SmartQuoter() {
 
     const handleSaveQuote = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!results || !clientId || !projectId) return;
+        if (!results || !clientId) return;
 
         try {
             setIsSaving(true);
             const total = (selectedModules.includes('module1') ? results.pricing.module1.price : 0) +
                           (selectedModules.includes('module2') ? results.pricing.module2.price : 0);
 
-            const { error } = await supabase.from('quotes').insert({
+            // Instanciación automática del proyecto si todavía no hay uno seleccionado
+            let activeProjectId = projectId;
+            if (!activeProjectId) {
+                const { data: newProject, error: projError } = await supabase
+                    .from('projects')
+                    .insert({
+                        name: saveFormData.title || `${clientName} - Módulo 1`,
+                        client: clientName,
+                        budget: total,
+                        status: 'Preventa',
+                        outcome: 'Propuesta',
+                        description: results.diagnosis || '',
+                        delegated_to: 'In-house',
+                        progress: 0
+                    })
+                    .select()
+                    .single();
+                if (projError) throw projError;
+                activeProjectId = newProject.id;
+                setProjectId(newProject.id);
+            }
+
+            const { data: savedQuote, error } = await supabase.from('quotes').insert({
                 client_id: clientId,
-                project_id: projectId,
+                project_id: activeProjectId,
                 client_name: clientName,
                 project_name: projectName,
                 title: saveFormData.title || `Cotización Modular - ${projectName}`,
@@ -317,23 +375,131 @@ export default function SmartQuoter() {
                 total_amount: total,
                 sent_date: saveFormData.sent_date ? new Date(saveFormData.sent_date).toISOString() : null,
                 generation_date: new Date().toISOString()
-            });
+            }).select().single();
 
             if (error) throw error;
-            
+
+            if (saveFormData.status === 'Aceptada') {
+                const dateIso = new Date().toISOString().split('T')[0];
+
+                if (selectedModules.includes('module2')) {
+                    // Lógica 40/30/30 para Módulo 2
+                    const mod2Price = results.pricing.module2.price;
+                    const financePayloads = [
+                        {
+                            project_id: activeProjectId,
+                            client_id: clientId,
+                            type: 'income',
+                            amount: mod2Price * 0.40,
+                            currency: 'USD',
+                            date: dateIso,
+                            description: `Hito 1 (40%) - Anticipo Módulo 2: ${projectName}`,
+                            status: 'Pending',
+                            category: 'Setup Fee'
+                        },
+                        {
+                            project_id: activeProjectId,
+                            client_id: clientId,
+                            type: 'income',
+                            amount: mod2Price * 0.30,
+                            currency: 'USD',
+                            date: dateIso,
+                            description: `Hito 2 (30%) - Intermedio Módulo 2: ${projectName}`,
+                            status: 'Pending',
+                            category: 'Setup Fee'
+                        },
+                        {
+                            project_id: activeProjectId,
+                            client_id: clientId,
+                            type: 'income',
+                            amount: mod2Price * 0.30,
+                            currency: 'USD',
+                            date: dateIso,
+                            description: `Hito 3 (30%) - Entrega Módulo 2: ${projectName}`,
+                            status: 'Pending',
+                            category: 'Setup Fee'
+                        }
+                    ];
+                    const { error: finError } = await supabase.from('finances').insert(financePayloads);
+                    if (finError) console.error('Error auto-generating finances:', finError);
+                } else if (selectedModules.includes('module1')) {
+                    // Anticipo simple para Módulo 1 solo
+                    const { error: finError } = await supabase.from('finances').insert([{
+                        project_id: activeProjectId,
+                        client_id: clientId,
+                        type: 'income',
+                        amount: results.pricing.module1.price,
+                        currency: 'USD',
+                        date: dateIso,
+                        description: `Anticipo Módulo 1 - Diagnóstico: ${projectName}`,
+                        status: 'Pending',
+                        category: 'Setup Fee'
+                    }]);
+                    if (finError) console.error('Error auto-generating module1 finance:', finError);
+                }
+
+                // Instanciación/transición del proyecto a "Ganado" / "En Progreso"
+                const { data: currentProject } = await supabase
+                    .from('projects')
+                    .select('status, outcome')
+                    .eq('id', activeProjectId)
+                    .single();
+
+                if (currentProject && (currentProject.status !== 'En Progreso' || currentProject.outcome !== 'Ganado')) {
+                    await supabase.from('projects').update({ status: 'En Progreso', outcome: 'Ganado' }).eq('id', activeProjectId);
+                    await supabase.from('project_status_history').insert({
+                        project_id: activeProjectId,
+                        field: 'status',
+                        old_value: currentProject.status,
+                        new_value: 'En Progreso',
+                    });
+                }
+            }
+
             await sendNotification(
                 'Nueva Cotización Guardada',
                 `Se ha generado una nueva propuesta para '${clientName}' por un total de $${total.toLocaleString()}.`,
                 'quote'
             );
 
-            alert('Cotización guardada exitosamente');
-            setIsSaveModalOpen(false);
+            setSavedQuoteId(savedQuote.id);
+            fetchClientsAndProjects();
+
+            if (!selectedClientEmail) {
+                alert('Cotización guardada exitosamente');
+                setIsSaveModalOpen(false);
+            }
         } catch (error: any) {
             console.error('Error saving quote:', error);
             alert(`Error al guardar: ${error.message}`);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSendQuoteEmail = async () => {
+        if (!savedQuoteId) return;
+        try {
+            setIsSendingEmail(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-quote-email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({ quoteId: savedQuoteId }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error desconocido al enviar el email.');
+            alert(`Cotización enviada a ${selectedClientEmail}.`);
+            setIsSaveModalOpen(false);
+            setSavedQuoteId(null);
+        } catch (error: any) {
+            console.error('Error sending quote email:', error);
+            alert('Error al enviar el email: ' + error.message);
+        } finally {
+            setIsSendingEmail(false);
         }
     };
 
@@ -352,6 +518,7 @@ export default function SmartQuoter() {
     };
 
     const clientName = dbClients.find(c => c.id === clientId)?.name || "Cliente";
+    const selectedClientEmail = dbClients.find(c => c.id === clientId)?.email || null;
     const projectName = dbProjects.find(p => p.id === projectId)?.name || "Proyecto";
     const filteredProjects = clientId
         ? dbProjects.filter(p => p.client === clientName)
@@ -359,14 +526,13 @@ export default function SmartQuoter() {
 
     // Calcular ArielyResult de forma reactiva
     const arielyResult = useMemo(() => {
-        if (!results) return null;
         try {
-            return computeArielyPackages(results, analysisData, clientName);
+            return computeArielyPackages(setupFee, annualSavings, results, analysisData, clientName);
         } catch (e) {
             console.error('Error computing Ariely packages:', e);
             return null;
         }
-    }, [results, analysisData, clientName]);
+    }, [setupFee, annualSavings, results, analysisData, clientName]);
 
     const pdfFormData = { clientId, projectId, clientName, projectName };
     const pdfResult = results ? {
@@ -381,9 +547,14 @@ export default function SmartQuoter() {
         <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h3 style={{ fontFamily: "system-ui, -apple-system, sans-serif" }} className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Smart Quoter</h3>
-                    <p className="text-[#666666] mt-1">Analizador avanzado y cotización inteligente para tus proyectos.</p>
+                <div className="flex items-center gap-3">
+                    <Link to="/propuestas" className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-black/5 transition-colors border border-black/10 shadow-xs shrink-0" title="Volver a Propuestas">
+                        <ArrowLeft className="w-5 h-5 text-[#666666]" />
+                    </Link>
+                    <div>
+                        <h3 style={{ fontFamily: "system-ui, -apple-system, sans-serif" }} className="text-2xl font-bold tracking-tight text-[#1A1A1A]">Smart Quoter</h3>
+                        <p className="text-[#666666] text-xs mt-0.5">Analizador avanzado y cotización inteligente para tus proyectos.</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md px-4 py-2.5 rounded-full border border-white/40 shadow-sm">
@@ -638,8 +809,8 @@ export default function SmartQuoter() {
                                             <div className="flex flex-col gap-8">
                                                 <div className="flex flex-col lg:flex-row justify-between items-center gap-4 border-b border-black/5 pb-6 text-center lg:text-left">
                                                     <div>
-                                                        <h3 className="text-xl font-medium text-[#1A1A1A]">Cotización Modular IngentIA</h3>
-                                                        <p className="text-sm text-[#666666]">Configura los alcances de tu propuesta comercial</p>
+                                                        <h3 className="text-xl font-medium text-[#1A1A1A]">Calculadora Value-Based Pricing</h3>
+                                                        <p className="text-sm text-[#666666]">Configura la inversión basada en ROI y Repago</p>
                                                     </div>
                                                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                                                         <button 
@@ -647,8 +818,9 @@ export default function SmartQuoter() {
                                                                 e.preventDefault();
                                                                 setSaveFormData({
                                                                     ...saveFormData,
-                                                                    title: `Cotización Modular - ${projectName}`
+                                                                    title: `Cotización VBP - ${projectName}`
                                                                 });
+                                                                setSavedQuoteId(null);
                                                                 setIsSaveModalOpen(true);
                                                             }}
                                                             className="flex items-center justify-center gap-2 bg-white border border-black/10 hover:bg-black/5 text-[#1A1A1A] px-6 py-3 rounded-full text-sm font-medium transition-all shadow-sm w-full sm:w-auto"
@@ -659,132 +831,32 @@ export default function SmartQuoter() {
                                                     </div>
                                                 </div>
 
-                                            {/* Indicador de Selección */}
-                                            <div className="bg-[#FFD166]/10 border border-[#FFD166]/20 p-4 rounded-2xl flex items-center justify-between">
-                                                <div className="flex items-center gap-2 text-sm text-[#1A1A1A] font-medium">
-                                                    <CheckCircle2 size={16} className="text-[#1A1A1A]" />
-                                                    Selecciona los módulos a incluir en el PDF
-                                                </div>
-                                                <div className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">
-                                                    {selectedModules.length} Módulos seleccionados
-                                                </div>
-                                            </div>
-
-                                            {/* Grilla de Módulos */}
-                                            <div className="grid grid-cols-1 gap-4">
-                                                {/* Módulo 1 */}
-                                                <div className={`bg-white border flex flex-col rounded-[28px] p-4 sm:p-6 transition-all duration-300 ${!selectedModules.includes('module1') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5'}`}>
-                                                    <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={selectedModules.includes('module1')}
-                                                                onChange={(e) => {
-                                                                    if (e.target.checked) setSelectedModules([...selectedModules, 'module1']);
-                                                                    else setSelectedModules(selectedModules.filter(m => m !== 'module1'));
-                                                                }}
-                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer shrink-0"
-                                                            />
-                                                            <div>
-                                                                <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">Módulo de Consultoría</span>
-                                                                <h4 className="font-semibold text-[#1A1A1A] text-base sm:text-lg leading-tight mt-0.5">Módulo 1: Auditoría de Procesos</h4>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-left sm:text-right pl-10 sm:pl-0">
-                                                            <EditablePrice 
-                                                                value={results.pricing.module1.price} 
-                                                                onChange={(newVal) => handlePriceUpdate('module1', newVal)} 
-                                                                label="USD" 
-                                                            />
-                                                        </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                    <div className="bg-white/60 border border-white/40 rounded-[28px] p-8 shadow-sm hover:shadow-md transition-shadow">
+                                                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#999999] mb-4">1. Ahorro Anual Estimado</h4>
+                                                        <EditablePrice value={annualSavings} onChange={setAnnualSavings} />
+                                                        <p className="text-sm text-[#666666] mt-4">Deuda operativa detectada (Proyectada a 12 meses).</p>
                                                     </div>
-                                                    <p className="text-[#666666] text-sm leading-relaxed mb-6 sm:ml-10">{results.pricing.module1.description}</p>
-                                                    <div className="flex items-center gap-2 text-xs text-[#666666] font-semibold bg-black/5 px-4 py-2.5 rounded-2xl w-fit sm:ml-10">
-                                                        <Clock size={14} /> Tiempo de Entrega: {results.pricing.module1.deliveryDays} días
+
+                                                    <div className="bg-white/60 border border-white/40 rounded-[28px] p-8 shadow-sm hover:shadow-md transition-shadow">
+                                                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#999999] mb-4">2. Setup Fee (Implementación)</h4>
+                                                        <EditablePrice value={setupFee} onChange={setCustomSetupFee} />
+                                                        <p className="text-sm text-[#666666] mt-4">Por defecto sugerimos el 25% del ahorro anual.</p>
                                                     </div>
                                                 </div>
 
-                                                {/* Módulo 2 */}
-                                                <div className={`bg-white border flex flex-col rounded-[28px] p-4 sm:p-6 transition-all duration-300 ${results.pricing.module2.price === 0 ? 'hidden' : (!selectedModules.includes('module2') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5')}`}>
-                                                    <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={selectedModules.includes('module2')}
-                                                                onChange={(e) => {
-                                                                    if (e.target.checked) setSelectedModules([...selectedModules, 'module2']);
-                                                                    else setSelectedModules(selectedModules.filter(m => m !== 'module2'));
-                                                                }}
-                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer shrink-0"
-                                                            />
-                                                            <div>
-                                                                <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">{results.pricing.module2.pricingModel}</span>
-                                                                <h4 className="font-semibold text-[#1A1A1A] text-base sm:text-lg leading-tight mt-0.5">Módulo 2: Implementación</h4>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-left sm:text-right pl-10 sm:pl-0">
-                                                            <EditablePrice 
-                                                                value={results.pricing.module2.price} 
-                                                                onChange={(newVal) => handlePriceUpdate('module2', newVal)} 
-                                                                label="USD" 
-                                                            />
-                                                        </div>
+                                                <div className={`p-8 rounded-[32px] flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm border transition-colors duration-500 ${
+                                                    (annualSavings > 0 && setupFee / (annualSavings / 12) <= 6) ? 'bg-emerald-50 border-emerald-200' : 'bg-white/60 border-white/40'
+                                                }`}>
+                                                    <div>
+                                                        <h4 className="font-bold text-xl text-[#1A1A1A]">Tiempo de Repago</h4>
+                                                        <p className="text-sm text-[#666666] max-w-sm mt-1">Si el indicador está en verde, el cliente recuperará su inversión en menos de 6 meses.</p>
                                                     </div>
-                                                    <p className="text-[#666666] text-sm leading-relaxed sm:ml-10">{results.pricing.module2.description}</p>
-                                                </div>
-
-                                                {/* Módulo 3 */}
-                                                <div className={`bg-white border flex flex-col rounded-[28px] p-4 sm:p-6 transition-all duration-300 ${results.pricing.module3.monthlyPrice === 0 ? 'hidden' : (!selectedModules.includes('module3') ? 'opacity-40 grayscale border-black/5' : 'border-[#FFD166] shadow-md shadow-[#FFD166]/5')}`}>
-                                                    <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={selectedModules.includes('module3')}
-                                                                onChange={(e) => {
-                                                                    if (e.target.checked) setSelectedModules([...selectedModules, 'module3']);
-                                                                    else setSelectedModules(selectedModules.filter(m => m !== 'module3'));
-                                                                }}
-                                                                className="w-6 h-6 rounded-lg border-2 border-black/10 text-[#222222] focus:ring-[#FFD166] cursor-pointer shrink-0"
-                                                            />
-                                                            <div>
-                                                                <span className="text-[10px] text-[#666666] uppercase tracking-wider font-bold">Módulo Recurrente</span>
-                                                                <h4 className="font-semibold text-[#1A1A1A] text-base sm:text-lg leading-tight mt-0.5">Módulo 3: Evolución & Soporte</h4>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-left sm:text-right pl-10 sm:pl-0">
-                                                            <EditablePrice 
-                                                                value={results.pricing.module3.monthlyPrice} 
-                                                                onChange={(newVal) => handlePriceUpdate('module3', newVal)} 
-                                                                label="USD/mes" 
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-[#666666] text-sm leading-relaxed sm:ml-10">{results.pricing.module3.description}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Caja de Total Selección */}
-                                            <div className="bg-[#222222] p-8 rounded-[32px] shadow-2xl shadow-black/10 flex flex-col sm:flex-row justify-between items-center gap-6">
-                                                <div>
-                                                    <h4 className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Inversión Inicial Estimada</h4>
-                                                    <p className="text-white/40 text-[11px]">
-                                                        {selectedModules.length === 0 ? "Sin módulos seleccionados" : 
-                                                         `Módulos: ${selectedModules.map(m => m.replace('module', 'M')).join(', ')}`}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="flex items-baseline gap-2">
-                                                        <span className="text-[#FFD166] text-4xl font-light">
-                                                            ${(
-                                                                (selectedModules.includes('module1') ? results.pricing.module1.price : 0) +
-                                                                (selectedModules.includes('module2') ? results.pricing.module2.price : 0)
-                                                            ).toLocaleString()}
-                                                        </span>
-                                                        <span className="text-white/40 text-sm font-medium">USD</span>
+                                                    <div className="text-5xl font-light text-[#1A1A1A] mt-4 sm:mt-0">
+                                                        {annualSavings > 0 ? (setupFee / (annualSavings / 12)).toFixed(1) : '-'} <span className="text-xl text-[#666666] font-medium ml-1">meses</span>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
                                     )}
 
                                     {activeTab === 'proposal' && arielyResult && (
@@ -864,13 +936,21 @@ export default function SmartQuoter() {
                                                         }`}>
                                                             {pkg.isRecommended && (
                                                                 <div className="absolute top-0 right-0 bg-[#008CA4] text-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-bl-xl rounded-tr-xl">
-                                                                    Objetivo
+                                                                    Recomendado
                                                                 </div>
                                                             )}
                                                             <p className={`text-xs font-bold uppercase tracking-wider mt-2 mb-1 truncate ${pkg.isRecommended ? 'text-[#008CA4]' : 'text-[#999]'}`}>{pkg.label}</p>
-                                                            <p className={`text-3xl font-light mb-2 truncate ${pkg.isRecommended ? 'text-[#008CA4]' : 'text-[#1A1A1A]'}`}>${pkg.price.toLocaleString()}</p>
-                                                            <ul className="flex flex-col gap-2 min-w-0 mt-4">
-                                                                {pkg.features.slice(0, 5).map((f, fi) => (
+                                                            <p className={`text-3xl font-light mb-1 truncate ${pkg.isRecommended ? 'text-[#008CA4]' : 'text-[#1A1A1A]'}`}>
+                                                                ${pkg.price.toLocaleString()}
+                                                                {pkg.monthlyPrice ? <span className="text-sm text-[#666666] font-medium ml-1">+ ${pkg.monthlyPrice}/mes</span> : null}
+                                                            </p>
+                                                            {pkg.redTag && (
+                                                                <div className="inline-block bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded-md mt-1 mb-2">
+                                                                    {pkg.redTag}
+                                                                </div>
+                                                            )}
+                                                            <ul className="flex flex-col gap-2 min-w-0 mt-3">
+                                                                {pkg.features.map((f, fi) => (
                                                                     <li key={fi} className={`text-xs flex items-start gap-2 min-w-0 ${
                                                                         pkg.premiumExtras?.includes(f) ? 'text-[#1A1A1A] font-medium' : 'text-[#555]'
                                                                     }`}>
@@ -925,7 +1005,7 @@ export default function SmartQuoter() {
                             projectName: dbProjects.find(p => p.id === projectId)?.name || 'Proyecto',
                         }}
                         result={{ ...results, selectedModules }}
-                        arielyResult={arielyResult || computeArielyPackages(results, analysisData, dbClients.find(c => c.id === clientId)?.name || 'Cliente')}
+                        arielyResult={arielyResult || computeArielyPackages(setupFee, annualSavings, results, analysisData, dbClients.find(c => c.id === clientId)?.name || 'Cliente')}
                     />
                 )}
             </div>
@@ -935,12 +1015,51 @@ export default function SmartQuoter() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
                     <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
                         <div className="p-6 border-b border-black/5 flex justify-between items-center">
-                            <h3 className="text-xl font-medium text-[#1A1A1A]">Guardar Cotización en Historial</h3>
-                            <button onClick={() => setIsSaveModalOpen(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+                            <h3 className="text-xl font-medium text-[#1A1A1A]">{savedQuoteId ? 'Cotización Guardada' : 'Guardar Cotización en Historial'}</h3>
+                            <button onClick={() => { setIsSaveModalOpen(false); setSavedQuoteId(null); }} className="p-2 hover:bg-black/5 rounded-full transition-colors">
                                 <Plus size={20} className="text-[#1A1A1A] rotate-45" />
                             </button>
                         </div>
 
+                        {savedQuoteId ? (
+                            <div className="p-8 flex flex-col gap-6">
+                                <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center gap-3">
+                                    <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+                                    <p className="text-sm text-emerald-800 font-medium">
+                                        La cotización quedó guardada para {clientName} / {projectName}.
+                                    </p>
+                                </div>
+                                {selectedClientEmail ? (
+                                    <p className="text-sm text-[#666666]">
+                                        ¿Se la enviamos por email a <strong className="text-[#1A1A1A]">{selectedClientEmail}</strong>?
+                                    </p>
+                                ) : (
+                                    <p className="text-sm text-[#666666]">
+                                        Este cliente no tiene email cargado, así que no se puede enviar automáticamente. Podés cargarlo en su ficha y enviarla luego desde el historial.
+                                    </p>
+                                )}
+                                <div className="flex justify-end gap-4 mt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsSaveModalOpen(false); setSavedQuoteId(null); }}
+                                        className="px-6 py-3 rounded-full text-sm font-medium text-[#666666] hover:bg-black/5 transition-colors"
+                                    >
+                                        Cerrar
+                                    </button>
+                                    {selectedClientEmail && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSendQuoteEmail}
+                                            disabled={isSendingEmail}
+                                            className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg"
+                                        >
+                                            {isSendingEmail ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                            {isSendingEmail ? 'Enviando...' : 'Enviar por Email'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
                         <form onSubmit={handleSaveQuote} className="p-8 flex flex-col gap-6">
                             <div className="flex flex-col gap-4">
                                 <div className="flex flex-col gap-2">
@@ -1016,6 +1135,7 @@ export default function SmartQuoter() {
                                 </button>
                             </div>
                         </form>
+                        )}
                     </div>
                 </div>
             )}

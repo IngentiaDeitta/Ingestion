@@ -53,15 +53,23 @@ export default function Projects() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setProjects(data || []);
+      setProjects(soloProyectosReales(data || []));
     } catch (error) {
       console.error('Error fetching projects:', error);
       const { data: simpleData } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-      setProjects(simpleData || []);
+      setProjects(soloProyectosReales(simpleData || []));
     } finally {
       setLoading(false);
     }
   };
+
+  /**
+   * Una propuesta todavía no es un proyecto: vive en la sección Propuestas hasta
+   * que el cliente la acepta. Acá solo mostramos trabajo real en curso, más los
+   * POC de preventa, que sí consumen horas y gastos propios.
+   */
+  const soloProyectosReales = (filas: any[]) =>
+    filas.filter((p) => p.outcome !== 'Propuesta' || p.status === 'POC');
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();

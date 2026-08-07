@@ -5,10 +5,11 @@ import { useUser } from '../context/UserContext';
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: CheckSquare, label: 'Tareas', path: '/kanban' },
-  { icon: Calculator, label: 'Smart Quoter', path: '/smart-quoter' },
+  { icon: FileText, label: 'Propuestas', path: '/propuestas' },
   { icon: FolderKanban, label: 'Proyectos', path: '/projects' },
   { icon: FileText, label: 'Finanzas', path: '/finance' },
   { icon: Users, label: 'Equipo', path: '/team' },
+  { icon: Users, label: 'Leads', path: '/leads' },
   { icon: Users, label: 'Clientes', path: '/clients' },
   { icon: Zap, label: 'Tech Stack', path: '/tech-stack' },
 ];
@@ -35,7 +36,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen?: boolean, setIs
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 flex flex-col gap-1 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 px-4 py-4 flex flex-col gap-0.5 overflow-y-auto custom-scrollbar">
         <p className="px-4 text-[10px] font-bold text-[#999999] uppercase tracking-[0.2em] mb-4">Menú Principal</p>
         
         {menuItems.map((item) => (
@@ -43,7 +44,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen?: boolean, setIs
             key={item.label}
             to={item.path}
             className={({ isActive }) => `
-              flex items-center justify-between px-4 h-12 rounded-2xl transition-all duration-300 group
+              flex items-center justify-between px-4 h-10 rounded-2xl transition-all duration-300 group
               ${isActive 
                 ? 'bg-[#222222] text-white shadow-xl shadow-black/10 translate-x-1' 
                 : 'text-[#666666] hover:bg-black/5 hover:text-[#1A1A1A]'}
@@ -66,7 +67,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen?: boolean, setIs
           <NavLink
             to="/settings"
             className={({ isActive }) => `
-              flex items-center gap-3 px-4 h-12 rounded-2xl transition-all group
+              flex items-center gap-3 px-4 h-10 rounded-2xl transition-all group
               ${isActive 
                 ? 'bg-[#222222] text-white shadow-xl shadow-black/10 transition-all' 
                 : 'text-[#666666] hover:bg-black/5 hover:text-[#1A1A1A]'}

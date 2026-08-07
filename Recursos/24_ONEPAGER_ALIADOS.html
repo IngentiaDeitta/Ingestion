@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>IngentIA — Programa de Aliados</title>
+<!--
+  One-pager para contadores, consultores de procesos, auditores ISO y partners de ERP.
+  Objetivo: que detecten al cliente con dolor y lo deriven. Comisión 10%.
+  PDF: python "..\..\Clientes\Elektro Korrosión - EK\html_to_pdf.py" 24_ONEPAGER_ALIADOS.html --wait 2500
+-->
+<style>
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Regular.otf") format("opentype");font-weight:400}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Medium.otf") format("opentype");font-weight:500}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Bold.otf") format("opentype");font-weight:700}
+@font-face{font-family:"Satoshi";src:url("../../Branding Kit/IngentIA Design System/fonts/Satoshi-Black.otf") format("opentype");font-weight:900}
+:root{--ink:#0a0a0a;--muted:rgba(10,10,10,.62);--subtle:rgba(10,10,10,.40);--line:rgba(10,10,10,.10);--accent:#00A9C0;--accent-ink:#0089a0;--soft:#f5f6f8}
+@page{size:A4;margin:0}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{font-family:"Satoshi","Inter",system-ui,sans-serif;font-size:9.5pt;line-height:1.5;color:var(--ink);background:#fff}
+.sheet{width:210mm;min-height:297mm;padding:14mm 15mm;display:flex;flex-direction:column}
+.hd{background:#000;color:#fff;margin:-14mm -15mm 0;padding:12mm 15mm 11mm;position:relative;overflow:hidden}
+.hd::after{content:"";position:absolute;right:-14%;top:-40%;width:52%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,.22),transparent 66%)}
+.hd-top{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2;margin-bottom:9mm}
+.mark{display:flex;align-items:center;gap:9px;font-size:13pt;font-weight:700}
+.mark i{display:block;width:5px;height:25px;background:#fff;border-radius:1px}
+.hd-top span{font-size:7.5pt;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+.hd h1{font-size:27pt;font-weight:900;letter-spacing:-.04em;line-height:1.02;margin:0;position:relative;z-index:2}
+.hd h1 em{font-style:normal;color:#00E5FF}
+.hd p{font-size:10.5pt;color:rgba(255,255,255,.62);max-width:78%;margin:9px 0 0;position:relative;z-index:2}
+h2{font-size:12.5pt;font-weight:900;letter-spacing:-.025em;margin:9mm 0 3mm}
+h2 .n{color:var(--accent-ink);margin-right:8px}
+p{margin:0 0 7px;color:var(--muted)}
+strong{color:var(--ink);font-weight:700}
+.eyebrow{font-size:7pt;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin-bottom:4px}
+.grid{display:flex;gap:4mm;margin-bottom:3mm}
+.card{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.card b{display:block;font-size:9.5pt;font-weight:700;margin-bottom:4px}
+.card p{font-size:8.5pt;margin:0;line-height:1.45}
+.sig{border-left:3px solid var(--accent);background:var(--soft);border-radius:0 8px 8px 0;padding:11px 15px;margin-bottom:3mm}
+.sig ul{margin:0;padding-left:16px;color:var(--muted);font-size:9pt}
+.sig li{margin-bottom:4px}
+.sig li strong{color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:9pt;margin:2mm 0 3mm}
+th{text-align:left;font-size:7pt;letter-spacing:.10em;text-transform:uppercase;color:var(--subtle);border-bottom:1.5px solid var(--ink);padding:0 9px 6px}
+td{padding:7px 9px;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top}
+td:first-child,th:first-child{padding-left:0}td:last-child,th:last-child{padding-right:0}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.money{background:#0a0a0a;color:#fff;border-radius:12px;padding:14px 18px;margin:2mm 0 3mm;display:flex;align-items:center;gap:22px}
+.money .big{font-size:30pt;font-weight:900;letter-spacing:-.045em;color:#00E5FF;line-height:1}
+.money p{color:rgba(255,255,255,.72);margin:0;font-size:9pt}
+.money p strong{color:#fff}
+.steps{display:flex;gap:4mm;margin-bottom:3mm}
+.step{flex:1;text-align:left}
+.step b{display:block;font-size:15pt;font-weight:900;color:var(--accent-ink);letter-spacing:-.03em;line-height:1;margin-bottom:5px}
+.step p{font-size:8.5pt;margin:0;line-height:1.45}
+.ft{margin-top:auto;padding-top:5mm;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-end;font-size:8pt;color:var(--subtle)}
+.ft strong{display:block;color:var(--ink);font-size:9.5pt;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="hd">
+    <div class="hd-top">
+      <div class="mark"><i></i>ingentia</div>
+      <span>Programa de aliados · 2026</span>
+    </div>
+    <h1>Tus clientes te muestran<br>el desorden <em>antes que a nadie</em>.</h1>
+    <p>Vos ves el Excel que ya no da más. Nosotros lo convertimos en un sistema. Y cuando eso pasa, cobrás el 10%.</p>
+  </div>
+
+  <h2><span class="n">01</span>Quiénes somos</h2>
+  <p>Somos dos ingenieros — industrial y en telecomunicaciones — que hacen <strong>ingeniería de procesos hecha software</strong> para PyMEs industriales. Antes de escribir una línea de código mapeamos el proceso, porque automatizar algo que está roto sólo hace que falle más rápido.</p>
+  <p><strong>No competimos con vos.</strong> No hacemos contabilidad, ni auditoría, ni certificación, ni consultoría de gestión. Somos el brazo técnico que ejecuta lo que vos ya detectaste.</p>
+
+  <h2><span class="n">02</span>Cómo detectar que tu cliente nos necesita</h2>
+  <div class="sig">
+    <ul>
+      <li><strong>Te manda la información en un Excel distinto cada mes</strong>, o con el formato cambiado.</li>
+      <li><strong>El cierre siempre llega tarde</strong> porque están esperando que alguien termine de cargar datos.</li>
+      <li><strong>Tiene gente cara tipeando remitos y facturas</strong> a mano.</li>
+      <li><strong>No sabe el margen real de lo que produce</strong> hasta que vos le cerrás el mes.</li>
+      <li><strong>Está por contratar un administrativo</strong> sólo para cargar datos.</li>
+      <li><strong>La operación vive en WhatsApp</strong>: pedidos, entregas, novedades, todo suelto.</li>
+      <li><strong>Creció y la estructura administrativa no acompañó.</strong></li>
+      <li><strong>Se quemó con un sistema enlatado</strong> que era muy rígido o muy caro.</li>
+    </ul>
+  </div>
+  <p style="font-size:9pt">Con <strong>dos o más de estas señales</strong>, hay proyecto. El perfil que mejor funciona: <strong>industria de 15 a 80 empleados en AMBA</strong>.</p>
+
+  <h2><span class="n">03</span>Qué hacemos</h2>
+  <div class="grid">
+    <div class="card"><b>Diagnóstico Operativo</b><p>Una semana de ingeniería. Mapeamos el proceso, entregamos el plano As-Is / To-Be y el número real de lo que está perdiendo. Es un servicio pago con entregable propio.</p></div>
+    <div class="card"><b>Rediseño y automatización</b><p>No siempre la respuesta es software. A veces reorganizamos el flujo con los recursos que ya tiene. Cuando hace falta construir, construimos.</p></div>
+    <div class="card"><b>Desarrollo a medida con IA</b><p>Lectura automática de remitos y facturas, paneles de rentabilidad en tiempo real, apps móviles para planta y campo, alertas de desvío.</p></div>
+  </div>
+
+  <h2><span class="n">04</span>Cuánto ganás</h2>
+  <div class="money">
+    <div class="big">10%</div>
+    <p><strong>del valor de implementación de cada proyecto que derivás</strong>, con un tope de USD 800 en proyectos de alta complejidad. Se liquida <strong>contra cobro efectivo</strong>: si el cliente paga por hitos, cobrás proporcionalmente sobre cada pago acreditado.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>Tu nivel de participación</th><th class="num">Comisión</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Aliado estratégico</strong> — nos presentás y acompañás la conversación</td><td class="num"><strong>10%</strong></td></tr>
+      <tr><td><strong>Referidor</strong> — nos pasás el contacto y seguís tu camino</td><td class="num">5%</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:8.5pt">Referencia: un proyecto típico de PyME industrial va de USD 1.500 a USD 7.500 de implementación.</p>
+
+  <h2><span class="n">05</span>Cómo funciona</h2>
+  <div class="steps">
+    <div class="step"><b>01</b><p>Nos escribís con el nombre de la empresa y qué detectaste. Un WhatsApp alcanza.</p></div>
+    <div class="step"><b>02</b><p>Confirmamos que no lo estemos trabajando ya y registramos la derivación a tu nombre.</p></div>
+    <div class="step"><b>03</b><p>Coordinamos 30 minutos con tu cliente. Si querés estar, mejor.</p></div>
+    <div class="step"><b>04</b><p>Si avanza, te mantenemos al tanto. Nunca te dejamos afuera de la relación.</p></div>
+  </div>
+
+  <div class="sig" style="border-left-color:var(--ink)">
+    <p style="margin:0;font-size:9pt"><strong>Nuestro compromiso con vos:</strong> la derivación queda registrada a tu nombre por 12 meses. No tocamos la relación comercial que ya tenés con tu cliente. Y si vemos que no hay proyecto, se lo decimos y no le hacemos perder el tiempo — tu reputación también está en juego.</p>
+  </div>
+
+  <div class="ft">
+    <div>
+      <strong>Ing. Pedro Sequeira — CCO</strong>
+      contacto@ingentia.com.ar · ingentia.com.ar · @ingentia.tech
+    </div>
+    <div style="text-align:right">
+      IngentIA · Ingeniería Operativa<br>Buenos Aires, Argentina
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

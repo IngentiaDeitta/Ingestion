@@ -205,6 +205,10 @@ export default function Finance() {
   const [showFilters, setShowFilters] = useState(false);
   const [partnerBalances, setPartnerBalances] = useState<any[]>([]);
   const [expensesByTag, setExpensesByTag] = useState<any[]>([]);
+  const [commissions, setCommissions] = useState<any[]>([]);
+  const [mrrTotal, setMrrTotal] = useState(0);
+  const [cajaPendiente, setCajaPendiente] = useState(0);
+  const [cajaCobrada, setCajaCobrada] = useState(0);
   const hasReplicated = useRef(false);
 
   useEffect(() => { fetchData(); }, []);
@@ -232,6 +236,63 @@ export default function Finance() {
       }
 
       setTransactions(trans);
+
+      // Process KPIs
+      let cobradaUSD = 0;
+      let pendienteUSD = 0;
+      trans.forEach(t => {
+        if (t.type === 'income') {
+          const rate = t.currency === 'USD' ? 1 : (t.currency === 'ARS' ? 1 / EXCHANGE_RATES.USD : EXCHANGE_RATES.EUR / EXCHANGE_RATES.USD);
+          const amtUSD = parseFloat(t.amount as any) * rate;
+          if (t.status === 'Paid') {
+            cobradaUSD += amtUSD;
+          } else if (t.status === 'Pending' && (t.description?.includes('Hito 2') || t.description?.includes('Hito 3'))) {
+            pendienteUSD += amtUSD;
+          }
+        }
+      });
+      setCajaCobrada(cobradaUSD);
+      setCajaPendiente(pendienteUSD);
+
+      // Fetch Clients for MRR and Projects for Commissions
+      const [clientsRes, projectsRes] = await Promise.all([
+        supabase.from('clients').select('mrr_value'),
+        supabase.from('projects').select('id, name, archetype, source_ally').not('source_ally', 'is', null)
+      ]);
+
+      if (!clientsRes.error) {
+        const totalMrr = (clientsRes.data || []).reduce((sum, c) => sum + (parseFloat(c.mrr_value as any) || 0), 0);
+        setMrrTotal(totalMrr);
+      }
+
+      if (!projectsRes.error && projectsRes.data) {
+        const computedCommissions: any[] = [];
+        const allyProjects = projectsRes.data;
+        allyProjects.forEach(proj => {
+            const projTrans = trans.filter(t => t.project_id === proj.id && t.type === 'income' && t.category === 'Setup Fee');
+            projTrans.forEach(t => {
+                let percentage = 0;
+                if (proj.archetype === 'Small & Standard (S&S)') percentage = 0.15;
+                else if (proj.archetype === 'Medium') percentage = 0.12;
+                else if (proj.archetype === 'Nominado') percentage = 0.10;
+
+                if (percentage > 0) {
+                    const rate = t.currency === 'USD' ? 1 : (t.currency === 'ARS' ? 1 / EXCHANGE_RATES.USD : EXCHANGE_RATES.EUR / EXCHANGE_RATES.USD);
+                    const amountUSD = parseFloat(t.amount as any) * rate;
+                    computedCommissions.push({
+                        id: `comm_${t.id}`,
+                        ally_name: proj.source_ally,
+                        project_name: proj.name,
+                        transaction_desc: t.description,
+                        amount: amountUSD * percentage,
+                        status: t.status === 'Paid' ? 'Apta para pago' : 'Pendiente',
+                        date: t.date
+                    });
+                }
+            });
+        });
+        setCommissions(computedCommissions.sort((a, b) => b.date.localeCompare(a.date)));
+      }
 
       // Process Partner Balances
       const partnersList = [
@@ -371,6 +432,40 @@ export default function Finance() {
               Nueva Transacción
             </Link>
           )}
+        </div>
+      </div>
+
+      {/* ── KPIs Plan 90 Días ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-[#222222] text-white rounded-[32px] p-6 shadow-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-white/10 rounded-2xl"><DollarSign size={24} /></div>
+            <span className="flex items-center text-[#222222] bg-green-400 px-3 py-1 rounded-full text-xs font-bold">Caja Real</span>
+          </div>
+          <p className="text-white/70 text-sm font-medium mb-1">Caja Cobrada (USD)</p>
+          <h4 className="text-4xl font-light text-white">
+            ${cajaCobrada.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </h4>
+        </div>
+        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 border border-white/40 shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-black/5 rounded-2xl"><DollarSign size={24} className="text-[#666]" /></div>
+            <span className="flex items-center text-orange-700 bg-orange-100 px-3 py-1 rounded-full text-xs font-bold">Hitos 2 y 3</span>
+          </div>
+          <p className="text-[#666] text-sm font-medium mb-1">Caja Pendiente (USD)</p>
+          <h4 className="text-4xl font-light text-[#1A1A1A]">
+            ${cajaPendiente.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </h4>
+        </div>
+        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 border border-white/40 shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-black/5 rounded-2xl"><DollarSign size={24} className="text-[#666]" /></div>
+            <span className="flex items-center text-blue-700 bg-blue-100 px-3 py-1 rounded-full text-xs font-bold">Recurrente</span>
+          </div>
+          <p className="text-[#666] text-sm font-medium mb-1">MRR Módulo 3 (USD)</p>
+          <h4 className="text-4xl font-light text-[#1A1A1A]">
+            ${mrrTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </h4>
         </div>
       </div>
 
@@ -637,6 +732,55 @@ export default function Finance() {
               </tbody>
             </table>
           )}
+        </div>
+      </div>
+
+      {/* ── Comisiones por Pagar ── */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden mt-8">
+        <div className="p-6 md:p-8 border-b border-black/5 flex justify-between items-center bg-white/50">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-[#FFD166]/20 rounded-2xl text-[#D4A017]">
+              <DollarSign size={24} />
+            </div>
+            <div>
+              <h4 className="text-xl font-medium text-[#1A1A1A]">Motor de Comisiones</h4>
+              <p className="text-[#666] text-sm">Cálculo de comisiones por referidos (S&S 15%, Medium 12%, Nom 10%)</p>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-black/5 bg-black/5">
+                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider">Aliado Comercial</th>
+                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider">Proyecto</th>
+                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider">Hito Relacionado</th>
+                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider text-right">Comisión (USD)</th>
+                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider text-right">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/5">
+              {commissions.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-[#666] italic">No hay comisiones por pagar.</td>
+                </tr>
+              ) : (
+                commissions.map((c) => (
+                  <tr key={c.id} className="hover:bg-white/50 transition-colors">
+                    <td className="py-4 px-6 text-sm font-medium text-[#1A1A1A]">{c.ally_name}</td>
+                    <td className="py-4 px-6 text-sm text-[#666]">{c.project_name}</td>
+                    <td className="py-4 px-6 text-sm text-[#666]">{c.transaction_desc}</td>
+                    <td className="py-4 px-6 text-sm font-medium text-right text-[#1A1A1A]">${c.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="py-4 px-6 text-sm text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.status === 'Apta para pago' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {c.status}
+                        </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

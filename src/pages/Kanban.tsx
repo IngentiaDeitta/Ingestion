@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '../lib/supabase';
+import { ENGINEERING_PATH_PHASES } from '../lib/gemini-task-breakdown';
 
 interface TeamMember {
   id: string;
@@ -25,6 +26,8 @@ interface Task {
   started_at?: string;
   actual_hours?: number;
   position?: number;
+  phase?: string;
+  delegable?: boolean;
 }
 
 interface Column {
@@ -59,14 +62,53 @@ export default function Kanban() {
   const [projects, setProjects] = useState<any[]>([]);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
 
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('General');
+
   useEffect(() => { fetchTasks(); fetchTeam(); fetchProjects(); }, []);
   
   const calculateAndSaveProjectProgress = async (projectName: string) => {
-    if (!projectName || projectName === 'General') return;
+    if (!projectName || projectName === 'General' || projectName === 'Ingentia') return;
     
+    // Fetch project
+    const { data: projData } = await supabase.from('projects').select('*').eq('name', projectName).single();
+
     // Fetch all tasks for this project
-    const { data: tasksData, error } = await supabase.from('tasks').select('status, hours, actual_hours').eq('project', projectName);
+    const { data: tasksData, error } = await supabase.from('tasks').select('*').eq('project', projectName);
     if (error || !tasksData || tasksData.length === 0) return;
+
+    // Sync milestones if any
+    if (projData) {
+      const milestones = projData.project_analysis?.milestones || [];
+      if (milestones.length > 0) {
+        let changed = false;
+        const updatedMilestones = milestones.map((m: any) => {
+          const linkedTasks = tasksData.filter((t: any) =>
+            (t.tags && Array.isArray(t.tags) && t.tags.includes(`milestone:${m.id}`)) ||
+            (t.phase && (t.phase === m.title || m.title?.toLowerCase().includes(t.phase.toLowerCase())))
+          );
+
+          if (linkedTasks.length > 0) {
+            const allDone = linkedTasks.every((t: any) => t.status === 'done');
+            if (allDone && !m.completed) {
+              changed = true;
+              return { ...m, completed: true, real_date: m.real_date || new Date().toISOString().split('T')[0] };
+            } else if (!allDone && m.completed) {
+              changed = true;
+              return { ...m, completed: false, real_date: null };
+            }
+          }
+          return m;
+        });
+
+        if (changed) {
+          const updatedAnalysis = { ...(projData.project_analysis || {}), milestones: updatedMilestones };
+          const completedCount = updatedMilestones.filter((m: any) => m.completed).length;
+          const newProgress = Math.round((completedCount / updatedMilestones.length) * 100);
+          await supabase.from('projects').update({ project_analysis: updatedAnalysis, progress: newProgress }).eq('id', projData.id);
+          return;
+        }
+      }
+    }
 
     const totalTasks = tasksData.length;
     let totalProgress = 0;
@@ -98,17 +140,26 @@ export default function Kanban() {
     setTeam(data || []);
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (projectFilterOverride?: string) => {
     try {
       setLoading(true);
       const { data: tasksData, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
       if (error) throw error;
 
+      const currentFilter = projectFilterOverride !== undefined ? projectFilterOverride : selectedProjectFilter;
+
+      // Se muestran únicamente las tareas de IngentIA por defecto
+      const tareasFiltradas = (tasksData || []).filter((t: any) => {
+        if (currentFilter === 'General') return !t.project || t.project === 'General' || t.project === 'Ingentia';
+        if (currentFilter === 'ALL') return !t.project || t.project === 'General' || t.project === 'Ingentia';
+        return t.project === currentFilter;
+      });
+
       const tasks: Record<string, Task> = {};
       const columns = JSON.parse(JSON.stringify(INITIAL_COLUMNS));
 
       // Sorting tasks within each column by position
-      tasksData?.forEach((t: any) => {
+      tareasFiltradas.forEach((t: any) => {
         const task: Task = {
           id: t.id,
           title: t.title || 'Sin título',
@@ -124,6 +175,8 @@ export default function Kanban() {
           started_at: t.started_at,
           actual_hours: t.actual_hours ? Number(t.actual_hours) : undefined,
           position: Number(t.position || 0),
+          phase: t.phase || undefined,
+          delegable: !!t.delegable,
         };
         tasks[task.id] = task;
         const columnId = STATUS_MAP[t.status] || 'col-1';
@@ -143,6 +196,31 @@ export default function Kanban() {
     }
   };
 
+  const handleDeleteTask = async (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
+    try {
+      setSaving(true);
+      const taskToDelete = data.tasks[id];
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (error) throw error;
+
+      if (selectedTask?.id === id) setSelectedTask(null);
+      await fetchTasks();
+      if (taskToDelete?.project) {
+        calculateAndSaveProjectProgress(taskToDelete.project);
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Error al eliminar tarea');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleUpdateTask = async (id: string, updates: Partial<Task>) => {
     const dbUpdates: any = {};
     if (updates.title !== undefined) dbUpdates.title = updates.title;
@@ -153,6 +231,8 @@ export default function Kanban() {
     if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
     if (updates.hours !== undefined) dbUpdates.hours = updates.hours;
     if (updates.actual_hours !== undefined) dbUpdates.actual_hours = updates.actual_hours;
+    if (updates.phase !== undefined) dbUpdates.phase = updates.phase || null;
+    if (updates.delegable !== undefined) dbUpdates.delegable = updates.delegable;
     if (updates.assignees !== undefined) {
       dbUpdates.assignees = updates.assignees;
       dbUpdates.assignee = updates.assignees.length > 0 ? updates.assignees[0] : null;
@@ -178,39 +258,6 @@ export default function Kanban() {
       alert('Error al guardar cambios');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDeleteTask = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm('¿Estás seguro de eliminar esta tarea?')) return;
-    
-    try {
-      setSaving(true);
-      const { error } = await supabase.from('tasks').delete().eq('id', id);
-      if (error) throw error;
-
-      setData(prev => {
-        const newTasks = { ...prev.tasks };
-        delete newTasks[id];
-        
-        const newColumns = { ...prev.columns };
-        Object.keys(newColumns).forEach(colId => {
-          newColumns[colId].taskIds = newColumns[colId].taskIds.filter(taskId => taskId !== id);
-        });
-
-        return { ...prev, tasks: newTasks, columns: newColumns };
-      });
-
-      if (selectedTask?.id === id) setSelectedTask(null);
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      alert('Error al eliminar la tarea');
-    } finally {
-      setSaving(false);
-      // Trigger progress recalculation
-      const task = data.tasks[id];
-      if (task) calculateAndSaveProjectProgress(task.project);
     }
   };
 
@@ -330,6 +377,8 @@ export default function Kanban() {
         assignee: taskData.assignees?.length > 0 ? taskData.assignees[0] : null,
         due_date: taskData.dueDate || null,
         hours: taskData.hours || 0,
+        phase: taskData.phase || null,
+        delegable: !!taskData.delegable,
         tags: taskData.milestoneId ? [`milestone:${taskData.milestoneId}`] : [],
         description: ''
       }]);
@@ -347,52 +396,88 @@ export default function Kanban() {
 
   return (
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto min-h-[calc(100vh-10rem)]">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
-        <div className="flex items-center gap-4">
-          <div>
-            <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Tablero Kanban</h3>
-            <p className="text-[#666666] mt-1">Gestiona tus tareas y responsables.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-3">
+            <h3 className="text-2xl md:text-[32px] font-normal tracking-tight text-[#1A1A1A]">Tablero Kanban</h3>
+            {saving && <div className="flex items-center gap-2 text-xs text-[#666666] bg-black/5 px-3 py-1 rounded-full animate-pulse"><Loader2 size={12} className="animate-spin" /> Guardando...</div>}
           </div>
-          {saving && <div className="flex items-center gap-2 text-xs text-[#666666] bg-black/5 px-3 py-1.5 rounded-full animate-pulse"><Loader2 size={12} className="animate-spin" /> Guardando...</div>}
+          <p className="text-xs text-[#666666]">
+            Gestión de tareas internas y transversales de IngentIA.
+          </p>
         </div>
-        {isAdmin && (
-          <button onClick={() => setIsNewTaskOpen(true)} className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-lg">
-            <Plus size={20} /> Nueva Tarea
-          </button>
-        )}
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Selector de filtro por Proyecto */}
+          <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/10 shadow-sm">
+            <span className="text-[11px] font-bold text-[#666666] uppercase tracking-wider whitespace-nowrap">Vista:</span>
+            <select
+              value={selectedProjectFilter}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedProjectFilter(val);
+                fetchTasks(val);
+              }}
+              className="bg-transparent text-xs font-semibold text-[#1A1A1A] outline-none cursor-pointer pr-2"
+            >
+              <option value="General">IngentIA (General)</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {isAdmin && (
+            <button onClick={() => setIsNewTaskOpen(true)} className="flex items-center justify-center gap-1.5 bg-[#222222] hover:bg-black text-white px-4 py-2 rounded-full text-xs font-bold transition-colors shadow-md">
+              <Plus size={15} /> Nueva Tarea
+            </button>
+          )}
+        </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex-1 overflow-x-auto pb-4 custom-scrollbar snap-x snap-mandatory">
-          <div className="flex gap-6 h-full pb-8">
+          <div className="flex gap-4 h-full pb-6">
             {data.columnOrder.map((columnId) => {
               const column = data.columns[columnId];
               const tasks = column.taskIds.map(taskId => data.tasks[taskId]);
               return (
-                <div key={column.id} className="w-[85vw] md:w-auto md:flex-1 min-w-[280px] shrink-0 snap-center flex flex-col gap-4">
-                  <div className="flex items-center gap-2 pb-3 border-b border-black/5">
-                    <h4 className="font-medium text-[#1A1A1A]">{column.title}</h4>
-                    <span className="bg-white/50 border border-black/5 text-[#1A1A1A] text-xs font-medium px-2.5 py-0.5 rounded-full">{tasks.length}</span>
+                <div key={column.id} className="w-[85vw] md:w-auto md:flex-1 min-w-[240px] shrink-0 snap-center flex flex-col gap-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-black/5">
+                    <h4 className="text-sm font-semibold text-[#1A1A1A]">{column.title}</h4>
+                    <span className="bg-white/50 border border-black/5 text-[#1A1A1A] text-[10px] font-bold px-2 py-0.5 rounded-full">{tasks.length}</span>
                   </div>
                   <Droppable droppableId={column.id}>
                     {(provided) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps} className="flex-1 flex flex-col gap-4 pr-2">
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="flex-1 flex flex-col gap-2.5 pr-1">
                         {tasks.map((task, index) => (
                           <Draggable key={task.id} draggableId={task.id} index={index}>
                             {(provided) => (
-                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} onClick={() => setSelectedTask(task)} className="group bg-white/60 backdrop-blur-xl p-5 rounded-[24px] border border-white/40 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing">
-                                <div className="flex justify-between items-start mb-3">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold border ${task.priority === 'Alta' ? 'bg-[#FFD166] text-[#222222] border-[#FFD166]' : 'bg-black/5 text-[#1A1A1A] border-black/10'}`}>{task.priority}</span>
+                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} onClick={() => setSelectedTask(task)} className="group bg-white/60 backdrop-blur-xl p-3.5 rounded-2xl border border-white/40 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing">
+                                <div className="flex justify-between items-start mb-2">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border ${task.priority === 'Alta' ? 'bg-[#FFD166] text-[#222222] border-[#FFD166]' : 'bg-black/5 text-[#1A1A1A] border-black/10'}`}>{task.priority}</span>
                                   <button 
                                     onClick={(e) => handleDeleteTask(task.id, e)}
-                                    className="p-1.5 text-[#DDD] hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                    className="p-1 text-[#DDD] hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
                                     title="Eliminar tarea"
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={13} />
                                   </button>
                                 </div>
-                                <h5 className="font-medium text-[#1A1A1A] mb-1 leading-tight">{task.title}</h5>
-                                <p className="text-xs text-[#666666] mb-5">{task.project}</p>
+                                <h5 className="text-xs font-semibold text-[#1A1A1A] mb-0.5 leading-tight">{task.title}</h5>
+                                <p className="text-[10px] text-[#666666] mb-1.5">{task.project}</p>
+                                {(task.phase || task.delegable) && (
+                                  <div className="flex items-center gap-1 mb-2 flex-wrap">
+                                    {task.phase && (
+                                      <span className="inline-flex px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-black/5 text-[#666666]">{task.phase}</span>
+                                    )}
+                                    {task.delegable && (
+                                      <span className="inline-flex px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-purple-100 text-purple-700 uppercase">Delegable</span>
+                                    )}
+                                  </div>
+                                )}
                                   <div className="flex items-center justify-between pt-4 border-t border-black/5">
                                     <div className="flex items-center gap-3">
                                       <div className="flex -space-x-2">
@@ -478,7 +563,7 @@ export default function Kanban() {
       </DragDropContext>
 
       {selectedTask && (
-        <TaskDetailModal key={selectedTask.id} task={selectedTask} columns={data.columns} teamMembers={team} availableProjects={projects} onClose={() => setSelectedTask(null)} onUpdate={handleUpdateTask} isAdmin={isAdmin} />
+        <TaskDetailModal key={selectedTask.id} task={selectedTask} columns={data.columns} teamMembers={team} availableProjects={projects} onClose={() => setSelectedTask(null)} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} isAdmin={isAdmin} />
       )}
       {isNewTaskOpen && (
         <NewTaskModal teamMembers={team} availableProjects={projects} onClose={() => setIsNewTaskOpen(false)} onSave={handleSaveNewTask} />
@@ -518,7 +603,7 @@ function MultiAssigneeSelector({ selectedNames, teamMembers, onChange }: { selec
 }
 
 function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onSave: (task: any) => void }) {
-  const [newTask, setNewTask] = useState({ title: '', project: availableProjects[0]?.name || 'General', priority: 'Media' as const, assignees: [] as string[], dueDate: '', hours: 0, milestoneId: '' });
+  const [newTask, setNewTask] = useState({ title: '', project: availableProjects[0]?.name || 'General', priority: 'Media' as const, assignees: [] as string[], dueDate: '', hours: 0, milestoneId: '', phase: '', delegable: false });
   
   const selectedProjectObj = availableProjects.find(p => p.name === newTask.project);
   const billableMilestones = (selectedProjectObj?.project_analysis?.milestones || []).filter((m: any) => m.type === 'billing' || m.type === 'both');
@@ -532,15 +617,6 @@ function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { tea
           <select value={newTask.project} onChange={(e) => setNewTask({ ...newTask, project: e.target.value, milestoneId: '' })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4"><option value="General">General</option>{availableProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select>
           <select value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4"><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select>
         </div>
-        {billableMilestones.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-[#666666] uppercase pl-1">Hito Facturable (Opcional)</label>
-            <select value={newTask.milestoneId} onChange={(e) => setNewTask({ ...newTask, milestoneId: e.target.value })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4">
-              <option value="">Sin asociar</option>
-              {billableMilestones.map((m: any) => <option key={m.id} value={m.id}>{m.title}</option>)}
-            </select>
-          </div>
-        )}
         <MultiAssigneeSelector selectedNames={newTask.assignees} teamMembers={teamMembers} onChange={(names) => setNewTask({ ...newTask, assignees: names })} />
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
@@ -551,6 +627,19 @@ function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { tea
             <label className="text-xs font-bold text-[#666666] uppercase pl-1">Fecha Vencimiento</label>
             <input type="date" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 px-4" />
           </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 items-end">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-[#666666] uppercase pl-1">Fase (Engineering Path)</label>
+            <select value={newTask.phase} onChange={(e) => setNewTask({ ...newTask, phase: e.target.value })} className="h-12 rounded-2xl border border-black/10 bg-black/5 px-4">
+              <option value="">Sin fase</option>
+              {ENGINEERING_PATH_PHASES.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <label className="flex items-center gap-2 h-12 px-1 cursor-pointer">
+            <input type="checkbox" checked={newTask.delegable} onChange={(e) => setNewTask({ ...newTask, delegable: e.target.checked })} className="w-4 h-4 rounded text-[#FFD166]" />
+            <span className="text-xs font-bold text-[#666666] uppercase">Delegable a Tercero</span>
+          </label>
         </div>
         <div className="flex justify-end gap-3 pt-4">
           <button onClick={onClose} className="px-6 py-3 rounded-full text-[#666666] hover:bg-black/5 transition-colors">Cancelar</button>
@@ -567,7 +656,7 @@ function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { tea
   );
 }
 
-function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClose, onUpdate, isAdmin }: { task: Task, columns: any, teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onUpdate: (id: string, updates: any) => void, isAdmin: boolean }) {
+function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClose, onUpdate, onDelete, isAdmin }: { task: Task, columns: any, teamMembers: TeamMember[], availableProjects: any[], onClose: () => void, onUpdate: (id: string, updates: any) => void, onDelete?: (id: string) => void, isAdmin: boolean }) {
   const [title, setTitle] = useState(task.title);
   const [desc, setDesc] = useState(task.description);
   const [project, setProject] = useState(task.project);
@@ -576,6 +665,8 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
   const [dueDate, setDueDate] = useState(task.dueDate);
   const [hours, setHours] = useState(task.hours);
   const [actualHours, setActualHours] = useState<number | ''>(task.actual_hours ?? '');
+  const [phase, setPhase] = useState(task.phase || '');
+  const [delegable, setDelegable] = useState(!!task.delegable);
   const [tags, setTags] = useState<string[]>(task.tags || []);
   const milestoneId = tags.find(t => t.startsWith('milestone:'))?.replace('milestone:', '') || '';
 
@@ -703,6 +794,30 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
               <p className="text-[10px] text-[#666666] italic">Define horas estimadas para habilitar el seguimiento de productividad.</p>
             </div>
           )}
+          <div className="grid grid-cols-2 gap-4 items-end">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-[#1A1A1A]">Fase (Engineering Path)</span>
+              <select
+                disabled={!isAdmin}
+                value={phase}
+                onChange={(e) => { setPhase(e.target.value); onUpdate(task.id, { phase: e.target.value }); }}
+                className={`h-11 rounded-xl border border-black/10 bg-black/5 px-4 outline-none ${!isAdmin ? 'cursor-not-allowed' : ''}`}
+              >
+                <option value="">Sin fase</option>
+                {ENGINEERING_PATH_PHASES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 h-11 px-1 cursor-pointer">
+              <input
+                disabled={!isAdmin}
+                type="checkbox"
+                checked={delegable}
+                onChange={(e) => { setDelegable(e.target.checked); onUpdate(task.id, { delegable: e.target.checked }); }}
+                className="w-4 h-4 rounded text-[#FFD166]"
+              />
+              <span className="text-sm font-medium text-[#1A1A1A]">Delegable a Tercero</span>
+            </label>
+          </div>
           {/* Indicador de eficiencia */}
           {efficiencyInfo && (
             <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-semibold ${efficiencyInfo.color}`}>
@@ -711,7 +826,19 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
             </div>
           )}
         </div>
-        <div className="p-8 border-t border-black/5 flex justify-end"><button onClick={onClose} className="bg-[#1A1A1A] hover:bg-black text-white px-10 py-3.5 rounded-full text-sm font-medium transition-all shadow-lg active:scale-95">Listo</button></div>
+        <div className="p-6 border-t border-black/5 flex justify-between items-center bg-black/2">
+          {isAdmin && onDelete ? (
+            <button
+              onClick={() => onDelete(task.id)}
+              className="flex items-center gap-2 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2.5 rounded-full transition-colors"
+            >
+              <Trash2 size={14} /> Eliminar Tarea
+            </button>
+          ) : <div />}
+          <button onClick={onClose} className="bg-[#1A1A1A] hover:bg-black text-white px-8 py-2.5 rounded-full text-xs font-bold transition-all shadow-lg active:scale-95">
+            Listo
+          </button>
+        </div>
       </div>
     </div>
   );
