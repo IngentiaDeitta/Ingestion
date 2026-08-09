@@ -251,7 +251,7 @@ export default function NewInvoice() {
             <ArrowLeft size={20} className="text-[#1A1A1A]" />
           </Link>
           <div>
-            <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">{isEditing ? 'Editar Transacción' : 'Nueva Transacción'}</h3>
+            <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A]">{isEditing ? 'Editar Transacción' : 'Nueva Transacción'}</h3>
             <p className="text-[#666666] mt-1">{isEditing ? 'Modifica los detalles de la entrada seleccionada.' : `Registra un nuevo ${type === 'income' ? 'ingreso' : 'gasto'} en el sistema.`}</p>
           </div>
         </div>
@@ -284,7 +284,7 @@ export default function NewInvoice() {
         )}
       </div>
 
-      <form onSubmit={handleSave} className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-8">
+      <form onSubmit={handleSave} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm p-8 flex flex-col gap-8">
 
         {/* ── Sección: Datos generales ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

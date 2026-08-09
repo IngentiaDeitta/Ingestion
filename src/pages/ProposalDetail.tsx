@@ -160,7 +160,7 @@ export default function ProposalDetail() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
                 {/* Panel Izquierdo: KPI & Inversión */}
                 <div className="md:col-span-1 flex flex-col gap-6">
-                    <div className="bg-[#222222] text-white p-6 rounded-[24px] shadow-xl">
+                    <div className="bg-[#222222] text-white p-6 rounded-xl shadow-xl">
                         <div className="p-2 bg-white/10 rounded-xl w-fit mb-4">
                             <DollarSign size={20} />
                         </div>
@@ -169,7 +169,7 @@ export default function ProposalDetail() {
                         <span className="inline-block mt-4 text-[10px] bg-white/20 px-2 py-1 rounded-full uppercase tracking-widest font-bold">Estado: {quote.status}</span>
                     </div>
 
-                    <div className="bg-white border border-black/10 p-6 rounded-[24px] shadow-sm">
+                    <div className="bg-white border border-black/10 p-6 rounded-xl shadow-sm">
                         <div className="p-2 bg-green-500/10 text-green-600 rounded-xl w-fit mb-4">
                             <TrendingUp size={20} />
                         </div>
@@ -178,7 +178,7 @@ export default function ProposalDetail() {
                         <p className="text-xs text-[#666666] mt-2 leading-relaxed">{content?.financialEstimation?.revenueJustification}</p>
                     </div>
 
-                    <div className="bg-white border border-black/10 p-6 rounded-[24px] shadow-sm">
+                    <div className="bg-white border border-black/10 p-6 rounded-xl shadow-sm">
                         <h4 className="text-sm font-bold text-[#1A1A1A] flex items-center gap-2 mb-4">
                             <Clock className="text-[#FFD166]" size={18} />
                             Desglose de Horas
@@ -198,7 +198,7 @@ export default function ProposalDetail() {
 
                 {/* Panel Derecho: Estrategia, Entregables y Diagnóstico */}
                 <div className="md:col-span-2 flex flex-col gap-6">
-                    <div className="bg-white border border-black/10 p-8 rounded-[24px] shadow-sm">
+                    <div className="bg-white border border-black/10 p-8 rounded-xl shadow-sm">
                         <h4 className="text-lg font-bold text-[#1A1A1A] flex items-center gap-2 mb-4">
                             <Microscope className="text-[#FFD166]" />
                             Diagnóstico y Situación Actual
@@ -216,7 +216,7 @@ export default function ProposalDetail() {
                         )}
                     </div>
 
-                    <div className="bg-white border border-black/10 p-8 rounded-[24px] shadow-sm">
+                    <div className="bg-white border border-black/10 p-8 rounded-xl shadow-sm">
                         <h4 className="text-lg font-bold text-[#1A1A1A] flex items-center gap-2 mb-4">
                             <Brain className="text-[#008CA4]" />
                             Narrativa Comercial & Estrategia
@@ -250,7 +250,7 @@ export default function ProposalDetail() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="bg-white border border-black/10 p-6 rounded-[24px] shadow-sm">
+                        <div className="bg-white border border-black/10 p-6 rounded-xl shadow-sm">
                             <h4 className="text-sm font-bold text-[#1A1A1A] uppercase tracking-wider mb-4">Entregables Clave</h4>
                             {isEditing && draftContent ? (
                                 <div className="flex flex-col gap-2">
@@ -291,7 +291,7 @@ export default function ProposalDetail() {
                                 </ul>
                             )}
                         </div>
-                        <div className="bg-white border border-black/10 p-6 rounded-[24px] shadow-sm">
+                        <div className="bg-white border border-black/10 p-6 rounded-xl shadow-sm">
                             <h4 className="text-sm font-bold text-[#1A1A1A] uppercase tracking-wider mb-4">Riesgos Identificados</h4>
                             {isEditing && draftContent ? (
                                 <div className="flex flex-col gap-2">

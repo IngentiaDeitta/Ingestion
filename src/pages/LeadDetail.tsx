@@ -698,7 +698,7 @@ export default function LeadDetail() {
 
                 {/* Puntajes y reseñas */}
                 {brief.scores && (brief.scores.global > 0 || brief.scores.fit_ingentia > 0) && (
-                  <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[24px]">
+                  <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-xl">
                     <div className="flex items-start gap-6">
                       <div className="text-center shrink-0">
                         <div className="text-5xl font-light text-[#1A1A1A] tracking-tighter leading-none">
@@ -789,7 +789,7 @@ export default function LeadDetail() {
                 )}
 
                 {/* La empresa en una frase */}
-                <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[24px]">
+                <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-xl">
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#999999] mb-2">La empresa, en una frase</h4>
                   <p className="text-[#1A1A1A] font-medium leading-relaxed">{brief.empresa_una_frase}</p>
                   {brief.perfil && (
@@ -811,7 +811,7 @@ export default function LeadDetail() {
 
                 {/* Interlocutor + señales */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[24px]">
+                  <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-xl">
                     <h4 className="flex items-center gap-2 font-semibold text-[#1A1A1A] mb-4 text-sm">
                       <Users className="w-4 h-4" /> Con quién hablamos
                     </h4>
@@ -831,7 +831,7 @@ export default function LeadDetail() {
                     ) : <p className="text-xs text-[#999]">sin dato</p>}
                   </div>
 
-                  <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[24px]">
+                  <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-xl">
                     <h4 className="flex items-center gap-2 font-semibold text-[#1A1A1A] mb-4 text-sm">
                       <AlertTriangle className="w-4 h-4 text-orange-500" /> Señales detectadas
                     </h4>
@@ -851,7 +851,7 @@ export default function LeadDetail() {
 
                 {/* Dolor declarado (sus palabras) */}
                 {brief.dolor_declarado && (
-                  <div className="bg-[#FFD166]/10 border border-[#FFD166]/30 p-6 rounded-[24px]">
+                  <div className="bg-[#FFD166]/10 border border-[#FFD166]/30 p-6 rounded-xl">
                     <h4 className="flex items-center gap-2 font-semibold text-[#1A1A1A] mb-2 text-sm">
                       <Quote className="w-4 h-4" /> Lo que él mismo dijo que le duele
                     </h4>
@@ -860,7 +860,7 @@ export default function LeadDetail() {
                 )}
 
                 {/* Hipótesis de dolor */}
-                <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[24px]">
+                <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-xl">
                   <h4 className="flex items-center gap-2 font-semibold text-rose-600 mb-3 text-sm">
                     <Target className="w-4 h-4" /> Hipótesis de deuda operativa
                   </h4>
@@ -881,7 +881,7 @@ export default function LeadDetail() {
 
                 {/* Encuadre */}
                 {brief.encuadre_sugerido && (
-                  <div className="bg-[#222222] text-white p-6 rounded-[24px]">
+                  <div className="bg-[#222222] text-white p-6 rounded-xl">
                     <h4 className="flex items-center gap-2 font-semibold mb-3 text-sm">
                       <MessageCircle className="w-4 h-4 text-[#FFD166]" /> Encuadre sugerido (0:00 – 2:00)
                     </h4>
@@ -892,7 +892,7 @@ export default function LeadDetail() {
                 )}
 
                 {/* Preguntas por bloque */}
-                <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[24px]">
+                <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-xl">
                   <h4 className="flex items-center gap-2 font-semibold text-[#1A1A1A] mb-5 text-sm">
                     <ListChecks className="w-4 h-4" /> Guion de descubrimiento (4:00 – 18:00)
                   </h4>
@@ -923,7 +923,7 @@ export default function LeadDetail() {
                 {/* Cámaras y fuentes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {(brief.camaras_redes || []).length > 0 && (
-                    <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[24px]">
+                    <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-xl">
                       <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#999999] mb-3">Cámaras y redes</h4>
                       <div className="flex flex-wrap gap-2">
                         {brief.camaras_redes.map((c, i) => (
@@ -933,7 +933,7 @@ export default function LeadDetail() {
                     </div>
                   )}
                   {(brief.fuentes || []).length > 0 && (
-                    <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[24px]">
+                    <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-xl">
                       <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#999999] mb-3">
                         <Link2 className="w-3.5 h-3.5" /> Fuentes consultadas
                       </h4>
@@ -948,7 +948,7 @@ export default function LeadDetail() {
 
               </div>
             ) : (
-              <div className="h-64 flex flex-col items-center justify-center text-center border-2 border-dashed border-black/10 rounded-[24px] bg-white/30 px-6">
+              <div className="h-64 flex flex-col items-center justify-center text-center border-2 border-dashed border-black/10 rounded-xl bg-white/30 px-6">
                 {isEnriching ? (
                   <>
                     <Loader2 className="w-12 h-12 text-[#FFB020] mb-4 animate-spin" />

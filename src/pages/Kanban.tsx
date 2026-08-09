@@ -399,7 +399,7 @@ export default function Kanban() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-3">
-            <h3 className="text-2xl md:text-[32px] font-normal tracking-tight text-[#1A1A1A]">Tablero Kanban</h3>
+            <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A]">Tablero Kanban</h3>
             {saving && <div className="flex items-center gap-2 text-xs text-[#666666] bg-black/5 px-3 py-1 rounded-full animate-pulse"><Loader2 size={12} className="animate-spin" /> Guardando...</div>}
           </div>
           <p className="text-xs text-[#666666]">
@@ -585,7 +585,7 @@ function MultiAssigneeSelector({ selectedNames, teamMembers, onChange }: { selec
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)}></div>
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-black/10 rounded-[24px] shadow-xl z-20 max-h-60 overflow-y-auto p-2">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-black/10 rounded-xl shadow-xl z-20 max-h-60 overflow-y-auto p-2">
             {teamMembers.map(m => (
               <div key={m.id} onClick={() => {
                 const newNames = selectedNames.includes(m.name) ? selectedNames.filter(n => n !== m.name) : [...selectedNames, m.name];
@@ -610,7 +610,7 @@ function NewTaskModal({ teamMembers, availableProjects, onClose, onSave }: { tea
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden p-6 flex flex-col gap-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 flex flex-col gap-4">
         <div className="flex justify-between items-center"><h3 className="text-xl font-medium">Nueva Tarea</h3><button onClick={onClose}><X size={20} /></button></div>
         <input autoFocus placeholder="Título" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="w-full h-12 rounded-2xl border border-black/10 bg-black/5 px-4" />
         <div className="grid grid-cols-2 gap-4">
@@ -703,7 +703,7 @@ function TaskDetailModal({ task, columns, teamMembers, availableProjects, onClos
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-8 border-b border-black/5 flex justify-between items-start">
           <div className="flex-1 mr-4">
             <span className="text-[10px] uppercase tracking-wider font-bold text-[#666666] block mb-1">Título de la Tarea</span>

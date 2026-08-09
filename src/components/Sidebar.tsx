@@ -11,7 +11,7 @@ const menuItems = [
   { icon: Users, label: 'Equipo', path: '/team' },
   { icon: Users, label: 'Leads', path: '/leads' },
   { icon: Users, label: 'Clientes', path: '/clients' },
-  { icon: Zap, label: 'Tech Stack', path: '/tech-stack' },
+  { icon: Zap, label: 'Stack Tecnológico', path: '/tech-stack' },
 ];
 
 export default function Sidebar({ isOpen, setIsOpen }: { isOpen?: boolean, setIsOpen?: (val: boolean) => void }) {

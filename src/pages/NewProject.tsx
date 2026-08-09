@@ -78,12 +78,12 @@ export default function NewProject() {
           <ArrowLeft size={20} className="text-[#1A1A1A]" />
         </Link>
         <div>
-          <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Nuevo Proyecto</h3>
+          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A]">Nuevo Proyecto</h3>
           <p className="text-[#666666] mt-1">Configura los detalles iniciales del proyecto.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-8">
+      <form onSubmit={handleSave} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm p-8 flex flex-col gap-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-2 md:col-span-2">
             <label className="text-sm font-medium text-[#1A1A1A]">Nombre del Proyecto</label>

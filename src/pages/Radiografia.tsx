@@ -261,7 +261,7 @@ export default function Radiografia() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
         {/* Izquierda: transcripción */}
-        <div className="flex flex-col gap-6 bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm p-6 rounded-[32px] h-fit">
+        <div className="flex flex-col gap-6 bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm p-6 rounded-2xl h-fit">
           <h3 className="font-semibold text-lg mb-2 border-b border-black/5 pb-3">1. Transcripción de la Llamada</h3>
           <textarea
             value={transcript}
@@ -284,7 +284,7 @@ export default function Radiografia() {
           {result ? (
             <div className="flex flex-col gap-6">
 
-              <div className="bg-white/80 border border-black/5 shadow-sm p-8 rounded-[32px] relative overflow-hidden">
+              <div className="bg-white/80 border border-black/5 shadow-sm p-8 rounded-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
                 <div className="flex items-start justify-between gap-4 mb-6 relative z-10">
@@ -331,7 +331,7 @@ export default function Radiografia() {
               </div>
 
               {/* Base de cálculo */}
-              <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-[32px]">
+              <div className="bg-white/80 border border-black/5 shadow-sm p-6 rounded-2xl">
                 <div className="flex items-center justify-between gap-3 mb-1">
                   <h4 className="text-sm font-bold">Base de cálculo</h4>
                   {hayCambios && (
@@ -437,7 +437,7 @@ export default function Radiografia() {
 
               {/* Qué falta preguntar */}
               {(result.datos_faltantes?.length > 0 || result.preguntas_pendientes?.length > 0) && (
-                <div className="bg-[#222222] text-white p-6 rounded-[32px]">
+                <div className="bg-[#222222] text-white p-6 rounded-2xl">
                   <h4 className="text-sm font-bold flex items-center gap-2 mb-4">
                     <HelpCircle className="w-4 h-4 text-[#FFD166]" /> Lo que falta para firmar el número
                   </h4>
@@ -465,7 +465,7 @@ export default function Radiografia() {
               )}
 
               {/* Informe completo con branding */}
-              <div className="bg-[#0A0A0A] text-white p-6 rounded-[32px] border border-white/10">
+              <div className="bg-[#0A0A0A] text-white p-6 rounded-2xl border border-white/10">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
                     <h4 className="text-sm font-bold flex items-center gap-2">
@@ -558,7 +558,7 @@ export default function Radiografia() {
               </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center border-2 border-dashed border-black/10 rounded-[32px] bg-white/30 p-12">
+            <div className="h-full flex flex-col items-center justify-center text-center border-2 border-dashed border-black/10 rounded-2xl bg-white/30 p-12">
               <Stethoscope className="w-16 h-16 text-[#999999]/50 mb-6" />
               <p className="text-xl font-bold">Esperando Transcripción</p>
               <p className="text-[#666666] mt-2 font-medium max-w-sm">

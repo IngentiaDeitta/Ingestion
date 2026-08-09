@@ -19,7 +19,7 @@ def main():
     
     # 0. Add all modified/new files and commit
     run_cmd(["git", "add", "."])
-    run_cmd(["git", "commit", "-m", "feat: vertical commercial funnel, dashboard redesign and interactive cards"])
+    run_cmd(["git", "commit", "-m", "style: homogenize typography scale and UI padding across all sections"])
 
     # 1. Fetch
     success, _, _ = run_cmd(["git", "fetch", "origin"])

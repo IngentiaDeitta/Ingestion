@@ -981,7 +981,7 @@ export default function ProjectDetail() {
   const teamModal = isTeamModalOpen ? createPortal(
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <div 
-        className="bg-white rounded-[32px] shadow-2xl w-full max-w-md flex flex-col"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 border-b border-black/5 flex justify-between items-center">
@@ -1045,7 +1045,7 @@ export default function ProjectDetail() {
 
   const previewImportModal = isPreviewModalOpen ? createPortal(
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-black/5 flex justify-between items-center bg-[#FFD166]/10">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-[#FFB020]" />
@@ -1128,7 +1128,7 @@ export default function ProjectDetail() {
 
   const taskPreviewModal = isTaskPreviewOpen ? createPortal(
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-black/5 flex justify-between items-center bg-[#FFD166]/10">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-[#FFB020]" />
@@ -1282,7 +1282,7 @@ export default function ProjectDetail() {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <form
         onSubmit={handleSaveMilestoneManual}
-        className="bg-white rounded-[32px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 border-b border-black/5 flex justify-between items-center bg-[#FFD166]/10">
@@ -1423,7 +1423,7 @@ export default function ProjectDetail() {
 
   const taskManualModal = isTaskModalOpen && editingTaskManual ? createPortal(
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-6 border-b border-black/5 flex justify-between items-center bg-black/2">
           <h3 className="text-xl font-medium text-[#1A1A1A]">
             {editingTaskManual.id ? 'Editar Tarea' : 'Nueva Tarea'}
@@ -1740,7 +1740,7 @@ export default function ProjectDetail() {
           </Link>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-3 mb-1">
-              <h3 className="text-3xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A] break-words">{project.name}</h3>
+              <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A] break-words">{project.name}</h3>
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                 project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :
                 project.status === 'Completado' ? 'bg-green-500/10 text-green-700 border-green-500/20' :

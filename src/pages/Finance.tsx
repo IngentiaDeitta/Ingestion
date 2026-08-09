@@ -415,20 +415,20 @@ export default function Finance() {
   const monthlyChart = buildMonthlyChartData(transactions);
 
   return (
-    <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-12" onClick={() => setOpenActionId(null)}>
+    <div className="flex-1 flex flex-col gap-5 w-full max-w-[1400px] mx-auto pb-8" onClick={() => setOpenActionId(null)}>
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-4xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A]">Finanzas</h3>
-          <p className="text-[#666666] mt-1">Gestión integral de ingresos, egresos y analíticas financieras.</p>
+          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A]">Finanzas</h3>
+          <p className="text-xs text-[#666666] mt-0.5">Gestión integral de ingresos, egresos y analíticas financieras.</p>
         </div>
         <div className="flex items-center gap-4">
-          <button className="flex items-center gap-2 px-6 py-3 rounded-full border border-black/10 text-sm font-medium hover:bg-black/5 transition-colors">
-            <Download size={18} /> Exportar
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-black/10 text-xs font-medium hover:bg-black/5 transition-colors">
+            <Download size={15} /> Exportar
           </button>
           {isAdmin && (
-            <Link to="/finance/new-invoice" className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-8 py-3 rounded-full text-sm font-medium transition-colors shadow-lg">
+            <Link to="/finance/new-invoice" className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-5 py-2 rounded-xl text-xs font-medium transition-colors shadow-md">
               Nueva Transacción
             </Link>
           )}
@@ -437,33 +437,33 @@ export default function Finance() {
 
       {/* ── KPIs Plan 90 Días ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#222222] text-white rounded-[32px] p-6 shadow-xl">
+        <div className="bg-[#222222] text-white rounded-2xl p-4 shadow-sm">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-white/10 rounded-2xl"><DollarSign size={24} /></div>
-            <span className="flex items-center text-[#222222] bg-green-400 px-3 py-1 rounded-full text-xs font-bold">Caja Real</span>
+            <div className="p-2 bg-white/10 rounded-xl"><DollarSign size={18} /></div>
+            <span className="flex items-center text-[#222222] bg-green-400 px-2.5 py-0.5 rounded-md text-[10px] font-bold">Caja Real</span>
           </div>
-          <p className="text-white/70 text-sm font-medium mb-1">Caja Cobrada (USD)</p>
-          <h4 className="text-4xl font-light text-white">
+          <p className="text-white/70 text-xs font-medium mb-1">Caja Cobrada (USD)</p>
+          <h4 className="text-2xl font-medium text-white">
             ${cajaCobrada.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h4>
         </div>
-        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 border border-white/40 shadow-sm">
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-sm">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-black/5 rounded-2xl"><DollarSign size={24} className="text-[#666]" /></div>
-            <span className="flex items-center text-orange-700 bg-orange-100 px-3 py-1 rounded-full text-xs font-bold">Hitos 2 y 3</span>
+            <div className="p-2 bg-black/5 rounded-xl"><DollarSign size={18} className="text-[#666]" /></div>
+            <span className="flex items-center text-orange-700 bg-orange-100 px-2.5 py-0.5 rounded-md text-[10px] font-bold">Hitos 2 y 3</span>
           </div>
-          <p className="text-[#666] text-sm font-medium mb-1">Caja Pendiente (USD)</p>
-          <h4 className="text-4xl font-light text-[#1A1A1A]">
+          <p className="text-[#666] text-xs font-medium mb-1">Caja Pendiente (USD)</p>
+          <h4 className="text-base font-semibold text-[#1A1A1A]">
             ${cajaPendiente.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h4>
         </div>
-        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 border border-white/40 shadow-sm">
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-sm">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-black/5 rounded-2xl"><DollarSign size={24} className="text-[#666]" /></div>
-            <span className="flex items-center text-blue-700 bg-blue-100 px-3 py-1 rounded-full text-xs font-bold">Recurrente</span>
+            <div className="p-2 bg-black/5 rounded-xl"><DollarSign size={18} className="text-[#666]" /></div>
+            <span className="flex items-center text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-md text-[10px] font-bold">Recurrente</span>
           </div>
-          <p className="text-[#666] text-sm font-medium mb-1">MRR Módulo 3 (USD)</p>
-          <h4 className="text-4xl font-light text-[#1A1A1A]">
+          <p className="text-[#666] text-xs font-medium mb-1">MRR Módulo 3 (USD)</p>
+          <h4 className="text-base font-semibold text-[#1A1A1A]">
             ${mrrTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h4>
         </div>
@@ -471,13 +471,13 @@ export default function Finance() {
 
       {/* ── Balance Row ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#222222] text-white rounded-[32px] p-6 shadow-xl">
+        <div className="bg-[#222222] text-white rounded-2xl p-4 shadow-sm">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-white/10 rounded-2xl"><DollarSign size={24} /></div>
-            <span className="flex items-center text-[#222222] bg-[#FFD166] px-3 py-1 rounded-full text-xs font-bold">Consolidado ARS</span>
+            <div className="p-2 bg-white/10 rounded-xl"><DollarSign size={18} /></div>
+            <span className="flex items-center text-[#222222] bg-[#FFD166] px-2.5 py-0.5 rounded-md text-[10px] font-bold">Consolidado ARS</span>
           </div>
-          <p className="text-white/70 text-sm font-medium mb-1">Balance Consolidado (ARS)</p>
-          <h4 className={`text-4xl font-light ${totalBalanceARS < 0 ? 'text-red-400' : 'text-white'}`}>
+          <p className="text-white/70 text-xs font-medium mb-1">Balance Consolidado (ARS)</p>
+          <h4 className={`text-2xl font-medium ${totalBalanceARS < 0 ? 'text-red-400' : 'text-white'}`}>
             ${totalBalanceARS.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h4>
           <div className="mt-4 pt-3 border-t border-white/5 flex flex-col gap-1">
@@ -490,7 +490,7 @@ export default function Finance() {
         </div>
 
         {currencyBalances.map(c => (
-          <div key={c.code} className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 border border-white/40 shadow-sm transition-transform hover:scale-[1.02]">
+          <div key={c.code} className="bg-white/80 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-sm transition-transform hover:scale-[1.02]">
             <div className="flex justify-between items-start mb-4">
               <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.badge}`}>{c.code}</span>
               <span className={`flex items-center text-[10px] font-bold uppercase tracking-wider ${c.net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
@@ -499,7 +499,7 @@ export default function Finance() {
               </span>
             </div>
             <p className="text-[#666666] text-xs font-medium mb-1">Saldo en {c.code}</p>
-            <h4 className={`text-3xl font-light ${c.net >= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
+            <h4 className={`text-xl font-medium ${c.net >= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
               {c.symbol}{c.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h4>
           </div>
@@ -507,13 +507,13 @@ export default function Finance() {
       </div>
 
       {/* ── Analytics Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm p-5">
           <div className="flex justify-between items-center mb-6">
-            <h4 className="text-xl font-medium text-[#1A1A1A]">Facturación vs Costes</h4>
-            <TrendingUp size={20} className="text-[#666]" />
+            <h4 className="text-sm font-semibold text-[#1A1A1A]">Facturación vs Costes</h4>
+            <TrendingUp size={16} className="text-[#666]" />
           </div>
-          <div className="h-64">
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={monthlyChart}>
                 <defs>
@@ -532,20 +532,20 @@ export default function Finance() {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8">
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm p-5">
           <div className="flex justify-between items-center mb-6">
-            <h4 className="text-xl font-medium text-[#1A1A1A]">Distribución de Gastos</h4>
-            <Tag size={20} className="text-[#666]" />
+            <h4 className="text-sm font-semibold text-[#1A1A1A]">Distribución de Gastos</h4>
+            <Tag size={16} className="text-[#666]" />
           </div>
-          <div className="h-64 flex flex-col items-center">
+          <div className="h-48 flex flex-col items-center">
             <ResponsiveContainer width="100%" height="80%">
               <PieChart>
                 <Pie
                   data={expensesByTag}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={42}
+                  outerRadius={60}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -569,23 +569,23 @@ export default function Finance() {
       </div>
 
       {/* ── Partner Balances ── */}
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-2xl font-medium text-[#1A1A1A]">Cuenta Corriente Socios</h4>
-            <p className="text-[#666666]">Saldos acumulados por aportes y dividendos.</p>
+            <h4 className="text-base font-semibold text-[#1A1A1A]">Cuenta Corriente Socios</h4>
+            <p className="text-xs text-[#666666]">Saldos acumulados por aportes y dividendos.</p>
           </div>
-          <div className="p-3 bg-white/50 rounded-2xl border border-black/5 shadow-sm">
-            <Zap size={20} className="text-[#FFD166]" />
+          <div className="p-2 bg-white/50 rounded-xl border border-black/5 shadow-sm">
+            <Zap size={16} className="text-[#FFD166]" />
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {partnerBalances.map(pb => (
-            <div key={pb.id} className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-6 transition-transform hover:scale-[1.02]">
+            <div key={pb.id} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm p-5 flex flex-col gap-4 transition-transform hover:scale-[1.02]">
               <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-[#1A1A1A] uppercase tracking-tight">{pb.name}</span>
-                <div className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${pb.balance >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <span className="text-xs font-bold text-[#1A1A1A] uppercase tracking-tight">{pb.name}</span>
+                <div className={`px-2.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${pb.balance >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                   {pb.balance >= 0 ? 'Saldo a favor' : 'Excedente retiros'}
                 </div>
               </div>
@@ -593,18 +593,18 @@ export default function Finance() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Gastos Pagados</span>
-                  <span className="text-xl font-medium text-[#1A1A1A]">${pb.expensesPaid.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span className="text-xs font-semibold text-[#1A1A1A]">${pb.expensesPaid.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Retiros</span>
-                  <span className="text-xl font-medium text-red-500">${pb.withdrawals.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span className="text-xs font-semibold text-red-500">${pb.withdrawals.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-black/5 flex flex-col gap-2">
+              <div className="pt-3 border-t border-black/5 flex flex-col gap-1.5">
                 <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Saldo Neto Disponible</span>
                 <div className="flex items-baseline gap-2">
-                  <span className={`text-4xl font-light ${pb.balance <= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
+                  <span className={`text-xl font-medium ${pb.balance <= 0 ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
                     ${Math.abs(pb.balance).toLocaleString()}
                   </span>
                   <span className="text-sm font-medium text-[#999]">ARS</span>
@@ -618,7 +618,7 @@ export default function Finance() {
             </div>
           ))}
           {partnerBalances.length === 0 && (
-            <div className="col-span-full py-12 text-center bg-black/[0.02] rounded-[32px] border border-dashed border-black/10">
+            <div className="col-span-full py-8 text-center bg-black/[0.02] rounded-2xl border border-dashed border-black/10">
               <p className="text-[#999] text-sm font-medium">No se encontraron registros de socios o transacciones asignadas.</p>
             </div>
           )}
@@ -627,20 +627,20 @@ export default function Finance() {
 
 
       {/* ── Transactions Table ── */}
-      <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm min-h-[500px]">
-        <div className="p-8 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex-1 bg-white/80 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm min-h-[350px]">
+        <div className="p-4 border-b border-black/5 flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
           <div>
-            <h4 className="text-xl font-medium text-[#1A1A1A]">Registro de Operaciones</h4>
-            <p className="text-sm text-[#666]">Últimos movimientos registrados en el sistema.</p>
+            <h4 className="text-sm font-semibold text-[#1A1A1A]">Registro de Operaciones</h4>
+            <p className="text-xs text-[#666]">Últimos movimientos registrados en el sistema.</p>
           </div>
           <button onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 bg-white/50 border border-black/10 hover:bg-white text-[#1A1A1A] px-6 py-2.5 rounded-full text-sm font-medium transition-all">
+            className="flex items-center gap-2 bg-white/50 border border-black/10 hover:bg-white text-[#1A1A1A] px-4 py-1.5 rounded-xl text-xs font-medium transition-all">
             <Filter size={18} /> Filtros {showFilters ? '▲' : '▼'}
           </button>
         </div>
 
         {showFilters && (
-          <div className="px-8 py-6 border-b border-black/5 flex flex-wrap gap-6 bg-black/[0.02]">
+          <div className="px-4 py-3 border-b border-black/5 flex flex-wrap gap-4 bg-black/[0.02]">
             {[
               { label: 'Tipo', value: filterType, setter: setFilterType, options: [['all', 'Todos'], ['income', 'Ingresos'], ['expense', 'Gastos'], ['withdrawal', 'Retiros']] },
               { label: 'Moneda', value: filterCurrency, setter: setFilterCurrency, options: [['all', 'Todas'], ['USD', 'USD'], ['ARS', 'ARS'], ['EUR', 'EUR']] },
@@ -649,13 +649,13 @@ export default function Finance() {
               <div key={f.label} className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-[#999] uppercase tracking-widest">{f.label}</label>
                 <select value={f.value} onChange={e => f.setter(e.target.value)}
-                  className="h-10 rounded-xl border border-black/10 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-black/5 transition-all">
+                  className="h-8 rounded-lg border border-black/10 bg-white px-2.5 text-xs outline-none focus:ring-2 focus:ring-black/5 transition-all">
                   {(f.options as [string, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </div>
             ))}
             <button onClick={() => { setFilterType('all'); setFilterCurrency('all'); setFilterTag('all'); }}
-              className="self-end h-10 px-6 rounded-xl text-sm font-medium text-[#666] hover:text-[#1A1A1A] transition-colors">
+              className="self-end h-8 px-4 rounded-lg text-xs font-medium text-[#666] hover:text-[#1A1A1A] transition-colors">
               Limpiar filtros
             </button>
           </div>
@@ -667,7 +667,7 @@ export default function Finance() {
               <thead>
                 <tr className="bg-black/[0.01]">
                   {['Fecha', 'Descripción', 'Categoría', 'Origen', 'Moneda', 'Importe', ''].map((h, i) => (
-                    <th key={i} className={`px-8 py-6 text-[11px] font-bold text-[#999] uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}>{h}</th>
+                    <th key={i} className={`px-4 py-3 text-[10px] font-bold text-[#999] uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -677,10 +677,10 @@ export default function Finance() {
                   const curr = getCurrencyInfo(t.currency);
                   return (
                     <tr key={t.id} className="group hover:bg-black/[0.01] transition-colors">
-                      <td className="px-8 py-5 whitespace-nowrap text-sm text-[#1A1A1A] font-medium">{new Date(t.date).toLocaleDateString()}</td>
-                      <td className="px-8 py-5">
+                      <td className="px-4 py-2.5 whitespace-nowrap text-xs text-[#1A1A1A] font-medium">{new Date(t.date).toLocaleDateString()}</td>
+                      <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <div className="text-sm text-[#1A1A1A] font-medium">{t.description}</div>
+                          <div className="text-xs text-[#1A1A1A] font-medium">{t.description}</div>
                           {t.category === 'cyclic' && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-black/5 text-[#666666] uppercase tracking-wider">
                               <Zap size={8} className="text-[#FFD166]" /> Cíclico
@@ -689,35 +689,35 @@ export default function Finance() {
                         </div>
                         <div className="text-[10px] text-[#999] uppercase tracking-tighter">{t.status}</div>
                       </td>
-                      <td className="px-8 py-5">
+                      <td className="px-4 py-2.5">
                         {tagInfo
-                          ? <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${tagInfo.color}`}><Tag size={10} />{tagInfo.label}</span>
+                          ? <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${tagInfo.color}`}><Tag size={10} />{tagInfo.label}</span>
                           : <span className="text-xs text-[#999] uppercase font-bold tracking-tighter opacity-50">
                               {t.type === 'income' ? 'Ingreso' : (t.type === 'expense' ? 'Gasto' : 'Retiro')}
                             </span>}
                       </td>
-                      <td className="px-8 py-5">
+                      <td className="px-4 py-2.5">
                         <span className="text-xs font-medium text-[#666666]">{t.fund_source || '-'}</span>
                       </td>
-                      <td className="px-8 py-5">
+                      <td className="px-4 py-2.5">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${curr.badge}`}>{t.currency}</span>
                       </td>
-                      <td className="px-8 py-5 text-right">
+                      <td className="px-4 py-2.5 text-right">
                         <span className={`text-sm font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
                           {t.type === 'income' ? '+' : '-'}{curr.symbol}{Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </td>
-                      <td className="px-8 py-5 text-right relative">
+                      <td className="px-4 py-2.5 text-right relative">
                         <button onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === t.id ? null : t.id); }}
-                          className="text-[#DDD] group-hover:text-[#1A1A1A] p-2 rounded-full hover:bg-white transition-all shadow-sm">
+                          className="text-[#DDD] group-hover:text-[#1A1A1A] p-1.5 rounded-lg hover:bg-white transition-all shadow-sm">
                           <MoreVertical size={18} />
                         </button>
                         {openActionId === t.id && (
                           <div className="absolute right-12 top-10 w-48 bg-white rounded-2xl shadow-2xl border border-black/5 flex flex-col p-2 z-[9999]">
-                            <button onClick={(e) => handleToggleStatus(t, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
+                            <button onClick={(e) => handleToggleStatus(t, e)} className="flex items-center gap-3 px-4 py-3 text-xs text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
                               <DollarSign size={16} />{t.status === 'Paid' ? 'Pendiente' : 'Pagado'}
                             </button>
-                            <Link to={`/finance/edit/${t.id}`} className="flex items-center gap-3 px-4 py-3 text-sm text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
+                            <Link to={`/finance/edit/${t.id}`} className="flex items-center gap-3 px-4 py-3 text-xs text-[#1A1A1A] font-medium hover:bg-black/5 rounded-xl transition-colors text-left">
                               <Edit2 size={16} />Editar
                             </Link>
                             <button onClick={(e) => handleDelete(t.id, e)} className="flex items-center gap-3 px-4 py-3 text-sm text-red-500 font-medium hover:bg-red-50 rounded-xl transition-colors text-left">
@@ -736,14 +736,14 @@ export default function Finance() {
       </div>
 
       {/* ── Comisiones por Pagar ── */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden mt-8">
-        <div className="p-6 md:p-8 border-b border-black/5 flex justify-between items-center bg-white/50">
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm overflow-hidden mt-4">
+        <div className="p-4 md:px-5 border-b border-black/5 flex justify-between items-center bg-white/50">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-[#FFD166]/20 rounded-2xl text-[#D4A017]">
-              <DollarSign size={24} />
+            <div className="p-2 bg-[#FFD166]/20 rounded-xl text-[#D4A017]">
+              <DollarSign size={18} />
             </div>
             <div>
-              <h4 className="text-xl font-medium text-[#1A1A1A]">Motor de Comisiones</h4>
+              <h4 className="text-sm font-semibold text-[#1A1A1A]">Motor de Comisiones</h4>
               <p className="text-[#666] text-sm">Cálculo de comisiones por referidos (S&S 15%, Medium 12%, Nom 10%)</p>
             </div>
           </div>
@@ -752,26 +752,26 @@ export default function Finance() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-black/5 bg-black/5">
-                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider">Aliado Comercial</th>
-                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider">Proyecto</th>
-                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider">Hito Relacionado</th>
-                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider text-right">Comisión (USD)</th>
-                <th className="py-4 px-6 text-xs font-semibold text-[#666666] uppercase tracking-wider text-right">Estado</th>
+                <th className="py-2.5 px-4 text-[10px] font-semibold text-[#666666] uppercase tracking-wider">Aliado Comercial</th>
+                <th className="py-2.5 px-4 text-[10px] font-semibold text-[#666666] uppercase tracking-wider">Proyecto</th>
+                <th className="py-2.5 px-4 text-[10px] font-semibold text-[#666666] uppercase tracking-wider">Hito Relacionado</th>
+                <th className="py-2.5 px-4 text-[10px] font-semibold text-[#666666] uppercase tracking-wider text-right">Comisión (USD)</th>
+                <th className="py-2.5 px-4 text-[10px] font-semibold text-[#666666] uppercase tracking-wider text-right">Estado</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
               {commissions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-[#666] italic">No hay comisiones por pagar.</td>
+                  <td colSpan={5} className="py-4 text-center text-[#666] text-xs italic">No hay comisiones por pagar.</td>
                 </tr>
               ) : (
                 commissions.map((c) => (
                   <tr key={c.id} className="hover:bg-white/50 transition-colors">
-                    <td className="py-4 px-6 text-sm font-medium text-[#1A1A1A]">{c.ally_name}</td>
-                    <td className="py-4 px-6 text-sm text-[#666]">{c.project_name}</td>
-                    <td className="py-4 px-6 text-sm text-[#666]">{c.transaction_desc}</td>
-                    <td className="py-4 px-6 text-sm font-medium text-right text-[#1A1A1A]">${c.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td className="py-4 px-6 text-sm text-right">
+                    <td className="py-2.5 px-4 text-xs font-medium text-[#1A1A1A]">{c.ally_name}</td>
+                    <td className="py-4 px-6 text-xs text-[#666]">{c.project_name}</td>
+                    <td className="py-4 px-6 text-xs text-[#666]">{c.transaction_desc}</td>
+                    <td className="py-2.5 px-4 text-xs font-medium text-right text-[#1A1A1A]">${c.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="py-2.5 px-4 text-xs text-right">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.status === 'Apta para pago' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                             {c.status}
                         </span>

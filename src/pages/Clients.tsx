@@ -56,7 +56,7 @@ export default function Clients() {
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-4xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A]">Directorio de Clientes</h3>
+          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A]">Directorio de Clientes</h3>
           <p className="text-[#666666] mt-1">Gestiona la información y el estado de tus clientes.</p>
         </div>
         <Link to="/clients/new" className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10">
@@ -65,7 +65,7 @@ export default function Clients() {
         </Link>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm flex flex-col">
+      <div className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm flex flex-col">
         <div className="p-6 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-96">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#666666]">

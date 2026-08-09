@@ -76,7 +76,7 @@ export default function Leads() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-2xl md:text-[32px] font-normal tracking-tight text-[#1A1A1A] flex items-center gap-2.5">
+          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A] flex items-center gap-2.5">
             <Activity className="w-6 h-6 text-[#FFD166]" />
             Leads
           </h3>
@@ -224,7 +224,7 @@ function NewLeadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <form onSubmit={handleSave} className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden p-6 flex flex-col gap-4">
+      <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-medium text-[#1A1A1A]">Nuevo Lead</h3>
           <button type="button" onClick={onClose}><X size={20} /></button>

@@ -573,7 +573,7 @@ export default function SmartQuoter() {
                 {/* Left Panel */}
                 <aside className="lg:col-span-3 flex flex-col gap-6 min-w-0">
                     {/* Vinculación */}
-                    <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-6">
+                    <div className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm p-8 flex flex-col gap-6">
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-white rounded-2xl shadow-sm text-[#1A1A1A]">
                                 <Database size={20} />
@@ -609,7 +609,7 @@ export default function SmartQuoter() {
                     </div>
 
                     {/* Contexto Analítico */}
-                    <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-6">
+                    <div className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm p-8 flex flex-col gap-6">
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-white rounded-2xl shadow-sm text-[#1A1A1A]">
                                 <Microscope size={20} />
@@ -649,7 +649,7 @@ export default function SmartQuoter() {
                 {/* Right Panel - Results */}
                 <main className="lg:col-span-7 flex flex-col gap-6 min-w-0">
                     {appState === 'welcome' && (
-                        <div className="flex-1 min-h-[500px] flex flex-col items-center justify-center text-center p-10 bg-white/40 backdrop-blur-xl rounded-[32px] border-dashed border-2 border-black/10">
+                        <div className="flex-1 min-h-[500px] flex flex-col items-center justify-center text-center p-10 bg-white/40 backdrop-blur-xl rounded-2xl border-dashed border-2 border-black/10">
                             <div className="w-20 h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6">
                                 <Calculator className="w-9 h-9 text-[#999999]" />
                             </div>
@@ -661,7 +661,7 @@ export default function SmartQuoter() {
                     )}
 
                     {appState === 'loading' && (
-                        <div className="flex-1 min-h-[500px] flex flex-col items-center justify-center text-center p-10 bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm">
+                        <div className="flex-1 min-h-[500px] flex flex-col items-center justify-center text-center p-10 bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm">
                             <div className="w-20 h-20 bg-[#222222] rounded-2xl flex items-center justify-center mb-6 shadow-lg">
                                 <Loader2 className="w-9 h-9 text-[#FFD166] animate-spin" />
                             </div>
@@ -674,7 +674,7 @@ export default function SmartQuoter() {
                         <>
                             {/* Stat Cards */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div className="bg-white/60 backdrop-blur-xl rounded-[24px] border border-white/40 shadow-sm p-5">
+                                <div className="bg-white/60 backdrop-blur-xl rounded-xl border border-white/40 shadow-sm p-5">
                                     <div className="p-2 bg-white rounded-xl shadow-sm text-[#1A1A1A] w-fit mb-3">
                                         <Clock size={18} />
                                     </div>
@@ -682,7 +682,7 @@ export default function SmartQuoter() {
                                     <h4 className="text-2xl font-light text-[#1A1A1A]">{results.hoursStage1}<span className="text-sm text-[#666666] ml-1">h</span></h4>
                                     <p className="text-[11px] text-[#666666] mt-1">{results.labelStage1}</p>
                                 </div>
-                                <div className="bg-white/60 backdrop-blur-xl rounded-[24px] border border-white/40 shadow-sm p-5">
+                                <div className="bg-white/60 backdrop-blur-xl rounded-xl border border-white/40 shadow-sm p-5">
                                     <div className="p-2 bg-white rounded-xl shadow-sm text-[#1A1A1A] w-fit mb-3">
                                         <BarChart2 size={18} />
                                     </div>
@@ -690,7 +690,7 @@ export default function SmartQuoter() {
                                     <h4 className="text-2xl font-light text-[#1A1A1A]">{results.hoursStage2}<span className="text-sm text-[#666666] ml-1">h</span></h4>
                                     <p className="text-[11px] text-[#666666] mt-1">{results.labelStage2}</p>
                                 </div>
-                                <div className="bg-white/60 backdrop-blur-xl rounded-[24px] border border-white/40 shadow-sm p-5">
+                                <div className="bg-white/60 backdrop-blur-xl rounded-xl border border-white/40 shadow-sm p-5">
                                     <div className="p-2 bg-white rounded-xl shadow-sm text-green-600 w-fit mb-3">
                                         <TrendingUp size={18} />
                                     </div>
@@ -698,7 +698,7 @@ export default function SmartQuoter() {
                                     <h4 className="text-xl font-light text-[#1A1A1A]">${results.financialEstimation.estimatedRevenue.toLocaleString()}</h4>
                                     <p className="text-[11px] text-[#666666] mt-1">Anual (PxQ)</p>
                                 </div>
-                                <div className="bg-[#222222] text-white rounded-[24px] shadow-xl p-5">
+                                <div className="bg-[#222222] text-white rounded-xl shadow-xl p-5">
                                     <div className="p-2 bg-white/10 rounded-xl w-fit mb-3">
                                         <DollarSign size={18} />
                                     </div>
@@ -711,7 +711,7 @@ export default function SmartQuoter() {
                             </div>
 
                             {/* Tabs Content */}
-                            <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm overflow-hidden mt-2">
+                            <div className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm overflow-hidden mt-2">
                                 <div className="flex overflow-x-auto border-b border-black/5 hide-scrollbar">
                                     <button onClick={() => setActiveTab('strategy')}
                                         className={`px-6 py-4 text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'strategy'
@@ -791,7 +791,7 @@ export default function SmartQuoter() {
                                             </div>
 
                                             {/* Narrativa Comercial */}
-                                            <div className="bg-white/50 border border-black/5 p-6 rounded-[24px]">
+                                            <div className="bg-white/50 border border-black/5 p-6 rounded-xl">
                                                 <div className="flex justify-between items-start mb-4">
                                                     <h4 className="font-medium text-[#1A1A1A]">Narrativa Comercial Sugerida</h4>
                                                     <button onClick={copyNarrative}
@@ -845,7 +845,7 @@ export default function SmartQuoter() {
                                                     </div>
                                                 </div>
 
-                                                <div className={`p-8 rounded-[32px] flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm border transition-colors duration-500 ${
+                                                <div className={`p-8 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm border transition-colors duration-500 ${
                                                     (annualSavings > 0 && setupFee / (annualSavings / 12) <= 6) ? 'bg-emerald-50 border-emerald-200' : 'bg-white/60 border-white/40'
                                                 }`}>
                                                     <div>
@@ -879,7 +879,7 @@ export default function SmartQuoter() {
                                             </div>
 
                                             {/* ── BLOQUE 1: ANCLAJE ── */}
-                                            <section className="bg-white/40 rounded-[32px] p-6 border border-black/5 min-w-0">
+                                            <section className="bg-white/40 rounded-2xl p-6 border border-black/5 min-w-0">
                                                 <h4 className="text-[#1A1A1A] font-medium mb-4 flex items-center gap-2">
                                                     <Anchor className="text-[#008CA4] w-5 h-5 shrink-0" />
                                                     Pilar 1: Anclaje de Expectativas (Costo de Inacción)
@@ -904,7 +904,7 @@ export default function SmartQuoter() {
                                             </section>
 
                                             {/* ── BLOQUE 2: EFECTO IKEA ── */}
-                                            <section className="bg-white/40 rounded-[32px] p-6 border border-black/5 min-w-0">
+                                            <section className="bg-white/40 rounded-2xl p-6 border border-black/5 min-w-0">
                                                 <h4 className="text-[#1A1A1A] font-medium mb-4 flex items-center gap-2">
                                                     <CheckCircle2 className="text-[#008CA4] w-5 h-5 shrink-0" />
                                                     Pilar 2: Efecto Co-creación (Validación de Prioridades)
@@ -922,7 +922,7 @@ export default function SmartQuoter() {
                                             </section>
 
                                             {/* ── BLOQUE 3: TABLA COMPARATIVA ── */}
-                                            <section className="bg-white/40 rounded-[32px] p-6 border border-black/5 min-w-0">
+                                            <section className="bg-white/40 rounded-2xl p-6 border border-black/5 min-w-0">
                                                 <h4 className="text-[#1A1A1A] font-medium mb-4 flex items-center gap-2">
                                                     <Star className="text-[#FFD166] w-5 h-5 shrink-0" />
                                                     Pilar 3: Efecto Anzuelo (Arquitectura de Precios)
@@ -965,7 +965,7 @@ export default function SmartQuoter() {
                                             </section>
 
                                             {/* ── BLOQUE 4: PODER DEL GRATIS ── */}
-                                            <section className="bg-white/40 rounded-[32px] p-6 border border-black/5 min-w-0">
+                                            <section className="bg-white/40 rounded-2xl p-6 border border-black/5 min-w-0">
                                                 <h4 className="text-[#1A1A1A] font-medium mb-4 flex items-center gap-2">
                                                     <Gift className="text-green-500 w-5 h-5 shrink-0" />
                                                     Pilar 4: El Poder del "Gratis"
@@ -1013,7 +1013,7 @@ export default function SmartQuoter() {
             {/* Save Modal */}
             {isSaveModalOpen && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-                    <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
                         <div className="p-6 border-b border-black/5 flex justify-between items-center">
                             <h3 className="text-xl font-medium text-[#1A1A1A]">{savedQuoteId ? 'Cotización Guardada' : 'Guardar Cotización en Historial'}</h3>
                             <button onClick={() => { setIsSaveModalOpen(false); setSavedQuoteId(null); }} className="p-2 hover:bg-black/5 rounded-full transition-colors">

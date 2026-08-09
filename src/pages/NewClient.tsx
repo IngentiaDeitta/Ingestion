@@ -75,12 +75,12 @@ export default function NewClient() {
           <ArrowLeft size={20} className="text-[#1A1A1A]" />
         </Link>
         <div>
-          <h3 className="text-[42px] font-normal tracking-tight text-[#1A1A1A]">Nuevo Cliente</h3>
+          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A]">Nuevo Cliente</h3>
           <p className="text-[#666666] mt-1">Registra un nuevo cliente en el sistema.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm p-8 flex flex-col gap-8">
+      <form onSubmit={handleSave} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm p-8 flex flex-col gap-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-2 md:col-span-2">
             <label className="text-sm font-medium text-[#1A1A1A]">Nombre de la Empresa</label>
@@ -173,7 +173,7 @@ export default function NewClient() {
                 <span className="text-sm font-medium">Agregar Persona de Contacto</span>
               </button>
             ) : (
-              <div className="bg-white/80 p-6 rounded-[24px] border border-[#FFD166]/50 shadow-sm flex flex-col gap-4">
+              <div className="bg-white/80 p-6 rounded-xl border border-[#FFD166]/50 shadow-sm flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-[#666666] uppercase">Nombre</label>

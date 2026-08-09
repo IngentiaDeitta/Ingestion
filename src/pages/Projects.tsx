@@ -102,7 +102,7 @@ export default function Projects() {
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-4xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A]">Proyectos</h3>
+          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A]">Proyectos</h3>
           <p className="text-[#666666] mt-1">Gestiona el ciclo de vida y rentabilidad de los proyectos.</p>
         </div>
         <Link to="/projects/new" className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-6 py-3 rounded-full text-sm font-medium transition-colors shadow-lg shadow-black/10">
@@ -111,7 +111,7 @@ export default function Projects() {
         </Link>
       </div>
 
-      <div className="flex-1 bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/40 shadow-sm flex flex-col mb-10 min-h-[500px]">
+      <div className="flex-1 bg-white/60 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm flex flex-col mb-10 min-h-[500px]">
         <div className="p-6 border-b border-black/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-96">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#666666]">
@@ -252,7 +252,7 @@ export default function Projects() {
         ) : (
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
-              <div key={project.id} className="bg-white/50 border border-black/5 rounded-[24px] p-6 hover:shadow-md transition-shadow relative">
+              <div key={project.id} className="bg-white/50 border border-black/5 rounded-xl p-6 hover:shadow-md transition-shadow relative">
                 <Link to={`/projects/${project.id}`} className="block">
                   <div className="flex justify-between items-start mb-4">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${project.status === 'En Progreso' ? 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50' :

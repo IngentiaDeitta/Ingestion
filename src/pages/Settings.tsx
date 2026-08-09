@@ -187,7 +187,7 @@ export default function Settings() {
   return (
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1400px] mx-auto">
       <div>
-        <h1 className="text-4xl font-semibold text-[#1A1A1A] mb-2">Ajustes</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-2">Ajustes</h1>
         <p className="text-[#666666]">Gestiona tu cuenta y las preferencias de la empresa.</p>
       </div>
 
@@ -212,7 +212,7 @@ export default function Settings() {
           })}
         </div>
 
-        <div className="flex-1 bg-white border border-black/5 rounded-[32px] p-8 min-h-[500px]">
+        <div className="flex-1 bg-white border border-black/5 rounded-2xl p-8 min-h-[500px]">
           {activeTab === 'perfil' && (
             <div className="flex flex-col gap-8">
               <div className="flex items-center gap-8">
@@ -328,7 +328,7 @@ export default function Settings() {
                   { id: 'project_updates', label: 'Actualizaciones de Proyectos', desc: 'Avisar cuando alguien comenta o cambia el estado de un proyecto.' },
                   { id: 'marketing_emails', label: 'Comunicaciones de Ingentia', desc: 'Novedades y nuevas funcionalidades del sistema.' },
                 ].map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 rounded-[24px] border border-black/5 bg-black/[0.01] hover:bg-black/[0.03] transition-colors">
+                  <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-black/5 bg-black/[0.01] hover:bg-black/[0.03] transition-colors">
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-bold text-[#1A1A1A]">{item.label}</span>
                       <span className="text-xs text-[#666666]">{item.desc}</span>

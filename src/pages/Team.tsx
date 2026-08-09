@@ -100,7 +100,7 @@ export default function Team() {
     <div className="flex-1 flex flex-col gap-8 w-full max-w-[1200px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-4xl md:text-[42px] font-normal tracking-tight text-[#1A1A1A]">Equipo</h3>
+          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A]">Equipo</h3>
           <p className="text-[#666666] mt-1">Gestiona los recursos y miembros de tu organización.</p>
         </div>
         <button 
@@ -119,7 +119,7 @@ export default function Team() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {members.map((member) => (
-            <div key={member.id} className="bg-white/60 backdrop-blur-xl p-6 rounded-[32px] border border-white/40 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+            <div key={member.id} className="bg-white/60 backdrop-blur-xl p-6 rounded-2xl border border-white/40 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
                <div className="flex items-center gap-4 mb-6">
                   <div 
                     className={`w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold shadow-inner ${isDarkColor(member.avatar_color) ? 'text-white' : 'text-[#1A1A1A]'}`}
@@ -159,7 +159,7 @@ export default function Team() {
       {/* Modal Añadir Miembro */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="p-6 border-b border-black/5 flex justify-between items-center">
               <h3 className="text-xl font-medium text-[#1A1A1A]">Añadir al Equipo</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">

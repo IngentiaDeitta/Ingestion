@@ -68,7 +68,7 @@ export default function Register() {
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-[#E5E9E6] bg-gradient-to-br from-[#E5E9E6] via-[#F6EEDF] to-[#E5E9E6] text-[#1A1A1A] p-4">
       <div className="relative w-full max-w-[520px]">
-        <div className="bg-white/80 backdrop-blur-xl shadow-xl shadow-black/5 rounded-[32px] border border-white/40 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-xl shadow-xl shadow-black/5 rounded-2xl border border-white/40 overflow-hidden">
           <div className="px-8 pt-10 pb-6 text-center flex flex-col items-center">
             <div className="mb-6">
               <svg viewBox="0 0 200 60" className="h-10" fill="none" xmlns="http://www.w3.org/2000/svg">
