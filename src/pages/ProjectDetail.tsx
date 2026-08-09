@@ -147,7 +147,7 @@ export default function ProjectDetail() {
   const [balanceEquipo, setBalanceEquipo] = useState<BalanceEquipo | null>(null);
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskAssignee, setNewTaskAssignee] = useState('Fer');
+  const [newTaskAssignee, setNewTaskAssignee] = useState('');
 
   // AI Analyst State
 
@@ -377,9 +377,12 @@ export default function ProjectDetail() {
 
   useEffect(() => {
     if (project) {
-      setNewTaskAssignee(project.delegated_to === 'Tercero' ? 'Tercero (Freelance)' : 'Fer');
+      const defaultName = project.delegated_to === 'Tercero' 
+        ? 'Tercero (Freelance)' 
+        : (assignedTeam[0]?.name || allTeam[0]?.name || 'Fernando Miceli');
+      setNewTaskAssignee(defaultName);
     }
-  }, [project?.delegated_to]);
+  }, [project?.delegated_to, assignedTeam, allTeam]);
 
   const handleToggleMember = async (memberId: string) => {
     if (!id) return;
@@ -2357,8 +2360,9 @@ export default function ProjectDetail() {
                   onChange={(e) => setNewTaskAssignee(e.target.value)}
                   className="bg-white border border-black/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-[#FFD166]"
                 >
-                  <option value="Fer">Fer</option>
-                  <option value="Pedro">Pedro</option>
+                  {(assignedTeam.length > 0 ? assignedTeam : allTeam).map(m => (
+                    <option key={m.id} value={m.name}>{m.name}</option>
+                  ))}
                   <option value="Tercero (Freelance)">Tercero (Freelance)</option>
                 </select>
                 <button type="submit" className="bg-[#222222] text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-black transition-colors">
