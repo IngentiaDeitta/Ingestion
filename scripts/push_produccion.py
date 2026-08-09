@@ -17,9 +17,9 @@ def run_cmd(cmd):
 def main():
     print("=== Iniciando proceso de push a producción (origin/main) ===")
     
-    # 0. Add directivas and scripts if present
-    run_cmd(["git", "add", "directivas/push_produccion_SOP.md", "scripts/push_produccion.py"])
-    run_cmd(["git", "commit", "-m", "docs: add push_produccion_SOP directive and push_produccion.py script"])
+    # 0. Add all modified/new files and commit
+    run_cmd(["git", "add", "."])
+    run_cmd(["git", "commit", "-m", "feat: vertical commercial funnel, dashboard redesign and interactive cards"])
 
     # 1. Fetch
     success, _, _ = run_cmd(["git", "fetch", "origin"])

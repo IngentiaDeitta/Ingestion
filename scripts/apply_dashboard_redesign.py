@@ -1,4 +1,6 @@
-import {
+import os
+
+DASHBOARD_CODE = """import {
   DollarSign, TrendingUp, Clock, Zap, AlertTriangle,
   ChevronRight, BarChart2, Users as UsersIcon, Folder as FolderIcon,
   ArrowUpRight, Briefcase, FileText, Target, Calendar, Plus, X, Save,
@@ -749,3 +751,13 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
     </div>
   );
 }
+"""
+
+def main():
+    target_path = os.path.join("src", "pages", "Dashboard.tsx")
+    with open(target_path, "w", encoding="utf-8") as f:
+        f.write(DASHBOARD_CODE)
+    print(f"[SUCCESS] Updated {target_path} with redesigned vertical funnel and interactive cards.")
+
+if __name__ == "__main__":
+    main()

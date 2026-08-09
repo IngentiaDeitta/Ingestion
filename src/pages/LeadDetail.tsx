@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Building2, BrainCircuit, Play, Loader2, Target, AlertTriangle, MessageCircle, Server, Quote, ListChecks, Link2, Users, Pencil, Save, X, Plus, Trash2, Globe, Linkedin, Instagram, Facebook, UserCheck, History } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateLeadEnrichment, PreCallBrief } from '../lib/gemini-lead-enrichment';
@@ -93,6 +93,7 @@ const NIVEL_STYLES: Record<string, { dot: string; label: string }> = {
 };
 
 export default function LeadDetail() {
+  const navigate = useNavigate();
   const { id } = useParams();
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
