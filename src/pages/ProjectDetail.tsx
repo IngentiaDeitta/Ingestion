@@ -113,6 +113,7 @@ export default function ProjectDetail() {
         assignee: editingTaskManual.assignee || 'Fer',
         description: editingTaskManual.description || '',
         delegable: !!editingTaskManual.delegable,
+        tags: editingTaskManual.tags || [],
       };
 
       if (isNew) {
@@ -1423,6 +1424,27 @@ export default function ProjectDetail() {
               </select>
             </div>
           </div>
+
+          {milestones.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-[#666666]">Hito Vinculado (Opcional)</label>
+              <select
+                value={editingTaskManual.milestoneId || (editingTaskManual.tags?.find((t: string) => t.startsWith('milestone:'))?.replace('milestone:', '') || '')}
+                onChange={(e) => {
+                  const mId = e.target.value;
+                  const cleanTags = (editingTaskManual.tags || []).filter((t: string) => !t.startsWith('milestone:'));
+                  if (mId) cleanTags.push(`milestone:${mId}`);
+                  setEditingTaskManual({ ...editingTaskManual, milestoneId: mId, tags: cleanTags });
+                }}
+                className="bg-black/2 border border-black/10 rounded-2xl px-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A]"
+              >
+                <option value="">Sin hito asociado</option>
+                {milestones.map(m => (
+                  <option key={m.id} value={m.id}>{m.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
