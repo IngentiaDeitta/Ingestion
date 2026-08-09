@@ -1,4 +1,4 @@
-import { ArrowLeft, X, Plus, Trash2, FileText, CheckCircle, Calendar, DollarSign, Edit3, Upload, ChevronRight } from 'lucide-react';
+import { ArrowLeft, X, Plus, Trash2, FileText, CheckCircle, Calendar, DollarSign, Edit3, Upload, ChevronRight, Check } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
@@ -46,6 +46,80 @@ interface TeamMember {
   name: string;
   role: string;
   avatar_color: string;
+}
+
+function ProjectMultiAssigneeSelector({ 
+  selectedNames, 
+  teamMembers, 
+  onChange 
+}: { 
+  selectedNames: string[]; 
+  teamMembers: TeamMember[]; 
+  onChange: (names: string[]) => void; 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const options = teamMembers.length > 0 ? teamMembers : [
+    { id: '1', name: 'Fernando Miceli', role: 'Socio IngentIA', avatar_color: '#FFD166' },
+    { id: '2', name: 'Pedro Sequeira', role: 'Socio IngentIA', avatar_color: '#222222' },
+    { id: '3', name: 'Natalia Salerti', role: 'Desarrollador', avatar_color: '#FFD166' },
+    { id: '4', name: 'Tercero (Freelance)', role: 'Freelancer', avatar_color: '#888888' },
+  ];
+
+  const allOptionNames = new Set(options.map(o => o.name));
+  const extraOptions = selectedNames.filter(n => !allOptionNames.has(n)).map(n => ({
+    id: n,
+    name: n,
+    role: 'Asignado',
+    avatar_color: '#888888'
+  }));
+  const fullList = [...options, ...extraOptions];
+
+  return (
+    <div className="relative">
+      <div 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="w-full min-h-[46px] p-2 rounded-2xl border border-black/10 bg-black/2 flex flex-wrap gap-2 cursor-pointer items-center transition-colors hover:border-black/20"
+      >
+        {selectedNames.length === 0 && <span className="text-[#999999] text-xs p-1 ml-2">Seleccionar responsables...</span>}
+        {selectedNames.map(name => (
+          <span key={name} className="bg-[#222222] text-white text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
+            {name}
+            <X size={12} className="cursor-pointer hover:text-red-300" onClick={(e) => { e.stopPropagation(); onChange(selectedNames.filter(n => n !== name)); }} />
+          </span>
+        ))}
+      </div>
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)}></div>
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-black/10 rounded-2xl shadow-2xl z-20 max-h-56 overflow-y-auto p-2">
+            {fullList.map((m: any) => (
+              <div 
+                key={m.id || m.name} 
+                onClick={() => {
+                  const newNames = selectedNames.includes(m.name) 
+                    ? selectedNames.filter(n => n !== m.name) 
+                    : [...selectedNames, m.name];
+                  onChange(newNames);
+                }} 
+                className="flex items-center justify-between px-3 py-2 hover:bg-black/5 rounded-xl cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ backgroundColor: m.avatar_color || '#222222' }}>
+                    {m.name.split(' ').map((n: string) => n[0]).join('')}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-[#1A1A1A]">{m.name}</span>
+                    {m.role && <span className="text-[9px] text-[#999999]">{m.role}</span>}
+                  </div>
+                </div>
+                {selectedNames.includes(m.name) && <Check size={14} className="text-emerald-600 font-bold" />}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function ProjectDetail() {
@@ -1411,17 +1485,16 @@ export default function ProjectDetail() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#666666]">Responsable</label>
-              <select
-                value={editingTaskManual.assignee || (assignedTeam[0]?.name || allTeam[0]?.name || 'Fer')}
-                onChange={(e) => setEditingTaskManual({ ...editingTaskManual, assignee: e.target.value, assignees: [e.target.value] })}
-                className="bg-black/2 border border-black/10 rounded-2xl px-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A]"
-              >
-                {(assignedTeam.length > 0 ? assignedTeam : allTeam).map(m => (
-                  <option key={m.id} value={m.name}>{m.name}</option>
-                ))}
-                <option value="Tercero (Freelance)">Tercero (Freelance)</option>
-              </select>
+              <label className="text-xs font-bold uppercase tracking-wider text-[#666666]">Responsables (Múltiple)</label>
+              <ProjectMultiAssigneeSelector
+                selectedNames={editingTaskManual.assignees || (editingTaskManual.assignee ? [editingTaskManual.assignee] : [])}
+                teamMembers={assignedTeam.length > 0 ? assignedTeam : allTeam}
+                onChange={(names) => setEditingTaskManual({
+                  ...editingTaskManual,
+                  assignees: names,
+                  assignee: names[0] || null
+                })}
+              />
             </div>
           </div>
 

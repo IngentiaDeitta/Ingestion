@@ -53,10 +53,10 @@
   - Buscar las tareas asociadas al hito completado y marcarlas como `status: 'done'` y `actual_hours: hours`.
   - Identificar el siguiente hito no completado ("Hito en Curso") y activar sus tareas a `status: 'todo'` o `'in_progress'`.
 
-### Requisito 5: Tarjeta de Cobros por Avances y Creación Manual de Tareas vía Modal
+### Requisito 5: Tarjeta de Cobros por Avances y Creación Manual de Tareas vía Modal (Múltiples Responsables)
 - En `ProjectDetail.tsx`:
   - **Cobros por Avances:** La tarjeta debe mostrar únicamente la suma total cobrada al momento (hitos con `billing_confirmed: true` o registros de ingresos cobrados en `finances`), eliminando la comparación relativa "de $X USD" para que sea un indicador directo del flujo ingresado.
-  - **Creación Manual de Tareas:** En la sección "Tareas del Proyecto", proveer un botón directo `+ Nueva Tarea Manual` que despliegue la ventana emergente modal (`taskManualModal`) con todos los campos configurables: Título, Estado, Prioridad, Fase (Engineering Path), Responsables (del equipo asignado), Horas Estimadas, Fecha Límite, Descripción y opción de Delegación.
+  - **Creación y Asignación Múltiple de Tareas:** En la sección "Tareas del Proyecto" y su modal emergente (`taskManualModal`), permitir seleccionar **múltiples responsables por tarea** (`ProjectMultiAssigneeSelector`), de forma que tareas compartidas puedan asignarse simultáneamente a Natalia Salerti, Fernando Miceli, Pedro Sequeira o freelancers, mostrando los avatares de todos los asignados.
 
 ---
 
@@ -76,6 +76,7 @@
 | 09/08 | Hito completado no cerraba tareas | La marca de hito solo cambiaba el JSON de hitos sin mutar el estado de las tareas | Implementar cascada automática: Hito completado -> Tareas vinculadas a `done` -> Hito en curso activado. |
 | 09/08 | Muestra de presupuesto en Cobros | La tarjeta de cobros mostraba la fracción "de $X USD" | Ajustado para mostrar únicamente el valor monetario cobrado al momento. |
 | 09/08 | Falta de creación manual de tareas en vista de proyecto | No había botón directo para abrir la ventana emergente modal de tarea manual en el proyecto | Agregado el botón `+ Nueva Tarea Manual` en el encabezado de "Tareas del Proyecto". |
+| 09/08 | Tarea con responsable único | La selección de responsable en la modal manual usaba un `<select>` simple que solo permitía 1 persona | Creado `ProjectMultiAssigneeSelector` para permitir seleccionar múltiples responsables simultáneos. |
 
 ---
 
