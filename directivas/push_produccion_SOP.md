@@ -57,6 +57,7 @@
 | Fecha | Error Detectado | Causa Raíz | Solución/Parche Aplicado |
 |-------|----------------|------------|--------------------------|
 | 09/08 | Push rejected (non-fast-forward) | `origin/main` recibió commits de bots (`skip ci`) mientras `main` local tenía commits propios | Ejecutar `git pull --rebase origin main` antes de `git push origin main` |
+| 09/08 | Subprocess hang en Python | `subprocess.run` sin timeout se bloqueaba esperando stdin en Git CLI no interactivo | Especificar `timeout=30` en llamadas a `subprocess.run` para evitar bloqueos infinitos |
 
 ---
 

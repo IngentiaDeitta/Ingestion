@@ -3,12 +3,16 @@ import sys
 
 def run_cmd(cmd):
     print(f"Ejecutando: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"Error ({result.returncode}):\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}")
-        return False, result.stdout, result.stderr
-    print(result.stdout)
-    return True, result.stdout, result.stderr
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            print(f"Error ({result.returncode}):\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+            return False, result.stdout, result.stderr
+        print(result.stdout)
+        return True, result.stdout, result.stderr
+    except subprocess.TimeoutExpired as e:
+        print(f"Timeout al ejecutar {' '.join(cmd)}: {e}")
+        return False, "", str(e)
 
 def main():
     print("=== Iniciando proceso de push a producción (origin/main) ===")
