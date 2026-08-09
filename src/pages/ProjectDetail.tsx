@@ -687,19 +687,12 @@ export default function ProjectDetail() {
   };
 
   const handleToggleCompleted = async (milestone: ProjectMilestone) => {
-    const linkedTasks = projectTasks.filter(t => t.tags && Array.isArray(t.tags) && t.tags.includes(`milestone:${milestone.id}`));
-    const pendingTasks = linkedTasks.filter(t => t.status !== 'done');
-
-    if (!milestone.completed && pendingTasks.length > 0) {
-      alert(`No se puede completar el hito. Hay ${pendingTasks.length} tarea(s) vinculada(s) que aún no están finalizadas.`);
-      return;
-    }
-
     const nextCompleted = !milestone.completed;
     let realDate = milestone.real_date;
+    const todayStr = new Date().toISOString().split('T')[0];
 
     if (nextCompleted && !realDate) {
-      realDate = new Date().toISOString().split('T')[0];
+      realDate = todayStr;
     } else if (!nextCompleted) {
       realDate = null;
     }
@@ -709,7 +702,42 @@ export default function ProjectDetail() {
         ? { ...m, completed: nextCompleted, real_date: realDate }
         : m
     );
+
+    // Si el hito se marca como completado, actualizar las tareas asociadas a este hito a "done"
+    if (nextCompleted) {
+      const linkedTasks = projectTasks.filter(t =>
+        (t.tags && Array.isArray(t.tags) && t.tags.includes(`milestone:${milestone.id}`)) ||
+        (t.phase && (t.phase === milestone.title || milestone.title?.toLowerCase().includes(t.phase.toLowerCase())))
+      );
+
+      for (const t of linkedTasks) {
+        if (t.status !== 'done') {
+          await supabase.from('tasks').update({
+            status: 'done',
+            actual_hours: t.hours || t.actual_hours || 0,
+            due_date: realDate || todayStr
+          }).eq('id', t.id);
+        }
+      }
+
+      // Activar las tareas del siguiente hito en curso ("hito en curso")
+      const nextMilestone = updatedMilestones.find(m => !m.completed);
+      if (nextMilestone) {
+        const nextTasks = projectTasks.filter(t =>
+          (t.tags && Array.isArray(t.tags) && t.tags.includes(`milestone:${nextMilestone.id}`)) ||
+          (t.phase && (t.phase === nextMilestone.title || nextMilestone.title?.toLowerCase().includes(t.phase.toLowerCase())))
+        );
+
+        for (const t of nextTasks) {
+          if (t.status === 'done' || !t.status) {
+            await supabase.from('tasks').update({ status: 'todo' }).eq('id', t.id);
+          }
+        }
+      }
+    }
+
     await saveMilestones(updatedMilestones);
+    await fetchProjectData();
   };
 
   const handleUpdateRealDate = async (milestoneId: string, date: string | null) => {

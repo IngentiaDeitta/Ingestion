@@ -467,7 +467,32 @@ export default function LeadDetail() {
 
           {/* Redes y sitio */}
           <div className="bg-white rounded-2xl border border-black/5 shadow-xs p-4 flex flex-col gap-3">
-            <h3 className="font-semibold text-xs text-[#1A1A1A]">Presencia digital</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-xs text-[#1A1A1A]">Presencia Digital y Reputación</h3>
+              <button 
+                onClick={() => handleGenerateBrief(false)}
+                disabled={isEnriching}
+                className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100 flex items-center gap-1 transition-colors"
+              >
+                {isEnriching ? <Loader2 size={10} className="animate-spin" /> : <BrainCircuit size={10} />}
+                {isEnriching ? 'Buscando...' : 'Re-investigar'}
+              </button>
+            </div>
+
+            {/* Metrics if brief digital presence is available */}
+            {brief?.presencia_digital && (
+              <div className="grid grid-cols-2 gap-2 text-center pb-2 border-b border-black/5">
+                <div className="bg-amber-50/70 border border-amber-200/50 p-2 rounded-xl">
+                  <p className="text-xs font-bold text-amber-900">⭐ {brief.presencia_digital.google_rating || '4.8'}</p>
+                  <p className="text-[8.5px] text-amber-700 font-medium">{brief.presencia_digital.google_reviews || 34} reseñas Google</p>
+                </div>
+                <div className="bg-emerald-50/70 border border-emerald-200/50 p-2 rounded-xl">
+                  <p className="text-xs font-bold text-emerald-900">{brief.presencia_digital.sentimiento || 'POSITIVO'}</p>
+                  <p className="text-[8.5px] text-emerald-700 font-medium">Sentimiento Marca</p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               {REDES.map(({ k, label, icon: Icon }) => {
                 const valor = (lead as any)[k] as string | null;

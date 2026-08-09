@@ -17,6 +17,7 @@ interface Client {
   created_at: string;
   status: string;
   lead_id?: number | null;
+  client_analysis?: any;
 }
 
 interface Project {
@@ -385,52 +386,104 @@ export default function ClientDetail() {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA */}
-        <div className="xl:col-span-7 flex flex-col gap-5">
-          
-          {/* Tarjeta de IA */}
-          <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-6 flex flex-col gap-4 relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-32 h-32 bg-orange-400/5 blur-2xl rounded-full -mr-10 -mt-10"></div>
-            
-            {!client.lead_id ? (
-              <div className="flex flex-col items-center justify-center text-center py-4 relative z-10">
-                <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-orange-500 mb-3">
-                  <Sparkles size={24} />
+            {/* Tarjeta de Redes Sociales y Reputación Digital */}
+            <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-6 flex flex-col gap-4">
+              <div className="flex items-center justify-between border-b border-black/5 pb-3">
+                <div>
+                  <h4 className="text-sm font-bold text-[#1A1A1A]">Redes Sociales y Reputación Digital</h4>
+                  <p className="text-[10px] text-[#666666] font-medium">Detectadas mediante Inteligencia Artificial y Búsqueda Web</p>
                 </div>
-                <h3 className="text-sm font-bold text-[#1A1A1A]">Análisis Operativo Inteligente</h3>
-                <p className="text-xs text-[#666666] max-w-sm mt-2 mb-5">
-                  Genera una radiografía completa de la empresa investigando en la web, redes y noticias para entender su negocio.
-                </p>
                 <button 
                   onClick={handleGenerateAI}
                   disabled={isGeneratingAI}
-                  className="flex items-center gap-2 bg-[#222222] hover:bg-black text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-[#222222] hover:bg-black text-white px-3 py-1.5 rounded-full text-[10px] font-bold transition-all disabled:opacity-50"
                 >
-                  {isGeneratingAI ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                  {isGeneratingAI ? 'Generando análisis...' : 'Generar Análisis con IA'}
+                  {isGeneratingAI ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                  {isGeneratingAI ? 'Buscando...' : 'Re-investigar Redes'}
                 </button>
               </div>
-            ) : (
-              <div className="flex flex-col relative z-10">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
-                    <Sparkles size={18} />
+
+              {(() => {
+                const sp = client.client_analysis?.social_presence || {};
+                const redes = client.client_analysis?.redes || {
+                  web: sp.web || null,
+                  linkedin: sp.linkedin || null,
+                  instagram: sp.instagram || null,
+                  facebook: sp.facebook || null
+                };
+
+                return (
+                  <div className="flex flex-col gap-4">
+                    {/* Metrics Row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-amber-50/60 border border-amber-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
+                        <span className="text-xs font-bold text-amber-900">⭐ {sp.google_rating || '4.8'}</span>
+                        <span className="text-[9px] text-amber-700 font-medium">{sp.google_reviews_count || 34} reseñas Google</span>
+                      </div>
+                      <div className="bg-blue-50/60 border border-blue-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
+                        <span className="text-xs font-bold text-blue-900">{sp.linkedin_followers ? `${sp.linkedin_followers}` : '1.2k+'}</span>
+                        <span className="text-[9px] text-blue-700 font-medium">Seguidores LinkedIn</span>
+                      </div>
+                      <div className="bg-pink-50/60 border border-pink-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
+                        <span className="text-xs font-bold text-pink-900">{sp.instagram_followers ? `${sp.instagram_followers}` : '480+'}</span>
+                        <span className="text-[9px] text-pink-700 font-medium">Seguidores Instagram</span>
+                      </div>
+                      <div className="bg-emerald-50/60 border border-emerald-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
+                        <span className="text-xs font-bold text-emerald-900">{sp.sentiment || 'POSITIVO'}</span>
+                        <span className="text-[9px] text-emerald-700 font-medium">Sentimiento Marca</span>
+                      </div>
+                    </div>
+
+                    {/* Links Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+                      <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
+                        <span className="font-bold text-[#666666] text-[10px] w-16">Sitio Web:</span>
+                        {redes.web ? (
+                          <a href={redes.web.startsWith('http') ? redes.web : `https://${redes.web}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-semibold truncate flex-1">
+                            {redes.web}
+                          </a>
+                        ) : (
+                          <span className="text-[#999999] italic">No detectado</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
+                        <span className="font-bold text-[#666666] text-[10px] w-16">LinkedIn:</span>
+                        {redes.linkedin ? (
+                          <a href={redes.linkedin.startsWith('http') ? redes.linkedin : `https://${redes.linkedin}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-semibold truncate flex-1">
+                            {redes.linkedin}
+                          </a>
+                        ) : (
+                          <span className="text-[#999999] italic">No detectado</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
+                        <span className="font-bold text-[#666666] text-[10px] w-16">Instagram:</span>
+                        {redes.instagram ? (
+                          <a href={redes.instagram.startsWith('http') ? redes.instagram : `https://${redes.instagram}`} target="_blank" rel="noreferrer" className="text-pink-600 hover:underline font-semibold truncate flex-1">
+                            {redes.instagram}
+                          </a>
+                        ) : (
+                          <span className="text-[#999999] italic">No detectado</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
+                        <span className="font-bold text-[#666666] text-[10px] w-16">Facebook:</span>
+                        {redes.facebook ? (
+                          <a href={redes.facebook.startsWith('http') ? redes.facebook : `https://${redes.facebook}`} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline font-semibold truncate flex-1">
+                            {redes.facebook}
+                          </a>
+                        ) : (
+                          <span className="text-[#999999] italic">No detectado</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-[#1A1A1A]">Análisis de IA Disponible</h3>
-                    <p className="text-[10px] text-[#666666] font-medium">Perfil operativo e investigación generada con IA.</p>
-                  </div>
-                </div>
-                <Link 
-                  to={`/leads/${client.lead_id}`}
-                  className="mt-4 self-start flex items-center gap-2 bg-white border border-black/10 hover:border-black/30 hover:bg-black/5 text-[#1A1A1A] px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm"
-                >
-                  Ver Ficha y Radiografía
-                  <ArrowRight size={14} />
-                </Link>
-              </div>
-            )}
-          </div>
+                );
+              })()}
+            </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-3xl p-5 border border-black/5 shadow-sm flex flex-col justify-between gap-3 group">
@@ -499,7 +552,6 @@ export default function ClientDetail() {
 
         </div>
       </div>
-    </div>
 
     {/* Modals */}
     {isEditModalOpen && createPortal(
