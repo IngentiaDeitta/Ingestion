@@ -477,7 +477,7 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', due_date: '', project_name: 'General' });
+  const [newTask, setNewTask] = useState({ title: '', due_date: '', project_name: 'General', assignee: 'Fer' });
   const [savingTask, setSavingTask] = useState(false);
   
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -552,18 +552,20 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
     if (!newTask.title || !newTask.due_date) return;
     try {
         setSavingTask(true);
+        const assignedName = newTask.assignee || (teamMembers[0]?.name || 'Fer');
         const { error } = await supabase.from('tasks').insert([{
             title: newTask.title,
             due_date: newTask.due_date,
             project_name: newTask.project_name,
             status: 'todo',
-            assignees: [], // can be assigned later
+            assignees: [assignedName],
+            assignee: assignedName,
             hours: 0,
             actual_hours: 0
         }]);
         if (error) throw error;
         setIsModalOpen(false);
-        setNewTask({ title: '', due_date: '', project_name: 'General' });
+        setNewTask({ title: '', due_date: '', project_name: 'General', assignee: 'Fer' });
         onTaskAdded();
     } catch (err) {
         console.error('Error adding task:', err);
@@ -733,6 +735,19 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
                               onChange={e => setNewTask({...newTask, project_name: e.target.value})}
                               className="w-full h-10 rounded-xl border border-black/10 bg-white text-sm px-3 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all shadow-sm"
                           />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                          <label className="text-[11px] font-bold text-[#666666] uppercase tracking-wider">Responsable</label>
+                          <select
+                              value={newTask.assignee || (teamMembers[0]?.name || 'Fer')}
+                              onChange={e => setNewTask({...newTask, assignee: e.target.value})}
+                              className="w-full h-10 rounded-xl border border-black/10 bg-white text-sm px-3 focus:ring-2 focus:ring-[#FFD166] focus:border-[#FFD166] outline-none transition-all shadow-sm"
+                          >
+                              {teamMembers.map((m: any) => (
+                                  <option key={m.id || m.name} value={m.name}>{m.name}</option>
+                              ))}
+                              <option value="Tercero (Freelance)">Tercero (Freelance)</option>
+                          </select>
                       </div>
                       <button 
                           type="submit" 

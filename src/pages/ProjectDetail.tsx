@@ -1412,12 +1412,13 @@ export default function ProjectDetail() {
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-[#666666]">Responsable</label>
               <select
-                value={editingTaskManual.assignee || 'Fer'}
+                value={editingTaskManual.assignee || (assignedTeam[0]?.name || allTeam[0]?.name || 'Fer')}
                 onChange={(e) => setEditingTaskManual({ ...editingTaskManual, assignee: e.target.value, assignees: [e.target.value] })}
                 className="bg-black/2 border border-black/10 rounded-2xl px-4 py-3 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A]"
               >
-                <option value="Fer">Fer</option>
-                <option value="Pedro">Pedro</option>
+                {(assignedTeam.length > 0 ? assignedTeam : allTeam).map(m => (
+                  <option key={m.id} value={m.name}>{m.name}</option>
+                ))}
                 <option value="Tercero (Freelance)">Tercero (Freelance)</option>
               </select>
             </div>
