@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import re
 import requests
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -232,6 +233,81 @@ Respondé ÚNICAMENTE con un JSON válido con esta estructura exacta:
     clean_json = extract_json(raw_text)
     return json.loads(clean_json)
 
+from playwright.sync_api import sync_playwright
+
+def scrape_with_playwright(dominio_or_url: str) -> dict:
+    if not dominio_or_url:
+        return {}
+    
+    url = dominio_or_url.strip()
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = f"https://{url}"
+
+    print(f"[*] Playwright Web Scraper: Navegando a {url}...")
+    result = {
+        "url_scraped": url,
+        "header_text": "",
+        "footer_text": "",
+        "emails": [],
+        "telefonos": [],
+        "social_links": {}
+    }
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                page.wait_for_timeout(1000)
+
+                header_text = page.locator("header").inner_text() if page.locator("header").count() > 0 else ""
+                footer_text = page.locator("footer").inner_text() if page.locator("footer").count() > 0 else ""
+                if not footer_text:
+                    for sel in [".footer", "#footer", ".site-footer", "#contacto", ".contacto"]:
+                        if page.locator(sel).count() > 0:
+                            footer_text += "\n" + page.locator(sel).inner_text()
+                
+                full_text = page.evaluate("document.body.innerText") or ""
+                
+                anchors = page.locator("a[href]").all()
+                socials = {}
+                for a in anchors:
+                    try:
+                        href = a.get_attribute("href") or ""
+                        h_lower = href.lower()
+                        if "facebook.com" in h_lower and "facebook" not in socials:
+                            socials["facebook"] = href
+                        elif "linkedin.com" in h_lower and "linkedin" not in socials:
+                            socials["linkedin"] = href
+                        elif "instagram.com" in h_lower and "instagram" not in socials:
+                            socials["instagram"] = href
+                        elif "youtube.com" in h_lower and "youtube" not in socials:
+                            socials["youtube"] = href
+                        elif ("twitter.com" in h_lower or "x.com" in h_lower) and "twitter" not in socials:
+                            socials["twitter"] = href
+                    except:
+                        pass
+                
+                emails = list(set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', full_text)))
+                phones = list(set(re.findall(r'(?:\+?54|\b0800|\b11|\b\(?\d{2,4}\)?)\s?\d{3,4}[-\s]?\d{4}', full_text)))
+                
+                result["header_text"] = header_text.strip()[:1000]
+                result["footer_text"] = footer_text.strip()[:2000]
+                result["emails"] = emails[:5]
+                result["telefonos"] = phones[:5]
+                result["social_links"] = socials
+
+                print(f"[+] Playwright Scraper Exitoso. Header: {len(header_text)} chars, Footer: {len(footer_text)} chars. Emails: {emails}, Redes: {list(socials.keys())}")
+            except Exception as ex:
+                print(f"[-] Advertencia Playwright en {url}: {ex}")
+            finally:
+                browser.close()
+    except Exception as err:
+        print(f"[-] Fallo Playwright launcher: {err}")
+    
+    return result
+
 def process_pending_leads():
     print("=== BUSCANDO LEADS PENDIENTES DE ENRIQUECIMIENTO ===")
     res = supabase.table("leads_cuentas").select("*").is_("pre_call_brief", "null").execute()
@@ -246,28 +322,56 @@ def process_pending_leads():
     for lead in leads:
         lead_id = lead["id"]
         empresa = lead.get("empresa")
+        dominio = lead.get("dominio") or lead.get("web")
         print(f"\n[*] Procesando lead ID {lead_id}: '{empresa}'...")
 
         try:
+            scraped_info = {}
+            if dominio:
+                scraped_info = scrape_with_playwright(dominio)
+
             inv_text, fuentes1 = investigar_empresa(lead)
             soc_text, fuentes2 = investigar_presencia_digital(lead)
+            
+            # Incorporar texto de Playwright al contexto de la investigación
+            if scraped_info.get("footer_text") or scraped_info.get("header_text"):
+                scraped_summary = f"\n\nDATOS EXTRAÍDOS CON PLAYWRIGHT DEL SITIO WEB OFICIAL ({scraped_info.get('url_scraped')}):\nHEADER:\n{scraped_info.get('header_text')}\nFOOTER / CONTACTO:\n{scraped_info.get('footer_text')}\nEMAILS DEL SITIO: {', '.join(scraped_info.get('emails', []))}\nTELÉFONOS DEL SITIO: {', '.join(scraped_info.get('telefonos', []))}"
+                inv_text += scraped_summary
+
             brief = estructurar_brief(lead, inv_text, soc_text)
 
-            todas_fuentes = list(set(fuentes1 + fuentes2))
+            todas_fuentes = list(set(fuentes1 + fuentes2 + ([scraped_info.get("url_scraped")] if scraped_info.get("url_scraped") else [])))
             brief["fuentes"] = todas_fuentes
             brief["investigacion_verificada"] = len(todas_fuentes) > 0
+            if scraped_info:
+                brief["scraping_playwright"] = scraped_info
 
             # Preparar campos de actualización de redes sociales sin pisar existentes
             redes = brief.get("redes", {})
+            socials_scraped = scraped_info.get("social_links", {})
             campos_redes = {}
-            if redes.get("web") and not lead.get("web"):
-                campos_redes["web"] = redes["web"]
-            if redes.get("linkedin") and not lead.get("linkedin_empresa"):
-                campos_redes["linkedin_empresa"] = redes["linkedin"]
-            if redes.get("instagram") and not lead.get("instagram"):
-                campos_redes["instagram"] = redes["instagram"]
-            if redes.get("facebook") and not lead.get("facebook"):
-                campos_redes["facebook"] = redes["facebook"]
+            
+            web_url = scraped_info.get("url_scraped") or redes.get("web")
+            if web_url and not lead.get("web"):
+                campos_redes["web"] = web_url
+            
+            lk = socials_scraped.get("linkedin") or redes.get("linkedin")
+            if lk and not lead.get("linkedin_empresa"):
+                campos_redes["linkedin_empresa"] = lk
+                
+            ig = socials_scraped.get("instagram") or redes.get("instagram")
+            if ig and not lead.get("instagram"):
+                campos_redes["instagram"] = ig
+                
+            fb = socials_scraped.get("facebook") or redes.get("facebook")
+            if fb and not lead.get("facebook"):
+                campos_redes["facebook"] = fb
+
+            # Autocompletar email y teléfono si están vacíos en el lead
+            if scraped_info.get("emails") and not lead.get("email"):
+                campos_redes["email"] = scraped_info["emails"][0]
+            if scraped_info.get("telefonos") and not lead.get("telefono"):
+                campos_redes["telefono"] = scraped_info["telefonos"][0]
 
             nuevo_estado = "ENRIQUECIDO" if lead.get("estado") == "NUEVO" else lead.get("estado")
 
@@ -278,7 +382,7 @@ def process_pending_leads():
             }
 
             up_res = supabase.table("leads_cuentas").update(update_payload).eq("id", lead_id).execute()
-            print(f"[OK] Lead '{empresa}' enriquecido exitosamente. Estado actualizado a '{nuevo_estado}'. Fuentes: {len(todas_fuentes)}.")
+            print(f"[OK] Lead '{empresa}' enriquecido exitosamente con Playwright. Estado: '{nuevo_estado}'. Fuentes: {len(todas_fuentes)}.")
 
         except Exception as e:
             print(f"[-] Error enriqueciendo lead ID {lead_id} ('{empresa}'): {e}")
