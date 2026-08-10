@@ -83,12 +83,51 @@ function extractJson(raw: string): string {
   return s;
 }
 
-async function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+async function callOpenRouterFallback(prompt: string): Promise<{ candidate: any; text: string }> {
+  console.info('[OpenRouter Fallback] Redirigiendo petición a OpenRouter (modelo free)...');
+  const models = [
+    'google/gemini-2.0-flash-lite-001:free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'openrouter/auto'
+  ];
+
+  for (const model of models) {
+    try {
+      const response = await fetch(OPENROUTER_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://ingentia.com.ar',
+          'X-Title': 'IngentIA Ingestion App',
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        console.info(`[OpenRouter Fallback Success] Respuesta obtenida exitosamente de ${model}.`);
+        return { candidate: null, text };
+      }
+    } catch (e) {
+      console.warn(`[OpenRouter Model ${model} Fallback Error]:`, e);
+    }
+  }
+  throw new Error('No se pudo obtener respuesta ni de Gemini ni de OpenRouter.');
 }
 
-async function callGemini(body: Record<string, unknown>, maxRetries = 3): Promise<{ candidate: any; text: string }> {
+async function callGemini(body: Record<string, unknown>, maxRetries = 2): Promise<{ candidate: any; text: string }> {
+  const promptText = (body?.contents as any)?.[0]?.parts?.[0]?.text || '';
   let attempt = 0;
+
   while (attempt <= maxRetries) {
     try {
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -100,17 +139,18 @@ async function callGemini(body: Record<string, unknown>, maxRetries = 3): Promis
       if (response.status === 429) {
         attempt++;
         if (attempt <= maxRetries) {
-          const waitTime = Math.pow(2, attempt) * 3000; // 6s, 12s, 24s
-          console.warn(`[Gemini Rate Limit 429] Reintentando llamada (${attempt}/${maxRetries}) en ${waitTime / 1000}s...`);
+          const waitTime = Math.pow(2, attempt) * 2000;
+          console.warn(`[Gemini Rate Limit 429] Reintentando (${attempt}/${maxRetries}) en ${waitTime / 1000}s...`);
           await delay(waitTime);
           continue;
         }
-        throw new Error('Límite de velocidad/cuota de Gemini alcanzado (HTTP 429). Por favor aguardá unos minutos.');
+        console.warn('[Gemini Rate Limit 429 Excedido] Conmutando a OpenRouter...');
+        return await callOpenRouterFallback(promptText);
       }
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(`Error de Gemini API: ${response.status} - ${errorData?.error?.message || response.statusText}`);
+        console.warn(`[Gemini API Error ${response.status}] Conmutando a OpenRouter...`);
+        return await callOpenRouterFallback(promptText);
       }
 
       const data = await response.json();
@@ -118,14 +158,15 @@ async function callGemini(body: Record<string, unknown>, maxRetries = 3): Promis
       const text = candidate?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('');
       return { candidate, text };
     } catch (err: any) {
-      if (attempt >= maxRetries || !err.message.includes('429')) {
-        throw err;
+      if (attempt >= maxRetries) {
+        console.warn('[Gemini Exception] Conmutando a OpenRouter...', err);
+        return await callOpenRouterFallback(promptText);
       }
       attempt++;
-      await delay(Math.pow(2, attempt) * 3000);
+      await delay(Math.pow(2, attempt) * 2000);
     }
   }
-  throw new Error('Error inesperado al conectar con Gemini API.');
+  return await callOpenRouterFallback(promptText);
 }
 
 /**

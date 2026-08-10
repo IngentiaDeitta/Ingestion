@@ -16,35 +16,81 @@ if not all([SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY]):
     sys.exit(1)
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or os.getenv("VITE_OPENROUTER_API_KEY")
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 import time
 
-def call_gemini(body: dict, max_retries: int = 3) -> dict:
+def call_openrouter_fallback(prompt: str) -> dict:
+    print("[OpenRouter Fallback] Redirigiendo petición a OpenRouter (modelo free)...")
+    models = [
+        "google/gemini-2.0-flash-lite-001:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "openrouter/auto"
+    ]
+    for model in models:
+        try:
+            res = requests.post(
+                OPENROUTER_URL,
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://ingentia.com.ar",
+                    "X-Title": "IngentIA Ingestion App"
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3
+                },
+                timeout=60
+            )
+            if res.ok:
+                data = res.json()
+                text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                print(f"[OpenRouter Success] Respuesta obtenida de {model}.")
+                return {"candidate": None, "text": text}
+        except Exception as e:
+            print(f"[OpenRouter Model {model} Fallback Error]:", e)
+
+    raise Exception("No se pudo obtener respuesta ni de Gemini ni de OpenRouter.")
+
+def call_gemini(body: dict, max_retries: int = 2) -> dict:
+    prompt_text = body.get("contents", [{}])[0].get("parts", [{}])[0].get("text", "")
     attempt = 0
     while attempt <= max_retries:
-        res = requests.post(
-            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
-            headers={"Content-Type": "application/json"},
-            json=body,
-            timeout=60
-        )
-        if res.status_code == 429:
+        try:
+            res = requests.post(
+                f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+                headers={"Content-Type": "application/json"},
+                json=body,
+                timeout=60
+            )
+            if res.status_code == 429:
+                attempt += 1
+                if attempt <= max_retries:
+                    wait_seconds = (2 ** attempt) * 2
+                    print(f"[Rate Limit 429] Reintentando llamada ({attempt}/{max_retries}) en {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                    continue
+                print("[Rate Limit 429 Excedido] Conmutando a OpenRouter...")
+                return call_openrouter_fallback(prompt_text)
+            if not res.ok:
+                print(f"[Gemini API Error {res.status_code}] Conmutando a OpenRouter...")
+                return call_openrouter_fallback(prompt_text)
+            data = res.json()
+            candidate = data.get("candidates", [{}])[0]
+            parts = candidate.get("content", {}).get("parts", [])
+            text = "".join([p.get("text", "") for p in parts if p.get("text")])
+            return {"candidate": candidate, "text": text}
+        except Exception as e:
+            if attempt >= max_retries:
+                print("[Gemini Exception] Conmutando a OpenRouter...", e)
+                return call_openrouter_fallback(prompt_text)
             attempt += 1
-            if attempt <= max_retries:
-                wait_seconds = (2 ** attempt) * 3
-                print(f"[Rate Limit 429] Reintentando llamada ({attempt}/{max_retries}) en {wait_seconds}s...")
-                time.sleep(wait_seconds)
-                continue
-            raise Exception(f"Gemini API error 429: Se superó el límite de cuota/velocidad de peticiones.")
-        if not res.ok:
-            raise Exception(f"Gemini API error {res.status_code}: {res.text}")
-        data = res.json()
-        candidate = data.get("candidates", [{}])[0]
-        parts = candidate.get("content", {}).get("parts", [])
-        text = "".join([p.get("text", "") for p in parts if p.get("text")])
-        return {"candidate": candidate, "text": text}
-    raise Exception("Error en llamada a Gemini API tras varios reintentos.")
+            time.sleep((2 ** attempt) * 2)
+
+    return call_openrouter_fallback(prompt_text)
 
 def extract_json(raw: str) -> str:
     s = raw.strip()
