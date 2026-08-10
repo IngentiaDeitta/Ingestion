@@ -83,22 +83,49 @@ function extractJson(raw: string): string {
   return s;
 }
 
-async function callGemini(body: Record<string, unknown>) {
-  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+async function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new Error(`Error de Gemini API: ${response.status} - ${errorData?.error?.message || response.statusText}`);
+async function callGemini(body: Record<string, unknown>, maxRetries = 3): Promise<{ candidate: any; text: string }> {
+  let attempt = 0;
+  while (attempt <= maxRetries) {
+    try {
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (response.status === 429) {
+        attempt++;
+        if (attempt <= maxRetries) {
+          const waitTime = Math.pow(2, attempt) * 3000; // 6s, 12s, 24s
+          console.warn(`[Gemini Rate Limit 429] Reintentando llamada (${attempt}/${maxRetries}) en ${waitTime / 1000}s...`);
+          await delay(waitTime);
+          continue;
+        }
+        throw new Error('Límite de velocidad/cuota de Gemini alcanzado (HTTP 429). Por favor aguardá unos minutos.');
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`Error de Gemini API: ${response.status} - ${errorData?.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      const candidate = data.candidates?.[0];
+      const text = candidate?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('');
+      return { candidate, text };
+    } catch (err: any) {
+      if (attempt >= maxRetries || !err.message.includes('429')) {
+        throw err;
+      }
+      attempt++;
+      await delay(Math.pow(2, attempt) * 3000);
+    }
   }
-
-  const data = await response.json();
-  const candidate = data.candidates?.[0];
-  const text = candidate?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('');
-  return { candidate, text };
+  throw new Error('Error inesperado al conectar con Gemini API.');
 }
 
 /**
@@ -265,11 +292,11 @@ export async function generateLeadEnrichment(input: LeadBriefInput): Promise<Pre
     throw new Error('SISTEMA: La VITE_GEMINI_API_KEY no está configurada.');
   }
 
-  // Las dos investigaciones van en paralelo: son independientes entre sí.
-  const [investigacion, social] = await Promise.all([
-    investigarEmpresa(input),
-    investigarPresenciaDigital(input),
-  ]);
+  // Las investigaciones se realizan secuencialmente con retardo para cuidar los límites de tasa de la API.
+  const investigacion = await investigarEmpresa(input);
+  await delay(1500);
+  const social = await investigarPresenciaDigital(input);
+  await delay(1500);
 
   const brief = await estructurarBrief(input, investigacion, social);
 

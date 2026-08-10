@@ -61,12 +61,13 @@ export default function Leads() {
     }
   };
 
-  const triggerAutoEnrichment = (leadList: Lead[]) => {
-    leadList.forEach((l) => {
-      if (!l.pre_call_brief && !enrichingRef.current.has(l.id)) {
-        enrichLeadInBackground(l);
-      }
-    });
+  const triggerAutoEnrichment = async (leadList: Lead[]) => {
+    const pending = leadList.filter((l) => !l.pre_call_brief && !enrichingRef.current.has(l.id));
+    for (const l of pending) {
+      await enrichLeadInBackground(l);
+      // Retardo entre leads para evitar rate limit de Gemini (429)
+      await new Promise((res) => setTimeout(res, 3000));
+    }
   };
 
   const enrichLeadInBackground = async (leadToEnrich: Lead) => {

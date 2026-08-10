@@ -18,20 +18,33 @@ if not all([SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY]):
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 
-def call_gemini(body: dict) -> dict:
-    res = requests.post(
-        f"{GEMINI_URL}?key={GEMINI_API_KEY}",
-        headers={"Content-Type": "application/json"},
-        json=body,
-        timeout=60
-    )
-    if not res.ok:
-        raise Exception(f"Gemini API error {res.status_code}: {res.text}")
-    data = res.json()
-    candidate = data.get("candidates", [{}])[0]
-    parts = candidate.get("content", {}).get("parts", [])
-    text = "".join([p.get("text", "") for p in parts if p.get("text")])
-    return {"candidate": candidate, "text": text}
+import time
+
+def call_gemini(body: dict, max_retries: int = 3) -> dict:
+    attempt = 0
+    while attempt <= max_retries:
+        res = requests.post(
+            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+            headers={"Content-Type": "application/json"},
+            json=body,
+            timeout=60
+        )
+        if res.status_code == 429:
+            attempt += 1
+            if attempt <= max_retries:
+                wait_seconds = (2 ** attempt) * 3
+                print(f"[Rate Limit 429] Reintentando llamada ({attempt}/{max_retries}) en {wait_seconds}s...")
+                time.sleep(wait_seconds)
+                continue
+            raise Exception(f"Gemini API error 429: Se superó el límite de cuota/velocidad de peticiones.")
+        if not res.ok:
+            raise Exception(f"Gemini API error {res.status_code}: {res.text}")
+        data = res.json()
+        candidate = data.get("candidates", [{}])[0]
+        parts = candidate.get("content", {}).get("parts", [])
+        text = "".join([p.get("text", "") for p in parts if p.get("text")])
+        return {"candidate": candidate, "text": text}
+    raise Exception("Error en llamada a Gemini API tras varios reintentos.")
 
 def extract_json(raw: str) -> str:
     s = raw.strip()

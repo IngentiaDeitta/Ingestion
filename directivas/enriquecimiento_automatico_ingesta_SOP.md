@@ -69,6 +69,7 @@
 | Fecha | Error Detectado | Causa Raíz | Solución/Parche Aplicado |
 |-------|----------------|------------|--------------------------|
 | 10/08/2026 | El enriquecimiento solo se disparaba en `LeadDetail.tsx` | La función de brief estaba ligada a la carga de la vista de detalle | Se creó script de enriquecimiento batch e integración en la ingesta en `Leads.tsx` |
+| 10/08/2026 | HTTP 429 Rate Limit (Gemini API) | Disparo simultáneo en paralelo de múltiples peticiones a Gemini al cargar la vista de leads | Procesar cola secuencial con retardo entre leads (3s) e implementar reintentos con exponential backoff en `callGemini` |
 
 ---
 
