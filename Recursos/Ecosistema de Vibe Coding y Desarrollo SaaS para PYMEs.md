@@ -67,7 +67,7 @@ Como tu objetivo es **reducir al máximo los costos de implementación**, pero a
 * **Integración de Calendario**: Conexión nativa mediante API con **Google Calendar** para agendar citas 90, 94, 95\.  
 * **Orquestación de IA**: **Open Router** utilizando modelos de costo optimizado (como DeepSeek o enrutadores gratuitos en fase de pruebas) 31, 96\.
 
-\[Usuario WhatsApp\] 📱   
+\[Usuario WhatsApp\] 📱
        │ (Mensaje entrante)  
        ▼  
 \[WhiteCloud (API Oficial)\] 🐝  
@@ -265,4 +265,3 @@ Al administrar el servidor de tus clientes PYME, debes implementar las siguiente
 3. **Pérdida de Datos Conversacionales**:  
    * *El Riesgo*: Guardar el historial de chat de tus agentes conversacionales en bases de datos internas temporales o archivos locales planos puede resultar en la pérdida total de datos si el servidor se reinicia o se corrompe.  
    * *Mitigación*: Monta una base de datos relacional robusta e independiente de tu lógica de negocio (como una base de datos **PostgreSQL/Supabase** en un contenedor Docker separado dentro del mismo VPS) para garantizar que los chats y registros se mantengan seguros en discos duros SSD de última generación.
-

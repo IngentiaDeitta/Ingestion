@@ -17,9 +17,13 @@ def run_cmd(cmd):
 def main():
     print("=== Iniciando proceso de push a producción (origin/main) ===")
     
+    commit_msg = "feat: auto-enrich leads upon ingestion without waiting for profile open"
+    if len(sys.argv) > 1:
+        commit_msg = sys.argv[1]
+
     # 0. Add all modified/new files and commit
     run_cmd(["git", "add", "."])
-    run_cmd(["git", "commit", "-m", "style: homogenize typography scale and UI padding across all sections"])
+    run_cmd(["git", "commit", "-m", commit_msg])
 
     # 1. Fetch
     success, _, _ = run_cmd(["git", "fetch", "origin"])
