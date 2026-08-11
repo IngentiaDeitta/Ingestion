@@ -20,6 +20,8 @@ interface Lead {
   facebook: string | null;
   estado: string;
   pre_call_brief: any | null;
+  industry?: string | null;
+  qualification_status?: string | null;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -28,6 +30,13 @@ const STATUS_STYLES: Record<string, string> = {
   REUNION_AGENDADA: 'bg-[#FFD166]/20 text-[#1A1A1A] border-[#FFD166]/50',
   ENRIQUECIDO: 'bg-purple-50 text-purple-600 border-purple-200',
   CONVERTIDO: 'bg-green-50 text-green-700 border-green-200',
+};
+
+const QUALIFICATION_STYLES: Record<string, string> = {
+  CALIFICADO: 'bg-purple-100 text-purple-700 border-purple-200',
+  POTENCIAL: 'bg-blue-100 text-blue-700 border-blue-200',
+  NO_CALIFICADO: 'bg-amber-100 text-amber-700 border-amber-200',
+  DESCARTADO: 'bg-rose-100 text-rose-700 border-rose-200',
 };
 
 export default function Leads() {
@@ -95,11 +104,22 @@ export default function Leads() {
       if (r.linkedin && !leadToEnrich.linkedin_empresa) camposRedes.linkedin_empresa = r.linkedin;
       if (r.instagram && !leadToEnrich.instagram) camposRedes.instagram = r.instagram;
       if (r.facebook && !leadToEnrich.facebook) camposRedes.facebook = r.facebook;
+      const camposConsistencia: Record<string, string> = {};
+      if (!leadToEnrich.empleados_estimado && briefData.perfil?.empleados_estimado && briefData.perfil.empleados_estimado !== 'sin dato') {
+        camposConsistencia.empleados_estimado = briefData.perfil.empleados_estimado;
+      }
+      if (!leadToEnrich.sector && briefData.industry && briefData.industry !== 'sin dato') {
+        camposConsistencia.sector = briefData.industry;
+      }
+      if (!leadToEnrich.localidad && briefData.perfil?.plantas_ubicaciones && briefData.perfil.plantas_ubicaciones !== 'sin dato') {
+        camposConsistencia.localidad = briefData.perfil.plantas_ubicaciones;
+      }
 
       const updateData = {
         pre_call_brief: briefData,
         estado: nuevoEstado,
         ...camposRedes,
+        ...camposConsistencia,
       };
 
       const { error } = await supabase
@@ -112,7 +132,7 @@ export default function Leads() {
       setLeads((prevLeads) =>
         prevLeads.map((item) =>
           item.id === leadToEnrich.id
-            ? { ...item, ...camposRedes, pre_call_brief: briefData, estado: nuevoEstado }
+            ? { ...item, ...camposRedes, ...camposConsistencia, pre_call_brief: briefData, estado: nuevoEstado }
             : item
         )
       );
@@ -167,6 +187,30 @@ export default function Leads() {
             <Plus size={16} />
             Nuevo Lead
           </button>
+        </div>
+      </div>
+
+      {/* Dashboard Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-black/5 shadow-xs flex flex-col gap-1">
+          <span className="text-[10px] uppercase font-bold text-[#666666] tracking-wider">Total Leads</span>
+          <span className="text-2xl font-light text-[#1A1A1A]">{leads.length}</span>
+        </div>
+        <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 shadow-xs flex flex-col gap-1">
+          <span className="text-[10px] uppercase font-bold text-purple-600 tracking-wider">Calificados</span>
+          <span className="text-2xl font-light text-purple-700">{leads.filter(l => l.pre_call_brief?.qualification_status === 'CALIFICADO').length}</span>
+        </div>
+        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-xs flex flex-col gap-1">
+          <span className="text-[10px] uppercase font-bold text-blue-600 tracking-wider">Potenciales</span>
+          <span className="text-2xl font-light text-blue-700">{leads.filter(l => l.pre_call_brief?.qualification_status === 'POTENCIAL').length}</span>
+        </div>
+        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 shadow-xs flex flex-col gap-1">
+          <span className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">No Calificados</span>
+          <span className="text-2xl font-light text-amber-700">{leads.filter(l => l.pre_call_brief?.qualification_status === 'NO_CALIFICADO').length}</span>
+        </div>
+        <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 shadow-xs flex flex-col gap-1">
+          <span className="text-[10px] uppercase font-bold text-rose-600 tracking-wider">Descartados</span>
+          <span className="text-2xl font-light text-rose-700">{leads.filter(l => l.pre_call_brief?.qualification_status === 'DESCARTADO').length}</span>
         </div>
       </div>
 
@@ -232,7 +276,7 @@ export default function Leads() {
                 <div className="flex flex-col gap-1.5 mt-1 text-xs text-[#666666]">
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-[#999999]" />
-                    <span className="font-medium text-[#1A1A1A]">{lead.sector || 'Sin sector'}</span>
+                    <span className="font-medium text-[#1A1A1A]">{lead.pre_call_brief?.industry || lead.sector || 'Sin sector'}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-[#999999]" />
@@ -247,9 +291,21 @@ export default function Leads() {
                       ENRIQUECIENDO...
                     </span>
                   ) : (
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${STATUS_STYLES[lead.estado] || STATUS_STYLES.NUEVO}`}>
-                      {lead.estado === 'ENRIQUECIDO' ? 'CALIFICADO' : lead.estado}
-                    </span>
+                    <div className="flex gap-1.5 flex-wrap">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${STATUS_STYLES[lead.estado] || STATUS_STYLES.NUEVO}`}>
+                        {lead.estado}
+                      </span>
+                      {lead.pre_call_brief?.qualification_status && (
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${QUALIFICATION_STYLES[lead.pre_call_brief.qualification_status] || 'bg-black/5 text-[#666666]'}`}>
+                          {lead.pre_call_brief.qualification_status.replace('_', ' ')}
+                        </span>
+                      )}
+                      {(lead.pre_call_brief?.industry || lead.sector) && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-200">
+                          {lead.pre_call_brief?.industry || lead.sector}
+                        </span>
+                      )}
+                    </div>
                   )}
                   <div className="flex items-center gap-1.5">
                     <button

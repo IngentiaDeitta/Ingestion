@@ -1,6 +1,8 @@
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
+const sleepMs = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Pre-Call Brief (Agente A5).
  * La estructura sigue la checklist "Antes de la reunión" y los bloques de
@@ -8,6 +10,8 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
  */
 export interface PreCallBrief {
   empresa_una_frase: string;
+  industry: string;
+  qualification_status: 'CALIFICADO' | 'NO_CALIFICADO' | 'POTENCIAL' | 'DESCARTADO';
   perfil: {
     empleados_estimado: string;
     plantas_ubicaciones: string;
@@ -141,7 +145,7 @@ async function callGemini(body: Record<string, unknown>, maxRetries = 2): Promis
         if (attempt <= maxRetries) {
           const waitTime = Math.pow(2, attempt) * 2000;
           console.warn(`[Gemini Rate Limit 429] Reintentando (${attempt}/${maxRetries}) en ${waitTime / 1000}s...`);
-          await delay(waitTime);
+          await sleepMs(waitTime);
           continue;
         }
         console.warn('[Gemini Rate Limit 429 Excedido] Conmutando a OpenRouter...');
@@ -163,7 +167,7 @@ async function callGemini(body: Record<string, unknown>, maxRetries = 2): Promis
         return await callOpenRouterFallback(promptText);
       }
       attempt++;
-      await delay(Math.pow(2, attempt) * 2000);
+      await sleepMs(Math.pow(2, attempt) * 2000);
     }
   }
   return await callOpenRouterFallback(promptText);
@@ -273,7 +277,9 @@ TAREA
 1. Usá SOLO la investigación de arriba para los datos duros (empleados, plantas, antigüedad, cámaras). Si un dato no aparece ahí, escribí "sin dato". PROHIBIDO completarlo de memoria: un dato falso que el prospecto detecta mata la cuenta.
 2. Detectá señales de dolor operativo y clasificalas: ALTA (búsqueda laboral administrativa activa, crecimiento fuerte, sin sistema visible), MEDIA (indicios indirectos), BAJA (contexto de industria).
 3. Si el prospecto dejó un mensaje, resumí en "dolor_declarado" lo que él mismo dijo que le duele. Si no dejó mensaje, poné null.
-4. Formulá preguntas ESPECÍFICAS para esta empresa (no genéricas), repartidas en los tres bloques:
+4. Clasificá la industria de la empresa en una de las siguientes opciones estandarizadas: Tecnología, Salud, Finanzas, Retail, Manufactura, Servicios Profesionales, Educación, Logística, Real Estate, E-commerce, u Otro.
+5. Determiná el qualification_status (CALIFICADO si el fit_ingentia >= 70, POTENCIAL si está entre 50 y 69, NO_CALIFICADO si está entre 40 y 49, y DESCARTADO si es < 40).
+6. Formulá preguntas ESPECÍFICAS para esta empresa (no genéricas), repartidas en los tres bloques:
    - Bloque A (el mapa): cómo entra un pedido y qué pasa hasta que se factura, cuántas personas tocan la información, qué herramientas usan, dónde se traba.
    - Bloque B (el dolor): qué es lo que más molesta, cuántas horas por semana, quién lo hace y cuánto se le paga, frecuencia de errores, qué pasa cuando esa persona falta.
    - Bloque C (intento previo y urgencia): si intentaron resolverlo antes y qué pasó, qué ocurre si sigue igual 6 meses, qué colapsa primero si duplican ventas, quién más tiene que estar de acuerdo para avanzar.
@@ -282,6 +288,8 @@ TAREA
 Respondé ÚNICAMENTE con un JSON válido con esta estructura exacta:
 {
   "empresa_una_frase": "string - qué fabrica o hace, en una sola frase",
+  "industry": "string - la industria estandarizada",
+  "qualification_status": "CALIFICADO|POTENCIAL|NO_CALIFICADO|DESCARTADO",
   "perfil": { "empleados_estimado": "string", "plantas_ubicaciones": "string", "antiguedad": "string", "rubro": "string" },
   "senales": [{ "nivel": "ALTA|MEDIA|BAJA", "descripcion": "string" }],
   "camaras_redes": ["string"],
@@ -295,7 +303,7 @@ Respondé ÚNICAMENTE con un JSON válido con esta estructura exacta:
     "web": "URL o null", "linkedin": "URL o null", "instagram": "URL o null", "facebook": "URL o null"
   },
   "presencia_digital": {
-    "google_rating": "número o null", "google_reviews": "número o null",
+    "google_rating": "número o null (IMPORTANTE: poné null si no hay reseñas reales, NO INVENTES y NO USES placeholders)", "google_reviews": "número o null",
     "linkedin_followers": "número o null", "instagram_followers": "número o null",
     "sentimiento": "POSITIVO|NEUTRO|NEGATIVO|SIN_DATOS",
     "temas_positivos": ["string - lo que elogian en las reseñas"],
@@ -335,9 +343,9 @@ export async function generateLeadEnrichment(input: LeadBriefInput): Promise<Pre
 
   // Las investigaciones se realizan secuencialmente con retardo para cuidar los límites de tasa de la API.
   const investigacion = await investigarEmpresa(input);
-  await delay(1500);
+  await sleepMs(1500);
   const social = await investigarPresenciaDigital(input);
-  await delay(1500);
+  await sleepMs(1500);
 
   const brief = await estructurarBrief(input, investigacion, social);
 
@@ -361,6 +369,8 @@ export async function generateLeadEnrichment(input: LeadBriefInput): Promise<Pre
     instagram: brief.redes?.instagram || null,
     facebook: brief.redes?.facebook || null,
   };
+  brief.industry = brief.industry || 'Otro';
+  brief.qualification_status = brief.qualification_status === 'CALIFICADO' ? 'CALIFICADO' : 'NO_CALIFICADO';
   brief.presencia_digital = {
     google_rating: n(brief.presencia_digital?.google_rating),
     google_reviews: n(brief.presencia_digital?.google_reviews),

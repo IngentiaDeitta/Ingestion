@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, BrainCircuit, Play, Loader2, Target, AlertTriangle, MessageCircle, Server, Quote, ListChecks, Link2, Users, Pencil, Save, X, Plus, Trash2, Globe, Linkedin, Instagram, Facebook, UserCheck, History } from 'lucide-react';
+import { ArrowLeft, Building2, BrainCircuit, Play, Loader2, Target, AlertTriangle, MessageCircle, Server, Quote, ListChecks, Link2, Users, Pencil, Save, X, Plus, Trash2, Globe, Linkedin, Instagram, Facebook, UserCheck, History, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateLeadEnrichment, PreCallBrief } from '../lib/gemini-lead-enrichment';
 
@@ -92,6 +92,86 @@ const NIVEL_STYLES: Record<string, { dot: string; label: string }> = {
   BAJA: { dot: 'bg-amber-400', label: 'text-amber-600' },
 };
 
+function NovedadesCarousel({ novedades }: { novedades: string[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (novedades.length <= 1 || isPaused) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % novedades.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [novedades.length, isPaused]);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev === 0 ? novedades.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % novedades.length);
+  };
+
+  if (!novedades || novedades.length === 0) return null;
+
+  return (
+    <div 
+      className="mt-6 border-t border-black/5 pt-5"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-[#999999] flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-[#FFB020]" /> Novedades Recientes ({currentIndex + 1}/{novedades.length})
+        </p>
+        {novedades.length > 1 && (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="w-6 h-6 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-[#666666] transition-colors"
+              title="Anterior"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="w-6 h-6 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-[#666666] transition-colors"
+              title="Siguiente"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-gradient-to-r from-amber-50/40 to-orange-50/20 border border-amber-200/40 rounded-2xl p-4 shadow-xs relative overflow-hidden transition-all duration-500 min-h-[90px] flex flex-col justify-between">
+        <p className="text-xs text-[#1A1A1A] font-medium leading-relaxed italic">
+          "{novedades[currentIndex]}"
+        </p>
+        
+        {novedades.length > 1 && (
+          <div className="flex items-center justify-between mt-3 pt-2 border-t border-black/5">
+            <span className="text-[9px] text-[#999999] font-semibold">Noticia #{currentIndex + 1}</span>
+            <div className="flex gap-1">
+              {novedades.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentIndex(idx)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    idx === currentIndex ? 'w-4 bg-[#FFB020]' : 'w-1.5 bg-black/15 hover:bg-black/30'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LeadDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -177,7 +257,7 @@ export default function LeadDetail() {
         fecha: q.sent_date || q.generation_date,
         detalle: q.comments,
         derivo_en_proyecto: false,
-        link: `/smart-quoter?quoteId=${q.id}`,
+        link: `/propuestas/${q.id}`,
       });
     });
 
@@ -313,12 +393,23 @@ export default function LeadDetail() {
       if (r.instagram && !lead.instagram) camposRedes.instagram = r.instagram;
       if (r.facebook && !lead.facebook) camposRedes.facebook = r.facebook;
 
+      const camposConsistencia: Record<string, string> = {};
+      if (!lead.empleados_estimado && briefData.perfil?.empleados_estimado && briefData.perfil.empleados_estimado !== 'sin dato') {
+        camposConsistencia.empleados_estimado = briefData.perfil.empleados_estimado;
+      }
+      if (!lead.sector && briefData.industry && briefData.industry !== 'sin dato') {
+        camposConsistencia.sector = briefData.industry;
+      }
+      if (!lead.localidad && briefData.perfil?.plantas_ubicaciones && briefData.perfil.plantas_ubicaciones !== 'sin dato') {
+        camposConsistencia.localidad = briefData.perfil.plantas_ubicaciones;
+      }
+
       const { error } = await supabase
         .from('leads_cuentas')
-        .update({ pre_call_brief: briefData, estado: nuevoEstado, ...camposRedes })
+        .update({ pre_call_brief: briefData, estado: nuevoEstado, ...camposRedes, ...camposConsistencia })
         .eq('id', lead.id);
       if (error) throw error;
-      setLead({ ...lead, ...camposRedes, pre_call_brief: briefData, estado: nuevoEstado });
+      setLead({ ...lead, ...camposRedes, ...camposConsistencia, pre_call_brief: briefData, estado: nuevoEstado });
     } catch (error: any) {
       console.error('Error generating brief:', error);
       // En el disparo automático no interrumpimos con un alert: se muestra en pantalla.
@@ -483,11 +574,19 @@ export default function LeadDetail() {
             {brief?.presencia_digital && (
               <div className="grid grid-cols-2 gap-2 text-center pb-2 border-b border-black/5">
                 <div className="bg-amber-50/70 border border-amber-200/50 p-2 rounded-xl">
-                  <p className="text-xs font-bold text-amber-900">⭐ {brief.presencia_digital.google_rating || '4.8'}</p>
-                  <p className="text-[8.5px] text-amber-700 font-medium">{brief.presencia_digital.google_reviews || 34} reseñas Google</p>
+                  <p className="text-xs font-bold text-amber-900">
+                    {brief.presencia_digital.google_rating ? `⭐ ${brief.presencia_digital.google_rating}` : 'Sin reseñas'}
+                  </p>
+                  <p className="text-[8.5px] text-amber-700 font-medium">
+                    {brief.presencia_digital.google_rating && brief.presencia_digital.google_reviews 
+                      ? `${brief.presencia_digital.google_reviews} reseñas Google` 
+                      : brief.presencia_digital.google_rating 
+                        ? 'Reseñas Google' 
+                        : 'Google Maps'}
+                  </p>
                 </div>
                 <div className="bg-emerald-50/70 border border-emerald-200/50 p-2 rounded-xl">
-                  <p className="text-xs font-bold text-emerald-900">{brief.presencia_digital.sentimiento || 'POSITIVO'}</p>
+                  <p className="text-xs font-bold text-emerald-900">{brief.presencia_digital.sentimiento || 'SIN_DATOS'}</p>
                   <p className="text-[8.5px] text-emerald-700 font-medium">Sentimiento Marca</p>
                 </div>
               </div>
@@ -761,29 +860,23 @@ export default function LeadDetail() {
                       </div>
                     )}
 
-                    {(brief.presencia_digital?.temas_negativos?.length > 0 || brief.presencia_digital?.novedades?.length > 0) && (
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(brief.presencia_digital?.temas_negativos?.length > 0) && (
+                      <div className="mt-4 grid grid-cols-1 gap-4">
                         {brief.presencia_digital.temas_negativos?.length > 0 && (
                           <div>
                             <p className="text-[9px] font-bold uppercase tracking-wider text-[#999999] mb-1.5">Lo que critican</p>
                             <ul className="flex flex-col gap-1">
-                              {brief.presencia_digital.temas_negativos.map((t, i) => (
-                                <li key={i} className="text-[10px] text-[#666666]">· {t}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {brief.presencia_digital.novedades?.length > 0 && (
-                          <div>
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-[#999999] mb-1.5">Novedades</p>
-                            <ul className="flex flex-col gap-1">
-                              {brief.presencia_digital.novedades.map((t, i) => (
+                              {brief.presencia_digital.temas_negativos.map((t: string, i: number) => (
                                 <li key={i} className="text-[10px] text-[#666666]">· {t}</li>
                               ))}
                             </ul>
                           </div>
                         )}
                       </div>
+                    )}
+                    
+                    {brief.presencia_digital?.novedades?.length > 0 && (
+                      <NovedadesCarousel novedades={brief.presencia_digital.novedades} />
                     )}
                   </div>
                 )}

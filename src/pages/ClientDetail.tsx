@@ -282,6 +282,43 @@ export default function ClientDetail() {
   };
 
 
+  const handleNewQuote = async () => {
+      if (!client) return;
+      try {
+          const { data, error } = await supabase.from('quotes').insert({
+              title: 'Nueva Propuesta Comercial',
+              status: 'Generada',
+              total_amount: 1200, // Costo del diagnóstico por defecto
+              client_id: client.id,
+              client_name: client.name,
+              content: {
+                  diagnosis: 'Diagnóstico Operativo',
+                  hoursStage1: 0,
+                  labelStage1: 'Diagnóstico',
+                  hoursStage2: 0,
+                  labelStage2: 'Desarrollo',
+                  roiEstimate: '',
+                  salesStrategy: '',
+                  deliverables: ['Mapeo As-Is / To-Be', 'Identificación de Deuda Operativa', 'Propuesta de Arquitectura'],
+                  risks: [],
+                  commercialNarrative: '',
+                  pricing: {
+                      module1: { description: 'Diagnóstico Operativo (Bonificable si se avanza con desarrollo)', price: 1200, deliveryDays: 14 },
+                      module2: { description: 'Desarrollo', price: 0, pricingModel: 'Fixed' },
+                      module3: { description: 'Mantenimiento', monthlyPrice: 0 },
+                      totalInitialInvestment: 1200
+                  }
+              }
+          }).select().single();
+          
+          if (error) throw error;
+          if (data) navigate(`/propuestas/${data.id}`);
+      } catch (err) {
+          console.error("Error creating new quote:", err);
+          alert('Hubo un error al crear la cotización.');
+      }
+  };
+
   if (loading) return <div className="p-20 text-center text-[#666666]">Cargando cliente...</div>;
   if (!client) return <div className="p-20 text-center text-[#666666]">Cliente no encontrado</div>;
 
@@ -384,107 +421,109 @@ export default function ClientDetail() {
               </div>
             </div>
           </div>
-        </div>
 
-            {/* Tarjeta de Redes Sociales y Reputación Digital */}
-            <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-6 flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-black/5 pb-3">
-                <div>
-                  <h4 className="text-sm font-bold text-[#1A1A1A]">Redes Sociales y Reputación Digital</h4>
-                  <p className="text-[10px] text-[#666666] font-medium">Detectadas mediante Inteligencia Artificial y Búsqueda Web</p>
-                </div>
-                <button 
-                  onClick={handleGenerateAI}
-                  disabled={isGeneratingAI}
-                  className="flex items-center gap-1.5 bg-[#222222] hover:bg-black text-white px-3 py-1.5 rounded-full text-[10px] font-bold transition-all disabled:opacity-50"
-                >
-                  {isGeneratingAI ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                  {isGeneratingAI ? 'Buscando...' : 'Re-investigar Redes'}
-                </button>
+          {/* Tarjeta de Redes Sociales y Reputación Digital */}
+          <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-black/5 pb-3">
+              <div>
+                <h4 className="text-sm font-bold text-[#1A1A1A]">Redes Sociales y Reputación Digital</h4>
+                <p className="text-[10px] text-[#666666] font-medium">Detectadas mediante Inteligencia Artificial y Búsqueda Web</p>
               </div>
-
-              {(() => {
-                const sp = client.client_analysis?.social_presence || {};
-                const redes = client.client_analysis?.redes || {
-                  web: sp.web || null,
-                  linkedin: sp.linkedin || null,
-                  instagram: sp.instagram || null,
-                  facebook: sp.facebook || null
-                };
-
-                return (
-                  <div className="flex flex-col gap-4">
-                    {/* Metrics Row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="bg-amber-50/60 border border-amber-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
-                        <span className="text-xs font-bold text-amber-900">⭐ {sp.google_rating || '4.8'}</span>
-                        <span className="text-[9px] text-amber-700 font-medium">{sp.google_reviews_count || 34} reseñas Google</span>
-                      </div>
-                      <div className="bg-blue-50/60 border border-blue-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
-                        <span className="text-xs font-bold text-blue-900">{sp.linkedin_followers ? `${sp.linkedin_followers}` : '1.2k+'}</span>
-                        <span className="text-[9px] text-blue-700 font-medium">Seguidores LinkedIn</span>
-                      </div>
-                      <div className="bg-pink-50/60 border border-pink-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
-                        <span className="text-xs font-bold text-pink-900">{sp.instagram_followers ? `${sp.instagram_followers}` : '480+'}</span>
-                        <span className="text-[9px] text-pink-700 font-medium">Seguidores Instagram</span>
-                      </div>
-                      <div className="bg-emerald-50/60 border border-emerald-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
-                        <span className="text-xs font-bold text-emerald-900">{sp.sentiment || 'POSITIVO'}</span>
-                        <span className="text-[9px] text-emerald-700 font-medium">Sentimiento Marca</span>
-                      </div>
-                    </div>
-
-                    {/* Links Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
-                      <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
-                        <span className="font-bold text-[#666666] text-[10px] w-16">Sitio Web:</span>
-                        {redes.web ? (
-                          <a href={redes.web.startsWith('http') ? redes.web : `https://${redes.web}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-semibold truncate flex-1">
-                            {redes.web}
-                          </a>
-                        ) : (
-                          <span className="text-[#999999] italic">No detectado</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
-                        <span className="font-bold text-[#666666] text-[10px] w-16">LinkedIn:</span>
-                        {redes.linkedin ? (
-                          <a href={redes.linkedin.startsWith('http') ? redes.linkedin : `https://${redes.linkedin}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-semibold truncate flex-1">
-                            {redes.linkedin}
-                          </a>
-                        ) : (
-                          <span className="text-[#999999] italic">No detectado</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
-                        <span className="font-bold text-[#666666] text-[10px] w-16">Instagram:</span>
-                        {redes.instagram ? (
-                          <a href={redes.instagram.startsWith('http') ? redes.instagram : `https://${redes.instagram}`} target="_blank" rel="noreferrer" className="text-pink-600 hover:underline font-semibold truncate flex-1">
-                            {redes.instagram}
-                          </a>
-                        ) : (
-                          <span className="text-[#999999] italic">No detectado</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
-                        <span className="font-bold text-[#666666] text-[10px] w-16">Facebook:</span>
-                        {redes.facebook ? (
-                          <a href={redes.facebook.startsWith('http') ? redes.facebook : `https://${redes.facebook}`} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline font-semibold truncate flex-1">
-                            {redes.facebook}
-                          </a>
-                        ) : (
-                          <span className="text-[#999999] italic">No detectado</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+              <button 
+                onClick={handleGenerateAI}
+                disabled={isGeneratingAI}
+                className="flex items-center gap-1.5 bg-[#222222] hover:bg-black text-white px-3 py-1.5 rounded-full text-[10px] font-bold transition-all disabled:opacity-50"
+              >
+                {isGeneratingAI ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                {isGeneratingAI ? 'Buscando...' : 'Re-investigar Redes'}
+              </button>
             </div>
 
+            {(() => {
+              const sp = client.client_analysis?.social_presence || {};
+              const redes = client.client_analysis?.redes || {
+                web: sp.web || null,
+                linkedin: sp.linkedin || null,
+                instagram: sp.instagram || null,
+                facebook: sp.facebook || null
+              };
+
+              return (
+                <div className="flex flex-col gap-4">
+                  {/* Metrics Row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-amber-50/60 border border-amber-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
+                      <span className="text-xs font-bold text-amber-900">{sp.google_rating ? `⭐ ${sp.google_rating}` : 'Sin datos'}</span>
+                      <span className="text-[9px] text-amber-700 font-medium">{sp.google_reviews_count ? `${sp.google_reviews_count} reseñas Google` : 'Google Maps'}</span>
+                    </div>
+                    <div className="bg-blue-50/60 border border-blue-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
+                      <span className="text-xs font-bold text-blue-900">{sp.linkedin_followers ? `${sp.linkedin_followers.toLocaleString('es-AR')}` : 'Sin datos'}</span>
+                      <span className="text-[9px] text-blue-700 font-medium">Seguidores LinkedIn</span>
+                    </div>
+                    <div className="bg-pink-50/60 border border-pink-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
+                      <span className="text-xs font-bold text-pink-900">{sp.instagram_followers ? `${sp.instagram_followers.toLocaleString('es-AR')}` : 'Sin datos'}</span>
+                      <span className="text-[9px] text-pink-700 font-medium">Seguidores Instagram</span>
+                    </div>
+                    <div className="bg-emerald-50/60 border border-emerald-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
+                      <span className="text-xs font-bold text-emerald-900">{sp.sentiment || 'POSITIVO'}</span>
+                      <span className="text-[9px] text-emerald-700 font-medium">Sentimiento Marca</span>
+                    </div>
+                  </div>
+
+                  {/* Links Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+                    <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
+                      <span className="font-bold text-[#666666] text-[10px] w-16">Sitio Web:</span>
+                      {redes.web ? (
+                        <a href={redes.web.startsWith('http') ? redes.web : `https://${redes.web}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-semibold truncate flex-1">
+                          {redes.web}
+                        </a>
+                      ) : (
+                        <span className="text-[#999999] italic">No detectado</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
+                      <span className="font-bold text-[#666666] text-[10px] w-16">LinkedIn:</span>
+                      {redes.linkedin ? (
+                        <a href={redes.linkedin.startsWith('http') ? redes.linkedin : `https://${redes.linkedin}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-semibold truncate flex-1">
+                          {redes.linkedin}
+                        </a>
+                      ) : (
+                        <span className="text-[#999999] italic">No detectado</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
+                      <span className="font-bold text-[#666666] text-[10px] w-16">Instagram:</span>
+                      {redes.instagram ? (
+                        <a href={redes.instagram.startsWith('http') ? redes.instagram : `https://${redes.instagram}`} target="_blank" rel="noreferrer" className="text-pink-600 hover:underline font-semibold truncate flex-1">
+                          {redes.instagram}
+                        </a>
+                      ) : (
+                        <span className="text-[#999999] italic">No detectado</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
+                      <span className="font-bold text-[#666666] text-[10px] w-16">Facebook:</span>
+                      {redes.facebook ? (
+                        <a href={redes.facebook.startsWith('http') ? redes.facebook : `https://${redes.facebook}`} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline font-semibold truncate flex-1">
+                          {redes.facebook}
+                        </a>
+                      ) : (
+                        <span className="text-[#999999] italic">No detectado</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* COLUMNA DERECHA */}
+        <div className="xl:col-span-7 flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-3xl p-5 border border-black/5 shadow-sm flex flex-col justify-between gap-3 group">
               <div className="p-2.5 bg-black/5 rounded-xl text-[#1A1A1A] w-fit">
@@ -534,12 +573,12 @@ export default function ClientDetail() {
             <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-5 flex flex-col gap-4">
               <div className="flex justify-between items-center">
                 <h4 className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">Cotizaciones</h4>
-                <Link to="/smart-quoter" className="p-1.5 bg-black/5 rounded-lg hover:bg-[#FFD166] transition-colors"><Plus size={14} /></Link>
+                <button onClick={handleNewQuote} className="p-1.5 bg-black/5 rounded-lg hover:bg-[#FFD166] transition-colors"><Plus size={14} /></button>
               </div>
               <div className="flex flex-col gap-2.5">
                 {quotes.length === 0 && <p className="text-[11px] text-[#666666] italic text-center py-2">No hay cotizaciones.</p>}
                 {quotes.slice(0, 3).map(q => (
-                  <Link key={q.id} to={`/smart-quoter?quoteId=${q.id}`} className="flex justify-between items-center bg-zinc-50 p-3 rounded-xl border border-black/5 hover:border-black/20 transition-all">
+                  <Link key={q.id} to={`/propuestas/${q.id}`} className="flex justify-between items-center bg-zinc-50 p-3 rounded-xl border border-black/5 hover:border-black/20 transition-all">
                     <div className="overflow-hidden mr-2">
                       <p className="text-xs font-bold text-[#1A1A1A] truncate">{q.title}</p>
                       <p className="text-[9px] font-bold text-[#999999] uppercase mt-0.5">{q.status}</p>
@@ -549,9 +588,9 @@ export default function ClientDetail() {
               </div>
             </div>
           </div>
-
         </div>
       </div>
+    </div>
 
     {/* Modals */}
     {isEditModalOpen && createPortal(

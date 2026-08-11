@@ -70,6 +70,25 @@ export default function Propuestas() {
     }
   };
 
+  const handleQuickStatusChange = async (proposalId: string, newStatus: string) => {
+    try {
+      const updates: Record<string, any> = { status: newStatus };
+      if (newStatus === 'Enviada') {
+        updates.sent_date = new Date().toISOString();
+      }
+      const { error } = await supabase
+        .from('quotes')
+        .update(updates)
+        .eq('id', proposalId);
+      
+      if (error) throw error;
+      setPropuestas(prev => prev.map(p => p.id === proposalId ? { ...p, ...updates } : p));
+    } catch (e: any) {
+      console.error('Error actualizando estado de propuesta:', e);
+      alert('Error al actualizar estado: ' + e.message);
+    }
+  };
+
   const visibles = propuestas.filter((p) => {
     const coincide = `${p.title} ${p.client_name}`.toLowerCase().includes(busqueda.toLowerCase());
     if (!coincide) return false;
@@ -158,13 +177,29 @@ export default function Propuestas() {
             return (
               <div key={p.id} className="group flex flex-col gap-3 bg-white border border-black/10 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all">
                 <div className="flex items-start justify-between gap-2">
-                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${est.chip}`}>
-                    <Icono size={11} /> {est.label}
-                  </span>
-                  {enfriada && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                      <AlertTriangle size={10} /> {dias} días
+                  <select
+                    value={p.status || 'Generada'}
+                    onChange={(e) => handleQuickStatusChange(p.id, e.target.value)}
+                    className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border cursor-pointer outline-none ${est.chip}`}
+                  >
+                    <option value="Generada">📄 Generada</option>
+                    <option value="Enviada">⏱ Enviada</option>
+                    <option value="Aceptada">✓ Aceptada (Ganada)</option>
+                    <option value="Rechazada">✕ Rechazada (Perdida)</option>
+                  </select>
+
+                  {p.sent_date ? (
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                      Enviada {dias}d
                     </span>
+                  ) : (
+                    <button
+                      onClick={() => handleQuickStatusChange(p.id, 'Enviada')}
+                      className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-full transition-colors"
+                      title="Marcar como enviada hoy"
+                    >
+                      + Marcar Enviada
+                    </button>
                   )}
                 </div>
 
@@ -211,10 +246,10 @@ export default function Propuestas() {
 
                 <div className="mt-auto pt-3 border-t border-black/5 flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-[10px] text-[#999999]">
-                      {p.sent_date || p.generation_date
-                        ? new Date(p.sent_date || p.generation_date!).toLocaleDateString('es-AR')
-                        : 'Sin fecha'}
+                    <span className="text-[10px] text-[#666666] font-medium">
+                      {p.sent_date
+                        ? `Enviada: ${new Date(p.sent_date).toLocaleDateString('es-AR')}`
+                        : `Generada: ${p.generation_date ? new Date(p.generation_date).toLocaleDateString('es-AR') : 'Sin fecha'}`}
                     </span>
                     <div className="flex items-center gap-2">
                       {p.lead_id && (
@@ -233,7 +268,7 @@ export default function Propuestas() {
                     to={`/propuestas/${p.id}`}
                     className="flex items-center justify-center gap-1.5 w-full py-2 bg-black/5 hover:bg-black/10 text-[#1A1A1A] text-xs font-bold rounded-xl transition-colors"
                   >
-                    Ver Detalle →
+                    Ver / Editar Detalle →
                   </Link>
                 </div>
               </div>

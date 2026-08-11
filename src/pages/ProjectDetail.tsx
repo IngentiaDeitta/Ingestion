@@ -25,6 +25,14 @@ export interface ProjectMilestone {
   finance_id?: string | null;
 }
 
+export interface ProjectTranscript {
+  id: string;
+  project_id: string;
+  transcript_text: string;
+  summary?: string;
+  created_at: string;
+}
+
 interface Project {
   id: string;
   name: string;
@@ -139,6 +147,11 @@ export default function ProjectDetail() {
   const [expandedTasks, setExpandedTasks] = useState<string[]>([]);
   const [taskGrouping, setTaskGrouping] = useState<'status' | 'priority' | 'phase'>('status');
   const [solutionAnalysis, setSolutionAnalysis] = useState<any>(null);
+
+  // Minutas / Contexto State
+  const [projectTranscripts, setProjectTranscripts] = useState<ProjectTranscript[]>([]);
+  const [newTranscriptText, setNewTranscriptText] = useState('');
+  const [isSavingTranscript, setIsSavingTranscript] = useState(false);
 
   // AI Task Breakdown State
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
@@ -263,6 +276,10 @@ export default function ProjectDetail() {
         .select('*')
         .order('name');
       setAllTeam(teamData || []);
+
+      // Fetch transcripts from project_analysis JSON to avoid dependency on unapplied migration
+      const transcriptsData = projectData.project_analysis?.transcripts || [];
+      setProjectTranscripts(transcriptsData.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
 
       const { data: assignedData, error: assignedError } = await supabase
         .from('project_team')
@@ -1421,6 +1438,38 @@ export default function ProjectDetail() {
     document.body
   ) : null;
 
+  const handleSaveTranscript = async () => {
+    if (!id || !newTranscriptText.trim() || !project) return;
+    try {
+      setIsSavingTranscript(true);
+      const newTranscript = {
+        id: crypto.randomUUID(),
+        project_id: id,
+        transcript_text: newTranscriptText.trim(),
+        created_at: new Date().toISOString()
+      };
+      
+      const currentAnalysis = project.project_analysis || {};
+      const updatedTranscripts = [newTranscript, ...(currentAnalysis.transcripts || [])];
+      
+      const { error } = await supabase
+        .from('projects')
+        .update({ project_analysis: { ...currentAnalysis, transcripts: updatedTranscripts } })
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      setProjectTranscripts(updatedTranscripts);
+      setProject(prev => prev ? { ...prev, project_analysis: { ...currentAnalysis, transcripts: updatedTranscripts } } : null);
+      setNewTranscriptText('');
+    } catch (err: any) {
+      console.error('Error saving transcript:', err);
+      alert('Error al guardar la minuta: ' + err.message);
+    } finally {
+      setIsSavingTranscript(false);
+    }
+  };
+
   const taskManualModal = isTaskModalOpen && editingTaskManual ? createPortal(
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -1976,6 +2025,49 @@ export default function ProjectDetail() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Contexto y Minutas */}
+      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 flex flex-col gap-4">
+        <div>
+          <h4 className="text-base font-semibold text-[#1A1A1A]">Minutas de Reunión / Contexto</h4>
+          <p className="text-xs text-[#666666]">Acumula el historial de contexto de las reuniones para mantener registro del avance y decisiones del proyecto.</p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <textarea
+            value={newTranscriptText}
+            onChange={(e) => setNewTranscriptText(e.target.value)}
+            placeholder="Pega aquí la minuta de tactiq, notas de reunión o el resumen de avances..."
+            className="w-full bg-black/2 border border-black/10 rounded-2xl p-4 outline-none focus:border-[#FFD166] text-sm text-[#1A1A1A] min-h-[100px] resize-y"
+          />
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveTranscript}
+              disabled={isSavingTranscript || !newTranscriptText.trim()}
+              className="bg-[#222222] hover:bg-black text-white disabled:opacity-50 px-6 py-2 rounded-full text-xs font-bold transition-all"
+            >
+              {isSavingTranscript ? 'Guardando...' : 'Guardar Minuta'}
+            </button>
+          </div>
+        </div>
+        {projectTranscripts.length > 0 && (
+          <div className="flex flex-col gap-3 mt-2">
+            {projectTranscripts.map((t) => (
+              <div key={t.id} className="p-4 bg-black/2 border border-black/5 rounded-2xl flex flex-col gap-2">
+                <div className="flex justify-between items-center pb-2 border-b border-black/5">
+                  <span className="text-xs font-bold text-[#1A1A1A]">Minuta de Reunión</span>
+                  <span className="text-[10px] text-[#666666] flex items-center gap-1">
+                    <Calendar size={10} />
+                    {new Date(t.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-xs text-[#666666] whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                  {t.transcript_text}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Ancho completo: el cronograma y las tareas necesitan toda la pantalla */}

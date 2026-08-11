@@ -566,13 +566,27 @@ export default function NewInvoice() {
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={handleAddItem}
-            className="self-start flex items-center gap-2 text-sm font-medium text-[#1A1A1A] bg-white/50 hover:bg-white/80 border border-black/10 px-4 py-2 rounded-full transition-colors mt-2"
-          >
-            <Plus size={16} /> Añadir Concepto
-          </button>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <button
+              type="button"
+              onClick={handleAddItem}
+              className="self-start flex items-center gap-2 text-sm font-medium text-[#1A1A1A] bg-white/50 hover:bg-white/80 border border-black/10 px-4 py-2 rounded-full transition-colors"
+            >
+              <Plus size={16} /> Añadir Concepto
+            </button>
+            {type === 'income' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const id = Date.now();
+                  setItems([...items, { id, description: 'Bonificación Diagnóstico (Módulo 1)', quantity: 1, price: -1200 }]);
+                }}
+                className="self-start flex items-center gap-2 text-sm font-medium text-[#1A1A1A] bg-[#FFD166]/20 hover:bg-[#FFD166]/40 border border-[#FFD166]/30 px-4 py-2 rounded-full transition-colors"
+              >
+                <Tag size={16} /> Bonificar Diagnóstico
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Totales ── */}
