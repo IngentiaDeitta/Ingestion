@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Search, Filter, Plus, ChevronRight, Activity, Globe, Phone, MapPin, X, Loader2, Trash2, Sparkles } from 'lucide-react';
+import { Building2, Search, Filter, Plus, ChevronRight, Activity, Globe, Phone, MapPin, X, Loader2, Trash2, Sparkles, BarChart3, PieChart, Layers } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateLeadEnrichment } from '../lib/gemini-lead-enrichment';
 
@@ -276,6 +276,23 @@ const QUALIFICATION_STYLES: Record<string, string> = {
   DESCARTADO: 'bg-rose-100 text-rose-700 border-rose-200',
 };
 
+const SECTOR_COLORS: Record<string, { bg: string; text: string; bar: string; border: string }> = {
+  'Logística y Transporte': { bg: 'bg-blue-50', text: 'text-blue-700', bar: 'bg-blue-500', border: 'border-blue-200' },
+  'Farmacéutica y Cosmética': { bg: 'bg-purple-50', text: 'text-purple-700', bar: 'bg-purple-500', border: 'border-purple-200' },
+  'Electromecánica y Metalurgia': { bg: 'bg-amber-50', text: 'text-amber-700', bar: 'bg-amber-500', border: 'border-amber-200' },
+  'Plásticos y Química': { bg: 'bg-emerald-50', text: 'text-emerald-700', bar: 'bg-emerald-500', border: 'border-emerald-200' },
+  'Automotriz y Autopartes': { bg: 'bg-rose-50', text: 'text-rose-700', bar: 'bg-rose-500', border: 'border-rose-200' },
+  'Agroindustria y Maquinaria': { bg: 'bg-lime-50', text: 'text-lime-700', bar: 'bg-lime-500', border: 'border-lime-200' },
+  'Servicios Industriales': { bg: 'bg-indigo-50', text: 'text-indigo-700', bar: 'bg-indigo-500', border: 'border-indigo-200' },
+  'Alimentos y Bebidas': { bg: 'bg-orange-50', text: 'text-orange-700', bar: 'bg-orange-500', border: 'border-orange-200' },
+  'Tecnología y Servicios B2B': { bg: 'bg-cyan-50', text: 'text-cyan-700', bar: 'bg-cyan-500', border: 'border-cyan-200' },
+  'Metalmecánica e Industria Pesada': { bg: 'bg-zinc-100', text: 'text-zinc-800', bar: 'bg-zinc-600', border: 'border-zinc-300' },
+  'Comercio y Distribución': { bg: 'bg-teal-50', text: 'text-teal-700', bar: 'bg-teal-500', border: 'border-teal-200' },
+  'Construcción y Materiales': { bg: 'bg-stone-100', text: 'text-stone-800', bar: 'bg-stone-500', border: 'border-stone-300' },
+  'Textil y Calzado': { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', bar: 'bg-fuchsia-500', border: 'border-fuchsia-200' },
+  'Otros Industriales': { bg: 'bg-gray-100', text: 'text-gray-700', bar: 'bg-gray-400', border: 'border-gray-200' },
+};
+
 export default function Leads() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -401,11 +418,27 @@ export default function Leads() {
     }
   };
 
-  const verticals = ['All', ...Array.from(new Set(leads.map(l => l.sector || l.pre_call_brief?.industry).filter(Boolean) as string[]))];
+  const sectorDistribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    leads.forEach((l) => {
+      const s = l.sector || l.pre_call_brief?.industry || l.pre_call_brief?.sector_estandar || 'Servicios Industriales';
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    const total = leads.length || 1;
+    return Object.entries(counts)
+      .map(([sector, count]) => ({
+        sector,
+        count,
+        percentage: Math.round((count / total) * 1000) / 10,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [leads]);
+
+  const verticals = ['All', ...Array.from(new Set(leads.map(l => l.sector || l.pre_call_brief?.industry || l.pre_call_brief?.sector_estandar).filter(Boolean) as string[]))];
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = (lead.empresa || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const leadSector = lead.sector || lead.pre_call_brief?.industry;
+    const leadSector = lead.sector || lead.pre_call_brief?.industry || lead.pre_call_brief?.sector_estandar || 'Servicios Industriales';
     const matchesVertical = filterVertical === 'All' || leadSector === filterVertical;
     const leadQual = lead.pre_call_brief?.qualification_status || 'POR_CALIFICAR';
     const matchesQual = filterQualification === 'All' || leadQual === filterQualification;
@@ -472,6 +505,87 @@ export default function Leads() {
           <span className={`text-[10px] uppercase font-bold tracking-wider ${filterQualification === 'DESCARTADO' ? 'text-white/80' : 'text-rose-600'}`}>Descartados</span>
           <span className="text-2xl font-light block mt-0.5">{leads.filter(l => l.pre_call_brief?.qualification_status === 'DESCARTADO').length}</span>
         </button>
+      </div>
+
+      {/* Gráfico de Distribución por Sector Industrial */}
+      <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-black/5 p-4 shadow-sm flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-black/5 flex items-center justify-center border border-black/5">
+              <BarChart3 className="w-4 h-4 text-[#1A1A1A]" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-[#1A1A1A] flex items-center gap-2">
+                Distribución por Sector Industrial
+                <span className="text-[10px] bg-black/5 text-[#666666] font-bold px-2 py-0.5 rounded-full">
+                  100% Clasificados ({leads.length})
+                </span>
+              </h4>
+              <p className="text-[11px] text-[#666666]">Haz clic en cualquier sector para filtrar los prospectos en tiempo real.</p>
+            </div>
+          </div>
+          {filterVertical !== 'All' && (
+            <button
+              onClick={() => setFilterVertical('All')}
+              className="text-xs font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 px-3 py-1 rounded-full border border-purple-200 transition-all flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+            >
+              Ver Todos ({leads.length})
+            </button>
+          )}
+        </div>
+
+        {/* Barra proporcional de sectores */}
+        <div className="w-full h-3 bg-black/5 rounded-full overflow-hidden flex shadow-inner">
+          {sectorDistribution.map((item) => {
+            const style = SECTOR_COLORS[item.sector] || { bar: 'bg-gray-400' };
+            const isActive = filterVertical === item.sector;
+            return (
+              <div
+                key={item.sector}
+                onClick={() => setFilterVertical(filterVertical === item.sector ? 'All' : item.sector)}
+                style={{ width: `${item.percentage}%` }}
+                title={`${item.sector}: ${item.count} leads (${item.percentage}%)`}
+                className={`h-full ${style.bar} cursor-pointer transition-all hover:opacity-80 relative ${isActive ? 'ring-2 ring-black z-10 scale-y-125' : ''}`}
+              />
+            );
+          })}
+        </div>
+
+        {/* Tarjetas interactivas de sectores */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+          {sectorDistribution.map((item) => {
+            const style = SECTOR_COLORS[item.sector] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
+            const isSelected = filterVertical === item.sector;
+            return (
+              <button
+                key={item.sector}
+                onClick={() => setFilterVertical(filterVertical === item.sector ? 'All' : item.sector)}
+                className={`flex flex-col p-2 rounded-xl border text-left transition-all text-xs cursor-pointer ${
+                  isSelected
+                    ? 'bg-black text-white border-black shadow-md ring-2 ring-black/10'
+                    : `${style.bg} ${style.border} hover:border-black/30`
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className={`text-[9px] font-extrabold uppercase tracking-wider truncate ${isSelected ? 'text-white/80' : style.text}`}>
+                    {item.sector.split(' ')[0]}
+                  </span>
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-white/80 text-black/80'}`}>
+                    {item.count}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between mt-1">
+                  <span className={`text-[11px] font-semibold truncate ${isSelected ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                    {item.sector}
+                  </span>
+                  <span className={`text-[10px] ml-1 font-medium ${isSelected ? 'text-white/70' : 'text-[#666666]'}`}>
+                    {item.percentage}%
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Filters */}
@@ -550,7 +664,7 @@ export default function Leads() {
                 <div className="flex flex-col gap-1.5 mt-1 text-xs text-[#666666]">
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-[#999999]" />
-                    <span className="font-medium text-[#1A1A1A]">{lead.pre_call_brief?.industry || lead.sector || 'Sin sector'}</span>
+                    <span className="font-medium text-[#1A1A1A]">{lead.sector || lead.pre_call_brief?.industry || lead.pre_call_brief?.sector_estandar || 'Servicios Industriales'}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-[#999999]" />
@@ -574,11 +688,9 @@ export default function Leads() {
                           {lead.pre_call_brief.qualification_status.replace('_', ' ')}
                         </span>
                       )}
-                      {(lead.pre_call_brief?.industry || lead.sector) && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-200">
-                          {lead.pre_call_brief?.industry || lead.sector}
-                        </span>
-                      )}
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-200">
+                        {lead.sector || lead.pre_call_brief?.industry || lead.pre_call_brief?.sector_estandar || 'Servicios Industriales'}
+                      </span>
                     </div>
                   )}
                   <div className="flex items-center gap-1.5">
