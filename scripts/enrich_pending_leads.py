@@ -17,7 +17,7 @@ if not all([SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY]):
     sys.exit(1)
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or os.getenv("VITE_OPENROUTER_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER") or os.getenv("OPENROUTER_API_KEY") or os.getenv("VITE_OPENROUTER_API_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 import time
@@ -25,8 +25,10 @@ import time
 def call_openrouter_fallback(prompt: str) -> dict:
     print("[OpenRouter Fallback] Redirigiendo petición a OpenRouter (modelo free)...")
     models = [
-        "google/gemini-2.0-flash-lite-001:free",
-        "meta-llama/llama-3.3-70b-instruct:free",
+        "openrouter/free",
+        "google/gemma-4-31b-it:free",
+        "nvidia/nemotron-3.5-lightning:free",
+        "openai/gpt-oss-20b:free",
         "openrouter/auto"
     ]
     for model in models:
