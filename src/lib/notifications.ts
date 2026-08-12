@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type NotificationType = 'invoice' | 'project' | 'quote' | 'client' | 'system' | 'info';
+export type NotificationType = 'invoice' | 'project' | 'quote' | 'client' | 'system' | 'info' | 'came_evento' | 'came_boletin' | 'came_ipip' | 'came_novedad';
 
 export const sendNotification = async (title: string, content: string, type: NotificationType = 'info') => {
   try {

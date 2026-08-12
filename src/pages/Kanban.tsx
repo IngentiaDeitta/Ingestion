@@ -1,5 +1,6 @@
 import { Plus, MoreHorizontal, Calendar, MessageSquare, Paperclip, X, Save, User, Tag, Check, Loader2, Trash2, Clock } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '../lib/supabase';
@@ -54,6 +55,7 @@ const COLUMN_TO_STATUS: Record<string, string> = { 'col-1': 'todo', 'col-2': 'in
 
 export default function Kanban() {
   const { isAdmin } = useUser();
+  const location = useLocation();
   const [data, setData] = useState<BoardData>({ tasks: {}, columns: INITIAL_COLUMNS, columnOrder: ['col-1', 'col-2', 'col-3', 'col-4'] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,7 +66,16 @@ export default function Kanban() {
 
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('General');
 
-  useEffect(() => { fetchTasks(); fetchTeam(); fetchProjects(); }, []);
+  useEffect(() => {
+    const targetProject = location.state?.project;
+    const targetTaskId = location.state?.taskId;
+    if (targetProject) {
+      setSelectedProjectFilter(targetProject);
+    }
+    fetchTasks(targetProject, targetTaskId);
+    fetchTeam();
+    fetchProjects();
+  }, [location.state]);
   
   const calculateAndSaveProjectProgress = async (projectName: string) => {
     if (!projectName || projectName === 'General' || projectName === 'Ingentia') return;
@@ -140,7 +151,7 @@ export default function Kanban() {
     setTeam(data || []);
   };
 
-  const fetchTasks = async (projectFilterOverride?: string) => {
+  const fetchTasks = async (projectFilterOverride?: string, targetTaskId?: string) => {
     try {
       setLoading(true);
       const { data: tasksData, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
@@ -183,9 +194,36 @@ export default function Kanban() {
         if (columns[columnId]) columns[columnId].taskIds.push(task.id);
       });
 
-      // Sort taskIds in each column by the position property
+      // Si se especificó una tarea desde el Dashboard, abrir su modal de detalle
+      const effectiveTaskId = targetTaskId || location.state?.taskId;
+      if (effectiveTaskId) {
+        const rawTarget = (tasksData || []).find((t: any) => String(t.id) === String(effectiveTaskId));
+        if (rawTarget) {
+          const targetTask: Task = {
+            id: rawTarget.id,
+            title: rawTarget.title || 'Sin título',
+            project: rawTarget.project || 'General',
+            priority: rawTarget.priority || 'Media',
+            comments: rawTarget.comments_count || 0,
+            attachments: rawTarget.attachments_count || 0,
+            dueDate: rawTarget.due_date || 'Sin fecha',
+            assignees: rawTarget.assignees || (rawTarget.assignee ? [rawTarget.assignee] : []),
+            tags: rawTarget.tags || [],
+            description: rawTarget.description || '',
+            hours: Number(rawTarget.hours || 0),
+            started_at: rawTarget.started_at,
+            actual_hours: rawTarget.actual_hours ? Number(rawTarget.actual_hours) : undefined,
+            position: Number(rawTarget.position || 0),
+            phase: rawTarget.phase || undefined,
+            delegable: !!rawTarget.delegable,
+          };
+          setSelectedTask(targetTask);
+        }
+      }
+
+      // Sort taskIds in each column by position
       Object.keys(columns).forEach(colId => {
-        columns[colId].taskIds.sort((a: string, b: string) => (tasks[a].position || 0) - (tasks[b].position || 0));
+        columns[colId].taskIds.sort((a: string, b: string) => (tasks[a]?.position || 0) - (tasks[b]?.position || 0));
       });
 
       setData({ tasks, columns, columnOrder: ['col-1', 'col-2', 'col-3', 'col-4'] });

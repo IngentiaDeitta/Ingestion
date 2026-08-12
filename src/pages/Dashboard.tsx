@@ -731,16 +731,20 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
                               const [d, m, y] = t.due_date.split('/');
                               normalized = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
                           }
-                          const d = new Date(normalized);
-                          formattedDate = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+                          const parts = normalized.split('T')[0].split('-');
+                          if (parts.length === 3) {
+                              const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0);
+                              formattedDate = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+                          }
                       }
 
                       const isGeneral = !t.project_name || t.project_name === 'General';
+                      const taskProject = t.project_name || t.project || 'General';
 
                       return (
                           <div 
                             key={t.id} 
-                            onClick={() => navigate('/kanban')}
+                            onClick={() => navigate('/kanban', { state: { taskId: t.id, project: taskProject } })}
                             className={`bg-white p-2.5 rounded-xl border ${isGeneral ? 'border-[#FFD166]/50' : 'border-black/5'} flex flex-col gap-1 shadow-sm cursor-pointer hover:border-black/20 hover:shadow-md transition-all`}
                           >
                               <div className="flex justify-between items-start gap-2">
@@ -763,7 +767,7 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
                                       </div>
                                   )}
                                   <span className={`text-[9px] font-bold uppercase tracking-wider truncate ${isGeneral ? 'text-[#FFB020]' : 'text-[#666666]'}`}>
-                                      {t.project_name || 'Comercial'}
+                                      {taskProject}
                                   </span>
                               </div>
                           </div>

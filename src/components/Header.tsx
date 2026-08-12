@@ -1,4 +1,4 @@
-import { Search, Bell, Plus, ChevronDown, User, LogOut, Settings as SettingsIcon, MessageSquare, Trash2, Menu, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Search, Bell, Plus, ChevronDown, User, LogOut, Settings as SettingsIcon, MessageSquare, Trash2, Menu, AlertTriangle, CheckCircle2, Calendar, FileText, BarChart2, Zap } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -384,7 +384,11 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
                           quote: { bg: 'bg-amber-100', text: 'text-amber-600', icon: MessageSquare },
                           client: { bg: 'bg-purple-100', text: 'text-purple-600', icon: User },
                           system: { bg: 'bg-gray-100', text: 'text-gray-600', icon: Bell },
-                          info: { bg: 'bg-blue-100', text: 'text-blue-600', icon: MessageSquare }
+                          info: { bg: 'bg-blue-100', text: 'text-blue-600', icon: MessageSquare },
+                          came_evento: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Calendar },
+                          came_boletin: { bg: 'bg-blue-100', text: 'text-blue-700', icon: FileText },
+                          came_ipip: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: BarChart2 },
+                          came_novedad: { bg: 'bg-amber-100', text: 'text-amber-700', icon: Zap }
                         };
 
                         const config = typeConfig[n.type as keyof typeof typeConfig] || typeConfig.info;
