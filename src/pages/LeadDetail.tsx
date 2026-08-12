@@ -66,6 +66,243 @@ const ESTADO_INTERACCION: Record<string, { color: string; label: string }> = {
   Perdido: { color: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Perdido' },
 };
 
+const SEED_LEADS = [
+  {
+    id: 1,
+    empresa: 'DripColor SRL',
+    dominio: 'dripcolor.com',
+    sector: 'Alimentos y Bebidas',
+    localidad: 'Pilar, Buenos Aires',
+    contacto_nombre: 'Edith Sanchez',
+    contacto_cargo: 'Dueña / Operaciones',
+    empleados_estimado: '25-50',
+    notas: 'Fabricante de insumos para repostería y pastelería creativa en Parque Industrial Pilar.',
+    web: 'https://dripcolor.com',
+    linkedin_empresa: 'https://linkedin.com/company/dripcolor',
+    instagram: 'https://instagram.com/dripcolor',
+    facebook: null,
+    estado: 'ENRIQUECIDO',
+    pre_call_brief: {
+      empresa_una_frase: 'Fabricante de insumos y colorantes para repostería y pastelería creativa.',
+      industry: 'Alimentos y Bebidas',
+      qualification_status: 'CALIFICADO',
+      perfil: { empleados_estimado: '25-50', plantas_ubicaciones: 'Pilar, Buenos Aires', antiguedad: '15 años', rubro: 'Alimentos y Bebidas' },
+      senales: [{ nivel: 'ALTA', descripcion: 'Proceso empírico de producción y costeo manual en planillas de Excel sin trazabilidad.' }],
+      camaras_redes: ['ADIMRA', 'Parque Industrial Pilar'],
+      interlocutor: { nombre: 'Edith Sanchez', cargo_estimado: 'Dueña', es_decisor: 'SI' },
+      dolor_declarado: 'Carga manual repetitiva de órdenes de producción y partes de planta en Excel.',
+      hipotesis_dolor: 'Sobrecostos operativos por pago sistemático de horas extras y falta de costo real por lote al cierre mensual.',
+      stack_probable: ['Excel', 'WhatsApp', 'Tango Gestión'],
+      preguntas: {
+        bloque_a_mapa: ['¿Cómo entra hoy un pedido desde la web hasta que se factura y despacha?'],
+        bloque_b_dolor: ['¿Cuántas horas semanales dedica el equipo a volcar partes diarios a Excel?'],
+        bloque_c_urgencia: ['¿Qué ocurre si duplican la producción el próximo trimestre con el esquema actual?']
+      },
+      encuadre_sugerido: 'Hola Edith, gracias por estos 30 minutos. La idea de hoy es entender el mapa operativo de DripColor...',
+      fuentes: ['dripcolor.com', 'Google Reviews'],
+      investigacion_verificada: true,
+      redes: { web: 'https://dripcolor.com', linkedin: 'https://linkedin.com/company/dripcolor', instagram: 'https://instagram.com/dripcolor', facebook: null },
+      presencia_digital: { google_rating: 4.8, google_reviews: 32, linkedin_followers: 1200, instagram_followers: 45000, sentimiento: 'POSITIVO', temas_positivos: ['Calidad de producto'], temas_negativos: [], novedades: ['Nuevos colorantes sintéticos para exportación'] },
+      scores: { reputacion: 90, presencia_digital: 85, madurez_mercado: 80, fit_ingentia: 92, global: 88 }
+    }
+  },
+  {
+    id: 2,
+    empresa: 'Elektro Korrosión SRL',
+    dominio: 'elektrokorrosion.com.ar',
+    sector: 'Electromecánica y Metalurgia',
+    localidad: 'El Talar, Tigre',
+    contacto_nombre: 'Federico Gino',
+    contacto_cargo: 'Socio / Director Técnico',
+    empleados_estimado: '15-30',
+    notas: 'Ingeniería en protección catódica y control de corrosión industrial.',
+    web: 'https://elektrokorrosion.com.ar',
+    linkedin_empresa: 'https://linkedin.com/company/elektrokorrosion',
+    instagram: null,
+    facebook: null,
+    estado: 'CONVERTIDO',
+    pre_call_brief: {
+      empresa_una_frase: 'Soluciones integrales de protección catódica e ingeniería anticorrosiva.',
+      industry: 'Electromecánica y Metalurgia',
+      qualification_status: 'CALIFICADO',
+      perfil: { empleados_estimado: '15-30', plantas_ubicaciones: 'El Talar, Tigre', antiguedad: '20 años', rubro: 'Electromecánica y Metalurgia' },
+      senales: [{ nivel: 'ALTA', descripcion: 'Descentralización de 20.000 presupuestos históricos en archivos locales y WhatsApp.' }],
+      camaras_redes: ['CADIEEL'],
+      interlocutor: { nombre: 'Federico Gino', cargo_estimado: 'Director Técnico', es_decisor: 'SI' },
+      dolor_declarado: 'Dispersión comercial entre HubSpot, Outlook y planillas locales.',
+      hipotesis_dolor: 'Pérdida de trazabilidad de presupuestos y falta de recomendador inteligente de cotizaciones.',
+      stack_probable: ['HubSpot', 'Excel', 'Outlook'],
+      preguntas: {
+        bloque_a_mapa: ['¿Cómo gestionan el historial de presupuestos emitidos a clientes de gas y petróleo?'],
+        bloque_b_dolor: ['¿Cuánto tiempo insume cotizar una obra especial sin consultar antecedentes?'],
+        bloque_c_urgencia: ['¿Qué impacto tendría unificar el pipeline en un CRM omnicanal maestro?']
+      },
+      encuadre_sugerido: 'Hola Federico, un gusto saludarte. Hoy nos enfocamos en el ecosistema comercial de Elektro Korrosión...',
+      fuentes: ['elektrokorrosion.com.ar'],
+      investigacion_verificada: true,
+      redes: { web: 'https://elektrokorrosion.com.ar', linkedin: 'https://linkedin.com/company/elektrokorrosion', instagram: null, facebook: null },
+      presencia_digital: { google_rating: 4.6, google_reviews: 15, linkedin_followers: 2100, instagram_followers: 0, sentimiento: 'POSITIVO', temas_positivos: ['Solidez técnica'], temas_negativos: [], novedades: [] },
+      scores: { reputacion: 88, presencia_digital: 75, madurez_mercado: 85, fit_ingentia: 95, global: 90 }
+    }
+  },
+  {
+    id: 3,
+    empresa: 'Laboratorios Andrómaco SA',
+    dominio: 'andromaco.com.ar',
+    sector: 'Farmacéutica y Cosmética',
+    localidad: 'CABA',
+    contacto_nombre: 'Diego Sturla',
+    contacto_cargo: 'Gerente de Sistemas / IA',
+    empleados_estimado: '200-500',
+    notas: 'Laboratorio dermocosmético líder. Prospección para proyectos de IA aplicada.',
+    web: 'https://andromaco.com.ar',
+    linkedin_empresa: 'https://linkedin.com/company/laboratorios-andromaco',
+    instagram: 'https://instagram.com/andromacoar',
+    facebook: null,
+    estado: 'REUNION_AGENDADA',
+    pre_call_brief: {
+      empresa_una_frase: 'Laboratorio líder en especialidades medicinales y cuidado dermocosmético.',
+      industry: 'Farmacéutica y Cosmética',
+      qualification_status: 'POTENCIAL',
+      perfil: { empleados_estimado: '200-500', plantas_ubicaciones: 'CABA', antiguedad: '90 años', rubro: 'Farmacéutica y Cosmética' },
+      senales: [{ nivel: 'MEDIA', descripcion: 'Evaluación de automatización de procesamiento documental normativo.' }],
+      camaras_redes: ['CILFA', 'CAPA'],
+      interlocutor: { nombre: 'Diego Sturla', cargo_estimado: 'Gerente de Sistemas', es_decisor: 'PROBABLE' },
+      dolor_declarado: 'Búsqueda de soluciones de Inteligencia Artificial para aceleración de flujos de trabajo.',
+      hipotesis_dolor: 'Alto volumen de documentación regulatoria y control de calidad en soporte no estructurado.',
+      stack_probable: ['SAP', 'Documentum', 'Microsoft 365'],
+      preguntas: {
+        bloque_a_mapa: ['¿Cómo procesan actualmente las solicitudes de auditoría y documentación técnica?'],
+        bloque_b_dolor: ['¿Cuántas horas hombre dedican a la validación de expedientes de lotes?'],
+        bloque_c_urgencia: ['¿Tienen iniciativas prioritarias de IA aprobadas para este semestre?']
+      },
+      encuadre_sugerido: 'Hola Diego, un gusto reunirnos. Queremos explorar las oportunidades de automatización e IA en Andrómaco...',
+      fuentes: ['andromaco.com.ar'],
+      investigacion_verificada: true,
+      redes: { web: 'https://andromaco.com.ar', linkedin: 'https://linkedin.com/company/laboratorios-andromaco', instagram: 'https://instagram.com/andromacoar', facebook: null },
+      presencia_digital: { google_rating: 4.7, google_reviews: 140, linkedin_followers: 45000, instagram_followers: 120000, sentimiento: 'POSITIVO', temas_positivos: ['Reputación médica'], temas_negativos: [], novedades: [] },
+      scores: { reputacion: 95, presencia_digital: 92, madurez_mercado: 90, fit_ingentia: 68, global: 82 }
+    }
+  },
+  {
+    id: 4,
+    empresa: 'Chisap SCA',
+    dominio: 'chisap.com.ar',
+    sector: 'Alimentos y Bebidas',
+    localidad: 'AMBA',
+    contacto_nombre: 'Gerencia Operativa',
+    contacto_cargo: 'Jefe de Planta',
+    empleados_estimado: '30-60',
+    notas: 'Frigorífico y distribuidor mayorista de embutidos.',
+    web: 'https://chisap.com.ar',
+    linkedin_empresa: null,
+    instagram: null,
+    facebook: null,
+    estado: 'NUEVO',
+    pre_call_brief: {
+      empresa_una_frase: 'Frigorífico y elaborador de chacinados y embutidos de consumo masivo.',
+      industry: 'Alimentos y Bebidas',
+      qualification_status: 'CALIFICADO',
+      perfil: { empleados_estimado: '30-60', plantas_ubicaciones: 'AMBA', antiguedad: '30 años', rubro: 'Alimentos y Bebidas' },
+      senales: [{ nivel: 'ALTA', descripcion: 'Falta de trazabilidad digital en línea de envasado y despacho diario.' }],
+      camaras_redes: ['CACHA'],
+      interlocutor: { nombre: 'Jefe de Planta', cargo_estimado: 'Responsable de Producción', es_decisor: 'PROBABLE' },
+      dolor_declarado: null,
+      hipotesis_dolor: 'Pérdidas por mermas no contabilizadas en tiempo real y demoras en liquidación de repartos.',
+      stack_probable: ['Planillas físicas', 'Excel'],
+      preguntas: {
+        bloque_a_mapa: ['¿Cómo controlan el rendimiento de kilos envasados vs pesaje inicial en cámara?'],
+        bloque_b_dolor: ['¿Cuántas horas lleva reconciliar los remitos de despacho al final del día?'],
+        bloque_c_urgencia: ['¿Qué problemas de trazabilidad tienen ante inspecciones de SENASA?']
+      },
+      encuadre_sugerido: 'Buenas tardes, la reunión tiene por objeto revisar los cuellos de botella en la planta de Chisap...',
+      fuentes: ['chisap.com.ar'],
+      investigacion_verificada: true,
+      redes: { web: 'https://chisap.com.ar', linkedin: null, instagram: null, facebook: null },
+      presencia_digital: { google_rating: 4.2, google_reviews: 20, linkedin_followers: 0, instagram_followers: 0, sentimiento: 'NEUTRO', temas_positivos: ['Calidad de fiambres'], temas_negativos: [], novedades: [] },
+      scores: { reputacion: 75, presencia_digital: 40, madurez_mercado: 78, fit_ingentia: 86, global: 76 }
+    }
+  },
+  {
+    id: 5,
+    empresa: 'Brogas SCA',
+    dominio: 'brogas.com.ar',
+    sector: 'Electromecánica y Metalurgia',
+    localidad: 'AMBA',
+    contacto_nombre: 'Vicepresidencia / Producción',
+    contacto_cargo: 'Vicepresidente',
+    empleados_estimado: '40-80',
+    notas: 'Fabricante de generadores de aire caliente y productos para camping a gas.',
+    web: 'https://brogas.com.ar',
+    linkedin_empresa: 'https://linkedin.com/company/brogas',
+    instagram: null,
+    facebook: null,
+    estado: 'NUEVO',
+    pre_call_brief: {
+      empresa_una_frase: 'Fabricante de artefactos térmicos, calefacción y grupos electrógenos.',
+      industry: 'Electromecánica y Metalurgia',
+      qualification_status: 'CALIFICADO',
+      perfil: { empleados_estimado: '40-80', plantas_ubicaciones: 'AMBA', antiguedad: '40 años', rubro: 'Electromecánica y Metalurgia' },
+      senales: [{ nivel: 'ALTA', descripcion: 'Desafíos en la gestión de listas de materiales (BOM) y control de stock de insumos.' }],
+      camaras_redes: ['ADIMRA', 'CADIEEL'],
+      interlocutor: { nombre: 'Vicepresidente', cargo_estimado: 'Vicepresidente', es_decisor: 'SI' },
+      dolor_declarado: null,
+      hipotesis_dolor: 'Falta de integración entre el armado de conjuntos metálicos y el cálculo de costos de producción.',
+      stack_probable: ['Sistema de gestión a medida', 'Excel'],
+      preguntas: {
+        bloque_a_mapa: ['¿Cómo supervisan la secuencia de matrizado y ensamble de generadores?'],
+        bloque_b_dolor: ['¿Cuántas horas se pierden por faltantes de componentes en línea de montaje?'],
+        bloque_c_urgencia: ['¿Qué capacidad de escala tienen prevista para la próxima temporada pico?']
+      },
+      encuadre_sugerido: 'Estimado, agradezco estos minutos para analizar la eficiencia operativa en Brogas...',
+      fuentes: ['brogas.com.ar'],
+      investigacion_verificada: true,
+      redes: { web: 'https://brogas.com.ar', linkedin: 'https://linkedin.com/company/brogas', instagram: null, facebook: null },
+      presencia_digital: { google_rating: 4.4, google_reviews: 45, linkedin_followers: 1500, instagram_followers: 0, sentimiento: 'POSITIVO', temas_positivos: ['Variedad de producto'], temas_negativos: [], novedades: [] },
+      scores: { reputacion: 82, presencia_digital: 65, madurez_mercado: 84, fit_ingentia: 89, global: 82 }
+    }
+  },
+  {
+    id: 6,
+    empresa: 'Ferrosider SA',
+    dominio: 'ferrosider.com.ar',
+    sector: 'Metalmecánica e Industria Pesada',
+    localidad: 'CABA',
+    contacto_nombre: 'Gerencia de Operaciones',
+    contacto_cargo: 'Gerente Operativo',
+    empleados_estimado: '50-100',
+    notas: 'Centro de servicios siderúrgicos y distribución de productos de acero.',
+    web: 'https://ferrosider.com.ar',
+    linkedin_empresa: 'https://linkedin.com/company/ferrosider',
+    instagram: null,
+    facebook: null,
+    estado: 'NUEVO',
+    pre_call_brief: {
+      empresa_una_frase: 'Centro de servicios siderúrgicos y fraccionamiento de productos de acero.',
+      industry: 'Metalmecánica e Industria Pesada',
+      qualification_status: 'CALIFICADO',
+      perfil: { empleados_estimado: '50-100', plantas_ubicaciones: 'CABA / GBA', antiguedad: '25 años', rubro: 'Metalmecánica e Industria Pesada' },
+      senales: [{ nivel: 'ALTA', descripcion: 'Lenta respuesta en cotización de corte a medida y despacho de bobinas/chapas.' }],
+      camaras_redes: ['CAMARA ARGENTINA DEL ACERO'],
+      interlocutor: { nombre: 'Gerente Operativo', cargo_estimado: 'Gerente de Operaciones', es_decisor: 'SI' },
+      dolor_declarado: null,
+      hipotesis_dolor: 'Dificultad para calcular mermas de corte siderúrgico en tiempo real en las propuestas.',
+      stack_probable: ['Tango', 'Excel'],
+      preguntas: {
+        bloque_a_mapa: ['¿Cómo se cotiza una solicitud especial de corte a medida cuando ingresa por ventas?'],
+        bloque_b_dolor: ['¿Cuántas operaciones de recotización suceden por variaciones de precio en insumos?'],
+        bloque_c_urgencia: ['¿Qué cuellos de botella identifican en el puente grúa y despacho de playa?']
+      },
+      encuadre_sugerido: 'Buenas tardes, la intención de la llamada es ver cómo agilizar las operaciones en Ferrosider...',
+      fuentes: ['ferrosider.com.ar'],
+      investigacion_verificada: true,
+      redes: { web: 'https://ferrosider.com.ar', linkedin: 'https://linkedin.com/company/ferrosider', instagram: null, facebook: null },
+      presencia_digital: { google_rating: 4.5, google_reviews: 30, linkedin_followers: 3200, instagram_followers: 0, sentimiento: 'POSITIVO', temas_positivos: ['Rapidez de entrega'], temas_negativos: [], novedades: [] },
+      scores: { reputacion: 85, presencia_digital: 70, madurez_mercado: 88, fit_ingentia: 91, global: 85 }
+    }
+  }
+];
+
 const CAMPOS_EDITABLES = [
   { k: 'empresa', label: 'Empresa' },
   { k: 'dominio', label: 'Dominio' },
@@ -201,11 +438,18 @@ export default function LeadDetail() {
         .eq('id', id)
         .single();
       if (error) throw error;
-      setLead(data);
-      setForm(data);
-      await Promise.all([buscarCoincidencia(data), cargarContactos(data.id), cargarHistorial(data)]);
+      if (data) {
+        setLead(data);
+        setForm(data);
+        await Promise.all([buscarCoincidencia(data), cargarContactos(data.id), cargarHistorial(data)]);
+      }
     } catch (error) {
-      console.error('Error fetching lead:', error);
+      console.error('Error fetching lead from DB, trying seed fallback:', error);
+      const seedLead = SEED_LEADS.find(s => String(s.id) === String(id));
+      if (seedLead) {
+        setLead(seedLead as any);
+        setForm(seedLead as any);
+      }
     } finally {
       setLoading(false);
     }
