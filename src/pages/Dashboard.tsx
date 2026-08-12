@@ -2,13 +2,14 @@ import {
   DollarSign, TrendingUp, Clock, Zap, AlertTriangle,
   ChevronRight, BarChart2, Users as UsersIcon, Folder as FolderIcon,
   ArrowUpRight, Briefcase, FileText, Target, Calendar, Plus, X, Save,
-  Layers, CheckCircle2, ArrowRight
+  Layers, CheckCircle2, ArrowRight, MapPin, Building, ExternalLink, BookmarkPlus
 } from "lucide-react";
 import { useUser } from "../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import exchangeRates from '../data/exchange_rates.json';
+import eventosIndustriaData from '../data/eventos_industria.json';
 
 interface Stats {
   totalClients: number;
@@ -476,6 +477,7 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [activeTab, setActiveTab] = useState<'tasks' | 'events'>('tasks');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', due_date: '', project_name: 'General', assignee: 'Fer' });
   const [savingTask, setSavingTask] = useState(false);
@@ -518,7 +520,7 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
       let dA = a.due_date.includes('/') ? a.due_date.split('/').reverse().join('-') : a.due_date;
       let dB = b.due_date.includes('/') ? b.due_date.split('/').reverse().join('-') : b.due_date;
       return new Date(dA).getTime() - new Date(dB).getTime();
-  }).slice(0, 5); // Take top 5
+  }).slice(0, 5);
 
   const handleDayClick = (date: number) => {
       const clickedDate = new Date(year, month, date);
@@ -546,6 +548,41 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
           return dueDateStr === selectedStr;
       });
   }
+
+  // Industrial Events Filtering
+  const eventsList = (eventosIndustriaData as any[]) || [];
+  let displayedEvents = eventsList;
+  if (selectedDate) {
+      const selectedStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+      displayedEvents = eventsList.filter(e => {
+          return e.date_start <= selectedStr && e.date_end >= selectedStr;
+      });
+  }
+
+  const handleAddEventAsTask = async (evt: any) => {
+    try {
+      setSavingTask(true);
+      const assignedName = teamMembers[0]?.name || 'Fer';
+      const { error } = await supabase.from('tasks').insert([{
+        title: `[Evento] ${evt.title}`,
+        due_date: evt.date_start,
+        project_name: 'Comercial - Eventos',
+        status: 'todo',
+        assignees: [assignedName],
+        assignee: assignedName,
+        hours: 2,
+        actual_hours: 0
+      }]);
+      if (error) throw error;
+      alert(`Recordatorio agendado para "${evt.title}"!`);
+      onTaskAdded();
+    } catch (err) {
+      console.error('Error agendando recordatorio de evento:', err);
+      alert('No se pudo guardar el recordatorio');
+    } finally {
+      setSavingTask(false);
+    }
+  };
 
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -577,6 +614,35 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
 
   return (
     <div className="flex flex-col h-full">
+      {/* Selector de Pestañas Agenda */}
+      <div className="flex border-b border-black/5 bg-zinc-50/80 p-1.5 gap-1">
+        <button
+          onClick={() => setActiveTab('tasks')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'tasks'
+              ? 'bg-white text-zinc-900 shadow-sm border border-black/5'
+              : 'text-zinc-500 hover:text-zinc-800 hover:bg-black/5'
+          }`}
+        >
+          <Calendar size={13} className="text-amber-500" />
+          <span>Tareas del Equipo</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('events')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'events'
+              ? 'bg-purple-950 text-purple-200 shadow-sm border border-purple-800'
+              : 'text-purple-700 hover:bg-purple-50'
+          }`}
+        >
+          <Building size={13} className="text-purple-400" />
+          <span>Eventos Industria & PyMEs</span>
+          <span className="bg-purple-800 text-purple-100 text-[9px] px-1.5 py-0.2 rounded-full ml-0.5">
+            {eventsList.length}
+          </span>
+        </button>
+      </div>
+
       <div className="p-4 pb-2">
         <div className="flex justify-between items-center mb-3">
           <p className="font-bold text-[#1A1A1A] text-sm">{capitalizedMonth} {year}</p>
@@ -611,91 +677,170 @@ function DashboardCalendar({ tasks, teamMembers, onTaskAdded }: { tasks: any[], 
               return normalized.split('T')[0] === dayStr;
             });
             
+            const dayEvents = eventsList.filter(e => e.date_start <= dayStr && e.date_end >= dayStr);
             const isToday = new Date().getDate() === date && new Date().getMonth() === month && new Date().getFullYear() === year;
             const isSelected = selectedDate?.getDate() === date && selectedDate?.getMonth() === month && selectedDate?.getFullYear() === year;
             const hasTasks = dayTasks.length > 0;
+            const hasEvents = dayEvents.length > 0;
 
             return (
               <div key={date} className="relative h-7 flex items-center justify-center">
                 <button 
                   onClick={() => handleDayClick(date)}
-                  className={`text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full transition-all
-                  ${isSelected ? 'ring-2 ring-[#FFD166] ring-offset-1' : ''}
+                  className={`text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full transition-all relative
+                  ${isSelected ? 'ring-2 ring-purple-500 ring-offset-1' : ''}
                   ${isToday ? 'bg-[#1A1A1A] text-white' : 'text-[#1A1A1A] hover:bg-black/5'} 
-                  ${hasTasks && !isToday ? 'bg-orange-50 text-orange-700' : ''}`}>
+                  ${hasTasks && !isToday ? 'bg-orange-50 text-orange-700' : ''}
+                  ${hasEvents && !isToday && !hasTasks ? 'bg-purple-100 text-purple-900 font-extrabold' : ''}`}>
                   {date}
                 </button>
-                {hasTasks && isToday && <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-500 rounded-full border border-white"></div>}
+                {hasEvents && (
+                  <div className="absolute top-0 right-0 w-2 h-2 bg-purple-600 rounded-full border border-white shadow-xs" title="Evento Industrial"></div>
+                )}
+                {hasTasks && isToday && !hasEvents && (
+                  <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-500 rounded-full border border-white"></div>
+                )}
               </div>
             );
           })}
         </div>
       </div>
       
-      <div className="border-t border-black/5 bg-zinc-50 flex-1 p-4 flex flex-col">
-        <div className="flex justify-between items-center mb-2">
-            <h4 className="text-[10px] font-bold text-[#666666] uppercase tracking-wide">
-                {selectedDate ? `Vencimientos del ${selectedDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}` : 'Próximos Vencimientos'}
+      {/* VISTA 1: Tareas y Vencimientos */}
+      {activeTab === 'tasks' && (
+        <div className="border-t border-black/5 bg-zinc-50 flex-1 p-4 flex flex-col">
+          <div className="flex justify-between items-center mb-2">
+              <h4 className="text-[10px] font-bold text-[#666666] uppercase tracking-wide">
+                  {selectedDate ? `Vencimientos del ${selectedDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}` : 'Próximos Vencimientos'}
+              </h4>
+              {selectedDate && (
+                  <button onClick={() => setSelectedDate(null)} className="text-[9px] font-bold text-orange-600 hover:underline">Ver Próximos</button>
+              )}
+          </div>
+          <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar">
+              {displayedTasks.length === 0 ? (
+                  <p className="text-xs text-[#666666] py-2">
+                      {selectedDate ? 'No hay tareas para este día.' : 'No hay tareas próximas a vencer.'}
+                  </p>
+              ) : (
+                  displayedTasks.map(t => {
+                      let formattedDate = 'Pronto';
+                      if (t.due_date) {
+                          let normalized = t.due_date;
+                          if (t.due_date.includes('/')) {
+                              const [d, m, y] = t.due_date.split('/');
+                              normalized = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                          }
+                          const d = new Date(normalized);
+                          formattedDate = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+                      }
+
+                      const isGeneral = !t.project_name || t.project_name === 'General';
+
+                      return (
+                          <div 
+                            key={t.id} 
+                            onClick={() => navigate('/kanban')}
+                            className={`bg-white p-2.5 rounded-xl border ${isGeneral ? 'border-[#FFD166]/50' : 'border-black/5'} flex flex-col gap-1 shadow-sm cursor-pointer hover:border-black/20 hover:shadow-md transition-all`}
+                          >
+                              <div className="flex justify-between items-start gap-2">
+                                  <p className="text-[13px] font-medium text-[#1A1A1A] line-clamp-1">{t.title}</p>
+                                  <span className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-sm whitespace-nowrap">
+                                      {formattedDate}
+                                  </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                  {t.assignees && t.assignees.length > 0 && (
+                                      <div className="flex -space-x-1">
+                                          {t.assignees.slice(0, 2).map((name: string, idx: number) => {
+                                              const member = teamMembers.find(m => m.name === name);
+                                              return (
+                                                  <div key={idx} className="w-3.5 h-3.5 rounded-full border border-white flex items-center justify-center text-[5px] text-white" style={{ backgroundColor: member?.avatar_color || '#222222' }}>
+                                                      {name[0]}
+                                                  </div>
+                                              );
+                                          })}
+                                      </div>
+                                  )}
+                                  <span className={`text-[9px] font-bold uppercase tracking-wider truncate ${isGeneral ? 'text-[#FFB020]' : 'text-[#666666]'}`}>
+                                      {t.project_name || 'Comercial'}
+                                  </span>
+                              </div>
+                          </div>
+                      );
+                  })
+              )}
+          </div>
+        </div>
+      )}
+
+      {/* VISTA 2: Eventos Industriales & PyME */}
+      {activeTab === 'events' && (
+        <div className="border-t border-purple-100 bg-purple-950/5 flex-1 p-3 flex flex-col">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="text-[10px] font-bold text-purple-900 uppercase tracking-wide flex items-center gap-1">
+              <Building size={12} className="text-purple-600" />
+              {selectedDate ? `Eventos para ${selectedDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}` : 'Próximas Ferias & Foros PyME'}
             </h4>
             {selectedDate && (
-                <button onClick={() => setSelectedDate(null)} className="text-[9px] font-bold text-orange-600 hover:underline">Ver Próximos</button>
+              <button onClick={() => setSelectedDate(null)} className="text-[9px] font-bold text-purple-700 hover:underline">Ver Todos</button>
             )}
-        </div>
-        <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar">
-            {displayedTasks.length === 0 ? (
-                <p className="text-xs text-[#666666] py-2">
-                    {selectedDate ? 'No hay tareas para este día.' : 'No hay tareas próximas a vencer.'}
-                </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 overflow-y-auto custom-scrollbar flex-1 max-h-[300px]">
+            {displayedEvents.length === 0 ? (
+              <p className="text-xs text-zinc-500 py-3 text-center">No hay eventos agendados para este día.</p>
             ) : (
-                displayedTasks.map(t => {
-                    let formattedDate = 'Pronto';
-                    if (t.due_date) {
-                        let normalized = t.due_date;
-                        if (t.due_date.includes('/')) {
-                            const [d, m, y] = t.due_date.split('/');
-                            normalized = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                        }
-                        const d = new Date(normalized);
-                        formattedDate = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-                    }
+              displayedEvents.map((evt: any) => (
+                <div key={evt.id} className="bg-white p-3 rounded-xl border border-purple-200/80 shadow-xs hover:shadow-md transition-all flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-purple-900 text-purple-100">
+                          {evt.category}
+                        </span>
+                        <span className="text-[10px] text-zinc-500 font-medium">
+                          {evt.date_start} {evt.date_end !== evt.date_start ? `al ${evt.date_end}` : ''}
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-bold text-zinc-900 leading-snug">{evt.title}</h5>
+                    </div>
+                    <button
+                      onClick={() => handleAddEventAsTask(evt)}
+                      disabled={savingTask}
+                      title="Agendar como Tarea del Equipo"
+                      className="p-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-800 transition-colors flex items-center gap-1 text-[10px] font-bold shrink-0"
+                    >
+                      <BookmarkPlus size={13} />
+                      <span className="hidden sm:inline">Agendar</span>
+                    </button>
+                  </div>
 
-                    const isGeneral = !t.project_name || t.project_name === 'General';
+                  <p className="text-[11px] text-zinc-600 line-clamp-2">{evt.description}</p>
 
-                    return (
-                        <div 
-                          key={t.id} 
-                          onClick={() => navigate('/kanban')}
-                          className={`bg-white p-2.5 rounded-xl border ${isGeneral ? 'border-[#FFD166]/50' : 'border-black/5'} flex flex-col gap-1 shadow-sm cursor-pointer hover:border-black/20 hover:shadow-md transition-all`}
-                        >
-                            <div className="flex justify-between items-start gap-2">
-                                <p className="text-[13px] font-medium text-[#1A1A1A] line-clamp-1">{t.title}</p>
-                                <span className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-sm whitespace-nowrap">
-                                    {formattedDate}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                                {t.assignees && t.assignees.length > 0 && (
-                                    <div className="flex -space-x-1">
-                                        {t.assignees.slice(0, 2).map((name: string, idx: number) => {
-                                            const member = teamMembers.find(m => m.name === name);
-                                            return (
-                                                <div key={idx} className="w-3.5 h-3.5 rounded-full border border-white flex items-center justify-center text-[5px] text-white" style={{ backgroundColor: member?.avatar_color || '#222222' }}>
-                                                    {name[0]}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                                <span className={`text-[9px] font-bold uppercase tracking-wider truncate ${isGeneral ? 'text-[#FFB020]' : 'text-[#666666]'}`}>
-                                    {t.project_name || 'Comercial'}
-                                </span>
-                            </div>
-                        </div>
-                    );
-                })
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t border-purple-50 text-[10px] text-zinc-500">
+                    <div className="flex items-center gap-1 text-zinc-700 font-medium">
+                      <MapPin size={11} className="text-purple-600 shrink-0" />
+                      <span className="truncate max-w-[200px]">{evt.location}</span>
+                    </div>
+
+                    {evt.website && (
+                      <a
+                        href={evt.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-purple-700 hover:text-purple-900 font-bold flex items-center gap-0.5 ml-auto text-[10px]"
+                      >
+                        Web <ExternalLink size={10} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))
             )}
+          </div>
         </div>
-      </div>
+      )}
 
       {isModalOpen && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">

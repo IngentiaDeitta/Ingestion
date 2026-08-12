@@ -1,0 +1,93 @@
+[
+  {
+    "id": "evt_somos_industria_2026",
+    "title": "Somos Industria 2026 - Congreso Industrial PyME",
+    "category": "CONGRESO",
+    "organizer": "UIPBA / RedPARQUES / ADIBA",
+    "date_start": "2026-09-23",
+    "date_end": "2026-09-24",
+    "location": "Centro de Exposiciones Costa Salguero, CABA",
+    "sectors": ["PyMEs", "Parques Industriales", "Manufactura", "Transformación Digital"],
+    "description": "El evento industrial PyME más representativo del país. Combina el Congreso Industrial PyME con la Exposición de Parques Industriales y rondas de negocios.",
+    "relevance_ingentia": "ALTA - Captación masiva de directivos PyME que buscan reingeniería de procesos e IA.",
+    "website": "https://somosindustria.com.ar"
+  },
+  {
+    "id": "evt_fimaqh_2026",
+    "title": "FIMAQH 2026 - Feria Internacional de la Máquina Herramienta",
+    "category": "EXPOSICION",
+    "organizer": "CARMAHE / AAFM",
+    "date_start": "2026-05-12",
+    "date_end": "2026-05-16",
+    "location": "Predio Ferial La Rural, CABA",
+    "sectors": ["Metalmecánica", "Máquinas Herramientas", "Automatización", "Robótica Industrial"],
+    "description": "Exposición líder en tecnologías para la producción, maquinarias de precisión, automatización de plantas e Industria 4.0.",
+    "relevance_ingentia": "MUY ALTA - Clientes del sector industrial pesado y metalmecánico con necesidades de monitoreo y software de gestión.",
+    "website": "https://fimaqh.com"
+  },
+  {
+    "id": "evt_foro_pyme_came_2026",
+    "title": "Foro de Innovación y Transformación PyME CAME",
+    "category": "FORO",
+    "organizer": "CAME (Confederación Argentina de la Mediana Empresa)",
+    "date_start": "2026-08-20",
+    "date_end": "2026-08-20",
+    "location": "Sede Central CAME / Streaming Nacional",
+    "sectors": ["PyMEs Comercial e Industrial", "Tecnología", "Financiamiento"],
+    "description": "Encuentro nacional centrado en digitalización PyME, eficiencia operativa, modelos de IA y herramientas de financiamiento para el desarrollo.",
+    "relevance_ingentia": "ALTA - Networking institucional con cámaras comerciales e industriales de todo el país.",
+    "website": "https://redcame.org.ar"
+  },
+  {
+    "id": "evt_expo_logistik_2026",
+    "title": "Expo Logísti-k & Transporte 2026",
+    "category": "EXPOSICION",
+    "organizer": "Expotrade / ARLOG",
+    "date_start": "2026-08-11",
+    "date_end": "2026-08-13",
+    "location": "La Rural Predio Ferial, CABA",
+    "sectors": ["Logística", "Cadena de Suministro", "Distribución", "Depósitos Inteligentes"],
+    "description": "Feria de referencia para la cadena de abastecimiento, trazabilidad, software WMS/ERP y logística de distribución para distribuidores y fabricantes.",
+    "relevance_ingentia": "ALTA - Proyectos de optimización de rutas, control de stock automatizado e integración Supabase/n8n.",
+    "website": "https://expologisti-k.com.ar"
+  },
+  {
+    "id": "evt_tecno_fidta_2026",
+    "title": "Tecno Fidta 2026 - Tecnología para Alimentos y Bebidas",
+    "category": "EXPOSICION",
+    "organizer": "Messe Frankfurt Argentina",
+    "date_start": "2026-09-15",
+    "date_end": "2026-09-18",
+    "location": "La Rural Predio Ferial, CABA",
+    "sectors": ["Alimentos y Bebidas", "Empaque", "Procesos Industriales", "Control de Calidad"],
+    "description": "Evento internacional de tecnología alimentaria, empaque, ingredientes y sistemas de calidad para plantas procesadoras de alimentos.",
+    "relevance_ingentia": "MEDIA-ALTA - Clientes industriales del rubro alimenticio interesados en digitalización de calidad y trazabilidad.",
+    "website": "https://tecnofidta.ar.messefrankfurt.com"
+  },
+  {
+    "id": "evt_arminera_2026",
+    "title": "Arminera 2026 - Encuentro Internacional de la Industria Minera",
+    "category": "CONGRESO",
+    "organizer": "CAEM / Messe Frankfurt Argentina",
+    "date_start": "2026-05-20",
+    "date_end": "2026-05-22",
+    "location": "La Rural Predio Ferial, CABA",
+    "sectors": ["Minería", "Proveedores Industriales", "Energía", "Seguridad e Ingesta de Datos"],
+    "description": "Exposición internacional de la minería argentina y su cadena de valor de proveedores PyME industriales y de servicios técnicos.",
+    "relevance_ingentia": "MEDIA - Ingesta de proveedores industriales y cotizaciones de gran escala.",
+    "website": "https://arminera.ar.messefrankfurt.com"
+  },
+  {
+    "id": "evt_encuentro_cac_innovacion_2026",
+    "title": "Encuentro de Comercio e Industria 4.0 CAC",
+    "category": "NETWORKING",
+    "organizer": "Cámara Argentina de Comercio y Servicios (CAC)",
+    "date_start": "2026-10-15",
+    "date_end": "2026-10-15",
+    "location": "Auditorio CAC, CABA",
+    "sectors": ["Comercio Exterior", "Mayoristas", "Distribución PyME", "Software B2B"],
+    "description": "Jornada de trabajo sobre automatización de ventas B2B, Inteligencia Artificial aplicada a cotizaciones y transformación del canal mayorista.",
+    "relevance_ingentia": "MUY ALTA - Caso de éxito ideal para presentar soluciones como Smart Quoter y Radiografía Digital.",
+    "website": "https://cac.com.ar"
+  }
+]
