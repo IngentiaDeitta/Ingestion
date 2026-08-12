@@ -16,7 +16,7 @@ const OPENROUTER_FREE_MODELS = [
 ];
 
 function cleanJsonText(raw: string): string {
-  let s = raw.strip ? raw.strip() : raw.trim();
+  let s = raw.trim();
   s = s.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
   const start = s.indexOf('{');
   const end = s.lastIndexOf('}');

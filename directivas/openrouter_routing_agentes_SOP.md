@@ -50,6 +50,7 @@ El cliente de IA debe soportar indistintamente las siguientes variables:
 | Fecha | Error Detectado | Causa Raíz | Solución Aplicada |
 |-------|----------------|------------|-------------------|
 | 12/08/2026 | Incompatibilidad de nombre de variable en `.env` | La clave en `.env` se llama `OPENROUTER` mientras que los scripts buscaban `OPENROUTER_API_KEY` | Actualizar el lector de `.env` para consultar `os.getenv("OPENROUTER") or os.getenv("OPENROUTER_API_KEY")` |
+| 12/08/2026 | TS2339: Property 'strip' does not exist on type 'string' | Uso de método Python `.strip()` en TypeScript en lugar de `.trim()` | Reemplazar por `raw.trim()` en `src/lib/ai-router.ts` |
 
 ---
 
