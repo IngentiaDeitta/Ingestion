@@ -162,7 +162,7 @@ export default function Kanban() {
       // Se muestran únicamente las tareas de IngentIA por defecto
       const tareasFiltradas = (tasksData || []).filter((t: any) => {
         if (currentFilter === 'General') return !t.project || t.project === 'General' || t.project === 'Ingentia';
-        if (currentFilter === 'ALL') return !t.project || t.project === 'General' || t.project === 'Ingentia';
+        if (currentFilter === 'ALL') return true;
         return t.project === currentFilter;
       });
 
@@ -459,6 +459,7 @@ export default function Kanban() {
               className="bg-transparent text-xs font-semibold text-[#1A1A1A] outline-none cursor-pointer pr-2"
             >
               <option value="General">IngentIA (General)</option>
+              <option value="ALL">Todas las tareas</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.name}>
                   {p.name}
