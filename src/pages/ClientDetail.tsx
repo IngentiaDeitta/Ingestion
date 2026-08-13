@@ -1,11 +1,38 @@
-import { ArrowLeft, Mail, Phone, Building, Clock, DollarSign, Folder, X, Save, Plus, Eye, Trash2, UserPlus, MoreVertical, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  ArrowLeft, 
+  Mail, 
+  Phone, 
+  Building, 
+  DollarSign, 
+  Folder, 
+  X, 
+  Save, 
+  Plus, 
+  Trash2, 
+  UserPlus, 
+  MoreVertical, 
+  Sparkles, 
+  Loader2, 
+  Globe, 
+  Linkedin, 
+  Instagram, 
+  Facebook,
+  FileText,
+  Calendar
+} from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { generateLeadEnrichment } from '../lib/gemini-lead-enrichment';
+import MeetingIntelligenceSection from '../components/MeetingIntelligenceSection';
+import { ProjectTranscript, MeetingIntelligence } from '../lib/gemini-meeting-intelligence';
 
-const EditIcon = ({ size }: { size: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
+const EditIcon = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+  </svg>
+);
 
 interface Client {
   id: string;
@@ -26,6 +53,7 @@ interface Project {
   status: string;
   progress: number;
   budget: number;
+  project_analysis?: any;
 }
 
 interface Quote {
@@ -64,6 +92,7 @@ export default function ClientDetail() {
   });
   const [projects, setProjects] = useState<Project[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [clientTranscripts, setClientTranscripts] = useState<ProjectTranscript[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [savingClient, setSavingClient] = useState(false);
@@ -112,6 +141,36 @@ export default function ClientDetail() {
       
       if (projectsError) throw projectsError;
       setProjects(projectsData || []);
+
+      // Aggregate all minutas / transcripts across client projects & client analysis
+      const aggregatedTranscripts: ProjectTranscript[] = [];
+      const seenTranscriptIds = new Set<string>();
+
+      // Transcripts from client_analysis
+      if (clientData.client_analysis?.transcripts && Array.isArray(clientData.client_analysis.transcripts)) {
+        clientData.client_analysis.transcripts.forEach((t: any) => {
+          if (t && !seenTranscriptIds.has(t.id || t.summary)) {
+            seenTranscriptIds.add(t.id || t.summary);
+            aggregatedTranscripts.push(t);
+          }
+        });
+      }
+
+      // Transcripts from projects
+      (projectsData || []).forEach((p: any) => {
+        if (p.project_analysis?.transcripts && Array.isArray(p.project_analysis.transcripts)) {
+          p.project_analysis.transcripts.forEach((t: any) => {
+            if (t && !seenTranscriptIds.has(t.id || t.summary)) {
+              seenTranscriptIds.add(t.id || t.summary);
+              aggregatedTranscripts.push(t);
+            }
+          });
+        }
+      });
+
+      setClientTranscripts(
+        aggregatedTranscripts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      );
 
       const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
@@ -235,207 +294,276 @@ export default function ClientDetail() {
   };
 
   const handleGenerateAI = async () => {
-      if (!client) return;
-      try {
-          setIsGeneratingAI(true);
-          
-          // 1. Create Lead in DB to hold the brief
-          const { data: leadData, error: leadError } = await supabase.from('leads_cuentas').insert([{
-              empresa: client.name,
-              sector: client.industry,
-              estado: 'CONVERTIDO',
-              origen: 'Generado desde Cliente'
-          }]).select('id').single();
+    if (!client) return;
+    try {
+      setIsGeneratingAI(true);
+      
+      const brief = await generateLeadEnrichment({
+        empresa: client.name,
+        sector: client.industry,
+        contacto_nombre: client.contact_person
+      });
 
-          if (leadError) throw leadError;
+      const currentAnalysis = client.client_analysis || {};
+      const updatedAnalysis = {
+        ...currentAnalysis,
+        summary: brief.empresa_una_frase || currentAnalysis.summary,
+        social_presence: {
+          web: brief.fuentes?.find((f: string) => f.includes('.')) || currentAnalysis.social_presence?.web || '',
+          google_rating: brief.presencia_digital?.google_rating ?? null,
+          google_reviews_count: brief.presencia_digital?.google_reviews ?? null,
+          linkedin_followers: brief.presencia_digital?.linkedin_followers ?? null,
+          instagram_followers: brief.presencia_digital?.instagram_followers ?? null,
+          sentiment: brief.presencia_digital?.sentimiento || 'POSITIVO',
+          top_positive_themes: brief.presencia_digital?.temas_positivos || [],
+          top_negative_themes: brief.presencia_digital?.temas_negativos || [],
+        },
+        redes: {
+          web: brief.fuentes?.find((f: string) => f.includes('.')) || currentAnalysis.redes?.web || '',
+          linkedin: currentAnalysis.redes?.linkedin || '',
+          instagram: currentAnalysis.redes?.instagram || '',
+          facebook: currentAnalysis.redes?.facebook || ''
+        }
+      };
 
-          // 2. Generate Brief
-          const brief = await generateLeadEnrichment({
-              empresa: client.name,
-              sector: client.industry,
-              contacto_nombre: client.contact_person
-          });
+      const { error: updateClientError } = await supabase
+        .from('clients')
+        .update({ client_analysis: updatedAnalysis })
+        .eq('id', client.id);
 
-          // 3. Save brief to Lead
-          const { error: updateLeadError } = await supabase.from('leads_cuentas').update({
-              pre_call_brief: brief
-          }).eq('id', leadData.id);
+      if (updateClientError) throw updateClientError;
 
-          if (updateLeadError) throw updateLeadError;
-
-          // 4. Update Client with lead_id
-          const { error: updateClientError } = await supabase.from('clients').update({
-              lead_id: leadData.id
-          }).eq('id', client.id);
-
-          if (updateClientError) throw updateClientError;
-
-          // Refresh UI
-          await fetchClientAndProjects();
-
-      } catch (err) {
-          console.error("Error generating AI analysis:", err);
-          alert('Hubo un error al generar el análisis de IA.');
-      } finally {
-          setIsGeneratingAI(false);
-      }
+      await fetchClientAndProjects();
+    } catch (err) {
+      console.error("Error generating AI analysis:", err);
+      alert('Hubo un error al re-investigar la presencia digital.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
   };
 
+  const handleSaveIntelligence = async (newIntel: MeetingIntelligence) => {
+    if (!client) return;
+    try {
+      const currentAnalysis = client.client_analysis || {};
+      const updatedAnalysis = { ...currentAnalysis, meeting_intelligence: newIntel };
+      
+      const { error } = await supabase
+        .from('clients')
+        .update({ client_analysis: updatedAnalysis })
+        .eq('id', client.id);
+
+      if (error) throw error;
+      setClient(prev => prev ? { ...prev, client_analysis: updatedAnalysis } : null);
+    } catch (err) {
+      console.error('Error saving meeting intelligence in client:', err);
+    }
+  };
 
   const handleNewQuote = async () => {
-      if (!client) return;
-      try {
-          const { data, error } = await supabase.from('quotes').insert({
-              title: 'Nueva Propuesta Comercial',
-              status: 'Generada',
-              total_amount: 1200, // Costo del diagnóstico por defecto
-              client_id: client.id,
-              client_name: client.name,
-              content: {
-                  diagnosis: 'Diagnóstico Operativo',
-                  hoursStage1: 0,
-                  labelStage1: 'Diagnóstico',
-                  hoursStage2: 0,
-                  labelStage2: 'Desarrollo',
-                  roiEstimate: '',
-                  salesStrategy: '',
-                  deliverables: ['Mapeo As-Is / To-Be', 'Identificación de Deuda Operativa', 'Propuesta de Arquitectura'],
-                  risks: [],
-                  commercialNarrative: '',
-                  pricing: {
-                      module1: { description: 'Diagnóstico Operativo (Bonificable si se avanza con desarrollo)', price: 1200, deliveryDays: 14 },
-                      module2: { description: 'Desarrollo', price: 0, pricingModel: 'Fixed' },
-                      module3: { description: 'Mantenimiento', monthlyPrice: 0 },
-                      totalInitialInvestment: 1200
-                  }
-              }
-          }).select().single();
-          
-          if (error) throw error;
-          if (data) navigate(`/propuestas/${data.id}`);
-      } catch (err) {
-          console.error("Error creating new quote:", err);
-          alert('Hubo un error al crear la cotización.');
-      }
+    if (!client) return;
+    try {
+      const { data, error } = await supabase.from('quotes').insert({
+        title: 'Nueva Propuesta Comercial',
+        status: 'Generada',
+        total_amount: 1200,
+        client_id: client.id,
+        client_name: client.name,
+        content: {
+          diagnosis: 'Diagnóstico Operativo',
+          hoursStage1: 0,
+          labelStage1: 'Diagnóstico',
+          hoursStage2: 0,
+          labelStage2: 'Desarrollo',
+          roiEstimate: '',
+          salesStrategy: '',
+          deliverables: ['Mapeo As-Is / To-Be', 'Identificación de Deuda Operativa', 'Propuesta de Arquitectura'],
+          risks: [],
+          commercialNarrative: '',
+          pricing: {
+            module1: { description: 'Diagnóstico Operativo (Bonificable si se avanza con desarrollo)', price: 1200, deliveryDays: 14 },
+            module2: { description: 'Desarrollo', price: 0, pricingModel: 'Fixed' },
+            module3: { description: 'Mantenimiento', monthlyPrice: 0 },
+            totalInitialInvestment: 1200
+          }
+        }
+      }).select().single();
+      
+      if (error) throw error;
+      if (data) navigate(`/propuestas/${data.id}`);
+    } catch (err) {
+      console.error("Error creating new quote:", err);
+      alert('Hubo un error al crear la cotización.');
+    }
   };
 
   if (loading) return <div className="p-20 text-center text-[#666666]">Cargando cliente...</div>;
   if (!client) return <div className="p-20 text-center text-[#666666]">Cliente no encontrado</div>;
 
   const initials = client.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  const totalBudget = projects.reduce((acc, p) => acc + (p.budget || 0), 0);
+  const activeProjectsCount = projects.filter(p => p.status === 'En Progreso').length;
 
   return (
     <>
-    <div className="flex-1 flex flex-col gap-6 w-full max-w-[1100px] mx-auto animate-in fade-in duration-500 pb-10">
+    <div className="flex-1 flex flex-col gap-5 w-full max-w-7xl mx-auto animate-in fade-in duration-300 pb-12">
       
+      {/* PAGE HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link to="/clients" className="p-2.5 bg-white hover:bg-black/5 rounded-xl transition-all duration-300 border border-black/5 shadow-sm group">
-            <ArrowLeft size={18} className="text-[#1A1A1A] group-hover:-translate-x-0.5 transition-transform" />
+        <div className="flex items-center gap-3.5">
+          <Link to="/clients" className="p-2 bg-white hover:bg-black/5 rounded-xl transition-all duration-200 border border-black/5 shadow-xs group">
+            <ArrowLeft size={16} className="text-[#1A1A1A] group-hover:-translate-x-0.5 transition-transform" />
           </Link>
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <h3 className="text-2xl font-bold tracking-tight text-[#1A1A1A] leading-none">{client.name}</h3>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${client.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#1A1A1A] leading-tight">
+                {client.name}
+              </h2>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${client.status === 'Activo' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'}`}>
                 {client.status}
               </span>
             </div>
-            <p className="text-[#666666] text-xs font-medium mt-1">Cliente desde {new Date(client.created_at).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}</p>
+            <p className="text-xs text-[#666666] font-medium mt-0.5">
+              Cliente activo · Registrado en {new Date(client.created_at).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+            </p>
           </div>
         </div>
-        <button 
-          onClick={() => setIsEditModalOpen(true)}
-          className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-black text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow-md"
-        >
-          <EditIcon size={14} />
-          Editar Detalles
-        </button>
+
+        <div className="flex items-center gap-2.5">
+          <button 
+            onClick={handleNewQuote}
+            className="flex items-center justify-center gap-1.5 bg-white hover:bg-black/5 text-[#1A1A1A] border border-black/10 px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-xs"
+          >
+            <Plus size={14} />
+            Nueva Cotización
+          </button>
+          <button 
+            onClick={() => setIsEditModalOpen(true)}
+            className="flex items-center justify-center gap-1.5 bg-[#222222] hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-xs"
+          >
+            <EditIcon size={14} />
+            Editar Cliente
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      {/* MAIN TWO-COLUMN GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         
-        {/* COLUMNA IZQUIERDA */}
-        <div className="xl:col-span-5 flex flex-col gap-5">
+        {/* COLUMNA IZQUIERDA (Info, Contactos, Redes) */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
           
-          {/* Client Info Card */}
-          <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-6 flex flex-col gap-5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#222222] to-[#444444] flex items-center justify-center text-white text-lg font-bold shadow-md shrink-0">
+          {/* Tarjeta de Información General */}
+          <div className="bg-white rounded-2xl border border-black/5 shadow-xs p-4 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#222222] to-[#444444] flex items-center justify-center text-white text-base font-bold shadow-xs shrink-0">
                 {initials}
               </div>
-              <div>
-                <h4 className="text-lg font-bold text-[#1A1A1A]">{client.name}</h4>
-                <p className="text-xs text-[#666666] font-medium">{client.industry}</p>
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold text-[#1A1A1A] truncate">{client.name}</h4>
+                <p className="text-xs text-[#666666] truncate">{client.industry || 'Industria no especificada'}</p>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 pt-5 border-t border-black/5">
-              <div className="flex items-center gap-3 text-[#666666]">
-                <div className="w-7 h-7 rounded-full bg-black/5 flex items-center justify-center"><Building size={14} /></div>
+            <div className="flex flex-col gap-2.5 pt-3 border-t border-black/5">
+              <div className="flex items-center gap-2.5 text-[#666666]">
+                <div className="w-6 h-6 rounded-lg bg-black/5 flex items-center justify-center text-[#1A1A1A] shrink-0">
+                  <Building size={12} />
+                </div>
                 <span className="text-xs font-medium">CLI-{client.id.substring(0, 4).toUpperCase()}</span>
               </div>
-              <div className="flex items-center gap-3 text-[#666666]">
-                <div className="w-7 h-7 rounded-full bg-black/5 flex items-center justify-center"><Mail size={14} /></div>
-                <a href={`mailto:${client.email}`} className="text-xs font-medium hover:text-[#1A1A1A] transition-colors">{client.email}</a>
+              <div className="flex items-center gap-2.5 text-[#666666]">
+                <div className="w-6 h-6 rounded-lg bg-black/5 flex items-center justify-center text-[#1A1A1A] shrink-0">
+                  <Mail size={12} />
+                </div>
+                <a href={`mailto:${client.email}`} className="text-xs font-medium hover:text-[#1A1A1A] truncate transition-colors">
+                  {client.email || 'Sin email'}
+                </a>
               </div>
-              <div className="flex items-center gap-3 text-[#666666]">
-                <div className="w-7 h-7 rounded-full bg-black/5 flex items-center justify-center"><Phone size={14} /></div>
-                <a href={`tel:${client.phone}`} className="text-xs font-medium hover:text-[#1A1A1A] transition-colors">{client.phone}</a>
-              </div>
-            </div>
-
-            <div className="pt-5 border-t border-black/5">
-              <div className="flex justify-between items-center mb-3">
-                <h5 className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">Contactos ({contacts.length})</h5>
-                <button 
-                  onClick={() => { setContactFormData({ id: '', first_name: '', last_name: '', email: '', phone: '', role: 'Contacto' }); setIsContactModalOpen(true); }}
-                  className="p-1.5 hover:bg-black/5 rounded-full text-[#1A1A1A] transition-colors"
-                ><UserPlus size={14} /></button>
-              </div>
-              
-              <div className="flex flex-col gap-2">
-                {contacts.length === 0 ? (
-                  <div className="text-center py-4 bg-black/5 rounded-xl"><p className="text-[10px] text-[#666666] italic">No hay contactos.</p></div>
-                ) : (
-                  contacts.map((contact) => (
-                    <div key={contact.id} className="flex items-center justify-between group/contact bg-white p-2.5 rounded-xl border border-black/5 hover:border-[#FFD166]/50 transition-all">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#1A1A1A] font-bold text-[10px]">
-                          {contact.first_name[0]}{contact.last_name[0]}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-[#1A1A1A] leading-tight">{contact.first_name} {contact.last_name}</p>
-                          <p className="text-[9px] font-medium text-[#666666]">{contact.role}</p>
-                        </div>
-                      </div>
-                      <div className="flex opacity-0 group-hover/contact:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => { setContactFormData({...contact}); setIsContactModalOpen(true); }}
-                          className="p-1 hover:bg-black/5 rounded-full text-[#666666]"
-                        ><MoreVertical size={14} /></button>
-                        <button onClick={() => handleDeleteContact(contact.id)} className="p-1 hover:bg-red-50 rounded-full text-red-500"><Trash2 size={14} /></button>
-                      </div>
-                    </div>
-                  ))
-                )}
+              <div className="flex items-center gap-2.5 text-[#666666]">
+                <div className="w-6 h-6 rounded-lg bg-black/5 flex items-center justify-center text-[#1A1A1A] shrink-0">
+                  <Phone size={12} />
+                </div>
+                <a href={`tel:${client.phone}`} className="text-xs font-medium hover:text-[#1A1A1A] truncate transition-colors">
+                  {client.phone || 'Sin teléfono'}
+                </a>
               </div>
             </div>
           </div>
 
-          {/* Tarjeta de Redes Sociales y Reputación Digital */}
-          <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-black/5 pb-3">
+          {/* Tarjeta de Contactos */}
+          <div className="bg-white rounded-2xl border border-black/5 shadow-xs p-4 flex flex-col gap-3">
+            <div className="flex justify-between items-center pb-1">
+              <h5 className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">
+                Contactos ({contacts.length})
+              </h5>
+              <button 
+                onClick={() => { 
+                  setContactFormData({ id: '', first_name: '', last_name: '', email: '', phone: '', role: 'Contacto' }); 
+                  setIsContactModalOpen(true); 
+                }}
+                className="p-1 hover:bg-black/5 rounded-lg text-[#1A1A1A] transition-colors"
+                title="Agregar contacto"
+              >
+                <UserPlus size={14} />
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              {contacts.length === 0 ? (
+                <p className="text-[11px] text-[#888888] italic py-2 text-center bg-black/2 rounded-xl">
+                  Sin contactos registrados.
+                </p>
+              ) : (
+                contacts.map((contact) => (
+                  <div key={contact.id} className="flex items-center justify-between group bg-zinc-50/70 hover:bg-zinc-50 p-2.5 rounded-xl border border-black/5 transition-all">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-black/5 flex items-center justify-center text-[#1A1A1A] font-bold text-[10px] shrink-0">
+                        {contact.first_name[0] || ''}{contact.last_name[0] || ''}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-[#1A1A1A] truncate leading-tight">
+                          {contact.first_name} {contact.last_name}
+                        </p>
+                        <p className="text-[10px] text-[#666666] truncate">{contact.role}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button 
+                        onClick={() => { setContactFormData({...contact}); setIsContactModalOpen(true); }}
+                        className="p-1 hover:bg-black/5 rounded-lg text-[#666666]"
+                      >
+                        <MoreVertical size={13} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteContact(contact.id)} 
+                        className="p-1 hover:bg-red-50 rounded-lg text-red-500"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Tarjeta de Presencia Digital y Reputación Real */}
+          <div className="bg-white rounded-2xl border border-black/5 shadow-xs p-4 flex flex-col gap-3.5">
+            <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-bold text-[#1A1A1A]">Redes Sociales y Reputación Digital</h4>
-                <p className="text-[10px] text-[#666666] font-medium">Detectadas mediante Inteligencia Artificial y Búsqueda Web</p>
+                <h5 className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">
+                  Presencia Digital & Reputación
+                </h5>
+                <p className="text-[10px] text-[#666666]">Información pública verificada</p>
               </div>
               <button 
                 onClick={handleGenerateAI}
                 disabled={isGeneratingAI}
-                className="flex items-center gap-1.5 bg-[#222222] hover:bg-black text-white px-3 py-1.5 rounded-full text-[10px] font-bold transition-all disabled:opacity-50"
+                className="flex items-center gap-1 bg-black/5 hover:bg-black/10 text-[#1A1A1A] px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all disabled:opacity-50"
               >
-                {isGeneratingAI ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                {isGeneratingAI ? 'Buscando...' : 'Re-investigar Redes'}
+                {isGeneratingAI ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                <span>{isGeneratingAI ? 'Buscando...' : 'Re-investigar'}</span>
               </button>
             </div>
 
@@ -448,71 +576,81 @@ export default function ClientDetail() {
                 facebook: sp.facebook || null
               };
 
+              const hasRating = typeof sp.google_rating === 'number' && sp.google_rating > 0;
+              const hasReviews = typeof sp.google_reviews_count === 'number' && sp.google_reviews_count > 0;
+              const hasLinkedin = typeof sp.linkedin_followers === 'number' && sp.linkedin_followers > 0;
+              const hasInstagram = typeof sp.instagram_followers === 'number' && sp.instagram_followers > 0;
+
               return (
-                <div className="flex flex-col gap-4">
-                  {/* Metrics Row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-amber-50/60 border border-amber-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
-                      <span className="text-xs font-bold text-amber-900">{sp.google_rating ? `⭐ ${sp.google_rating}` : 'Sin datos'}</span>
-                      <span className="text-[9px] text-amber-700 font-medium">{sp.google_reviews_count ? `${sp.google_reviews_count} reseñas Google` : 'Google Maps'}</span>
+                <div className="flex flex-col gap-3">
+                  {/* Badges de Reputación y Reseñas */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Google Rating */}
+                    <div className="bg-amber-50/60 border border-amber-200/50 p-2.5 rounded-xl flex flex-col items-center justify-center text-center">
+                      <span className="text-xs font-bold text-amber-900">
+                        {hasRating ? `⭐ ${sp.google_rating}` : 'Sin reseñas'}
+                      </span>
+                      <span className="text-[9px] text-amber-700 font-medium">
+                        {hasReviews ? `${sp.google_reviews_count} reseñas Google` : 'Google Maps'}
+                      </span>
                     </div>
-                    <div className="bg-blue-50/60 border border-blue-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
-                      <span className="text-xs font-bold text-blue-900">{sp.linkedin_followers ? `${sp.linkedin_followers.toLocaleString('es-AR')}` : 'Sin datos'}</span>
-                      <span className="text-[9px] text-blue-700 font-medium">Seguidores LinkedIn</span>
-                    </div>
-                    <div className="bg-pink-50/60 border border-pink-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
-                      <span className="text-xs font-bold text-pink-900">{sp.instagram_followers ? `${sp.instagram_followers.toLocaleString('es-AR')}` : 'Sin datos'}</span>
-                      <span className="text-[9px] text-pink-700 font-medium">Seguidores Instagram</span>
-                    </div>
-                    <div className="bg-emerald-50/60 border border-emerald-200/50 p-2.5 rounded-2xl flex flex-col items-center justify-center text-center">
-                      <span className="text-xs font-bold text-emerald-900">{sp.sentiment || 'POSITIVO'}</span>
-                      <span className="text-[9px] text-emerald-700 font-medium">Sentimiento Marca</span>
+
+                    {/* Sentimiento */}
+                    <div className="bg-emerald-50/60 border border-emerald-200/50 p-2.5 rounded-xl flex flex-col items-center justify-center text-center">
+                      <span className="text-xs font-bold text-emerald-900">
+                        {sp.sentiment || 'POSITIVO'}
+                      </span>
+                      <span className="text-[9px] text-emerald-700 font-medium">Sentimiento de Marca</span>
                     </div>
                   </div>
 
-                  {/* Links Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
-                    <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
-                      <span className="font-bold text-[#666666] text-[10px] w-16">Sitio Web:</span>
+                  {/* Enlaces de Redes */}
+                  <div className="flex flex-col gap-1.5 text-xs pt-1 border-t border-black/5">
+                    <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-black/2">
+                      <Globe size={13} className="text-[#666666] shrink-0" />
+                      <span className="text-[10px] font-semibold text-[#888888] w-14">Web:</span>
                       {redes.web ? (
-                        <a href={redes.web.startsWith('http') ? redes.web : `https://${redes.web}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-semibold truncate flex-1">
-                          {redes.web}
+                        <a href={redes.web.startsWith('http') ? redes.web : `https://${redes.web}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-medium text-xs truncate">
+                          {redes.web.replace(/^https?:\/\//, '')}
                         </a>
                       ) : (
-                        <span className="text-[#999999] italic">No detectado</span>
+                        <span className="text-[11px] text-[#999999] italic">No detectada</span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
-                      <span className="font-bold text-[#666666] text-[10px] w-16">LinkedIn:</span>
+                    <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-black/2">
+                      <Linkedin size={13} className="text-blue-600 shrink-0" />
+                      <span className="text-[10px] font-semibold text-[#888888] w-14">LinkedIn:</span>
                       {redes.linkedin ? (
-                        <a href={redes.linkedin.startsWith('http') ? redes.linkedin : `https://${redes.linkedin}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-semibold truncate flex-1">
-                          {redes.linkedin}
+                        <a href={redes.linkedin.startsWith('http') ? redes.linkedin : `https://${redes.linkedin}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium text-xs truncate">
+                          Perfil de Empresa
                         </a>
                       ) : (
-                        <span className="text-[#999999] italic">No detectado</span>
+                        <span className="text-[11px] text-[#999999] italic">No detectado</span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
-                      <span className="font-bold text-[#666666] text-[10px] w-16">Instagram:</span>
+                    <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-black/2">
+                      <Instagram size={13} className="text-pink-600 shrink-0" />
+                      <span className="text-[10px] font-semibold text-[#888888] w-14">Instagram:</span>
                       {redes.instagram ? (
-                        <a href={redes.instagram.startsWith('http') ? redes.instagram : `https://${redes.instagram}`} target="_blank" rel="noreferrer" className="text-pink-600 hover:underline font-semibold truncate flex-1">
-                          {redes.instagram}
+                        <a href={redes.instagram.startsWith('http') ? redes.instagram : `https://${redes.instagram}`} target="_blank" rel="noreferrer" className="text-pink-600 hover:underline font-medium text-xs truncate">
+                          Cuenta Oficial
                         </a>
                       ) : (
-                        <span className="text-[#999999] italic">No detectado</span>
+                        <span className="text-[11px] text-[#999999] italic">No detectado</span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 bg-black/5 p-2.5 rounded-xl">
-                      <span className="font-bold text-[#666666] text-[10px] w-16">Facebook:</span>
+                    <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-black/2">
+                      <Facebook size={13} className="text-blue-800 shrink-0" />
+                      <span className="text-[10px] font-semibold text-[#888888] w-14">Facebook:</span>
                       {redes.facebook ? (
-                        <a href={redes.facebook.startsWith('http') ? redes.facebook : `https://${redes.facebook}`} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline font-semibold truncate flex-1">
-                          {redes.facebook}
+                        <a href={redes.facebook.startsWith('http') ? redes.facebook : `https://${redes.facebook}`} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline font-medium text-xs truncate">
+                          Página Oficial
                         </a>
                       ) : (
-                        <span className="text-[#999999] italic">No detectado</span>
+                        <span className="text-[11px] text-[#999999] italic">No detectado</span>
                       )}
                     </div>
                   </div>
@@ -522,80 +660,131 @@ export default function ClientDetail() {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA */}
-        <div className="xl:col-span-7 flex flex-col gap-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-3xl p-5 border border-black/5 shadow-sm flex flex-col justify-between gap-3 group">
-              <div className="p-2.5 bg-black/5 rounded-xl text-[#1A1A1A] w-fit">
+        {/* COLUMNA DERECHA (KPIs, Proyectos, Cotizaciones, Minutas Inteligentes) */}
+        <div className="lg:col-span-8 flex flex-col gap-5">
+          
+          {/* Fila de KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">Proyectos Activos</p>
+                <h4 className="text-2xl font-light text-[#1A1A1A] tracking-tight mt-0.5">{activeProjectsCount}</h4>
+              </div>
+              <div className="p-2.5 bg-black/5 rounded-xl text-[#1A1A1A]">
                 <Folder size={18} />
               </div>
-              <div>
-                <h4 className="text-3xl font-light text-[#1A1A1A] tracking-tight">{projects.filter(p => p.status === 'En Progreso').length}</h4>
-                <p className="text-[#666666] text-[10px] uppercase font-bold tracking-wider mt-0.5">Proyectos Activos</p>
-              </div>
             </div>
-            <div className="bg-[#1A1A1A] text-white rounded-3xl p-5 shadow-md flex flex-col justify-between gap-3 relative overflow-hidden">
-              <div className="absolute right-0 bottom-0 w-24 h-24 bg-white/5 rounded-full blur-xl -mr-10 -mb-10"></div>
-              <div className="p-2.5 bg-white/10 rounded-xl text-white w-fit relative z-10">
+
+            <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">Presupuesto Acumulado</p>
+                <h4 className="text-2xl font-light text-[#1A1A1A] tracking-tight mt-0.5">
+                  ${(totalBudget / 1000).toFixed(1)}k
+                </h4>
+              </div>
+              <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-xl">
                 <DollarSign size={18} />
               </div>
-              <div className="relative z-10">
-                <h4 className="text-3xl font-light tracking-tight">${(projects.reduce((acc, p) => acc + (p.budget || 0), 0) / 1000).toFixed(1)}k</h4>
-                <p className="text-white/60 text-[10px] uppercase font-bold tracking-wider mt-0.5">Presupuesto</p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">Cotizaciones</p>
+                <h4 className="text-2xl font-light text-[#1A1A1A] tracking-tight mt-0.5">{quotes.length}</h4>
+              </div>
+              <div className="p-2.5 bg-amber-50 text-amber-700 rounded-xl">
+                <FileText size={18} />
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-2">
-            {/* Projects Summary */}
-            <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-5 flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <h4 className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">Proyectos</h4>
-                <Link to="/projects/new" className="p-1.5 bg-black/5 rounded-lg hover:bg-[#FFD166] transition-colors"><Plus size={14} /></Link>
+          {/* Grid de Proyectos y Cotizaciones Rápidas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Proyectos */}
+            <div className="bg-white rounded-2xl border border-black/5 shadow-xs p-4 flex flex-col gap-3">
+              <div className="flex justify-between items-center pb-1">
+                <h5 className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">Proyectos</h5>
+                <Link to="/projects/new" className="p-1 hover:bg-black/5 rounded-lg text-[#1A1A1A] transition-colors">
+                  <Plus size={14} />
+                </Link>
               </div>
-              <div className="flex flex-col gap-2.5">
-                {projects.length === 0 && <p className="text-[11px] text-[#666666] italic text-center py-2">No hay proyectos.</p>}
-                {projects.slice(0, 3).map(p => (
-                  <Link key={p.id} to={`/projects/${p.id}`} className="flex justify-between items-center bg-zinc-50 p-3 rounded-xl border border-black/5 hover:border-black/20 transition-all">
-                    <div className="overflow-hidden mr-2">
-                      <p className="text-xs font-bold text-[#1A1A1A] truncate">{p.name}</p>
-                      <p className="text-[9px] font-bold text-[#666666] uppercase mt-0.5">{p.status}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[11px] font-bold text-[#1A1A1A]">${(p.budget || 0).toLocaleString()}</p>
-                    </div>
-                  </Link>
-                ))}
+              <div className="flex flex-col gap-2">
+                {projects.length === 0 ? (
+                  <p className="text-[11px] text-[#888888] italic py-2 text-center bg-black/2 rounded-xl">
+                    No hay proyectos asociados.
+                  </p>
+                ) : (
+                  projects.slice(0, 4).map(p => (
+                    <Link 
+                      key={p.id} 
+                      to={`/projects/${p.id}`} 
+                      className="flex justify-between items-center bg-zinc-50/70 hover:bg-zinc-50 p-2.5 rounded-xl border border-black/5 hover:border-black/20 transition-all"
+                    >
+                      <div className="overflow-hidden mr-2 min-w-0">
+                        <p className="text-xs font-bold text-[#1A1A1A] truncate">{p.name}</p>
+                        <p className="text-[9px] font-bold text-[#666666] uppercase mt-0.5">{p.status}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-bold text-[#1A1A1A]">${(p.budget || 0).toLocaleString()}</p>
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
 
-            {/* Quotes Summary */}
-            <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-5 flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <h4 className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">Cotizaciones</h4>
-                <button onClick={handleNewQuote} className="p-1.5 bg-black/5 rounded-lg hover:bg-[#FFD166] transition-colors"><Plus size={14} /></button>
+            {/* Cotizaciones */}
+            <div className="bg-white rounded-2xl border border-black/5 shadow-xs p-4 flex flex-col gap-3">
+              <div className="flex justify-between items-center pb-1">
+                <h5 className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">Cotizaciones</h5>
+                <button onClick={handleNewQuote} className="p-1 hover:bg-black/5 rounded-lg text-[#1A1A1A] transition-colors">
+                  <Plus size={14} />
+                </button>
               </div>
-              <div className="flex flex-col gap-2.5">
-                {quotes.length === 0 && <p className="text-[11px] text-[#666666] italic text-center py-2">No hay cotizaciones.</p>}
-                {quotes.slice(0, 3).map(q => (
-                  <Link key={q.id} to={`/propuestas/${q.id}`} className="flex justify-between items-center bg-zinc-50 p-3 rounded-xl border border-black/5 hover:border-black/20 transition-all">
-                    <div className="overflow-hidden mr-2">
-                      <p className="text-xs font-bold text-[#1A1A1A] truncate">{q.title}</p>
-                      <p className="text-[9px] font-bold text-[#999999] uppercase mt-0.5">{q.status}</p>
-                    </div>
-                  </Link>
-                ))}
+              <div className="flex flex-col gap-2">
+                {quotes.length === 0 ? (
+                  <p className="text-[11px] text-[#888888] italic py-2 text-center bg-black/2 rounded-xl">
+                    No hay cotizaciones emitidas.
+                  </p>
+                ) : (
+                  quotes.slice(0, 4).map(q => (
+                    <Link 
+                      key={q.id} 
+                      to={`/propuestas/${q.id}`} 
+                      className="flex justify-between items-center bg-zinc-50/70 hover:bg-zinc-50 p-2.5 rounded-xl border border-black/5 hover:border-black/20 transition-all"
+                    >
+                      <div className="overflow-hidden mr-2 min-w-0">
+                        <p className="text-xs font-bold text-[#1A1A1A] truncate">{q.title}</p>
+                        <p className="text-[9px] font-bold text-[#888888] uppercase mt-0.5">{q.status}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-bold text-[#1A1A1A]">${(q.total_amount || 0).toLocaleString()}</p>
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
+
           </div>
+
+          {/* SECCIÓN DE INTELIGENCIA DE MINUTAS Y ACUERDOS DEL CLIENTE */}
+          <MeetingIntelligenceSection
+            contextName={client.name}
+            transcripts={clientTranscripts}
+            initialIntelligence={client.client_analysis?.meeting_intelligence || null}
+            onSaveIntelligence={handleSaveIntelligence}
+          />
+
         </div>
       </div>
     </div>
 
-    {/* Modals */}
+    {/* MODAL EDITAR CLIENTE */}
     {isEditModalOpen && createPortal(
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col" onClick={(e) => e.stopPropagation()}>
           <div className="p-5 border-b border-black/5 flex justify-between items-center">
             <h3 className="text-base font-bold text-[#1A1A1A]">Editar Cliente</h3>
             <button onClick={() => setIsEditModalOpen(false)} className="p-1 hover:bg-black/5 rounded-full"><X size={18} /></button>
@@ -631,8 +820,8 @@ export default function ClientDetail() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-2">
-              <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#666666] hover:bg-black/5">Cancelar</button>
-              <button type="submit" disabled={savingClient} className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-xs font-bold"><Save size={14} />{savingClient ? 'Guardando...' : 'Guardar'}</button>
+              <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 rounded-xl text-xs font-bold text-[#666666] hover:bg-black/5">Cancelar</button>
+              <button type="submit" disabled={savingClient} className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold"><Save size={14} />{savingClient ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </form>
         </div>
@@ -640,9 +829,10 @@ export default function ClientDetail() {
       document.body
     )}
 
+    {/* MODAL CONTACTO */}
     {isContactModalOpen && createPortal(
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-3xl shadow-xl w-full max-w-md flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col" onClick={(e) => e.stopPropagation()}>
           <div className="p-5 border-b border-black/5 flex justify-between items-center">
             <h3 className="text-base font-bold text-[#1A1A1A]">{contactFormData.id ? 'Editar Contacto' : 'Nuevo Contacto'}</h3>
             <button onClick={() => setIsContactModalOpen(false)} className="p-1 hover:bg-black/5 rounded-full"><X size={18} /></button>
@@ -673,8 +863,8 @@ export default function ClientDetail() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-2">
-              <button type="button" onClick={() => setIsContactModalOpen(false)} className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#666666] hover:bg-black/5">Cancelar</button>
-              <button type="submit" disabled={savingContact} className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-xs font-bold"><Save size={14} />{savingContact ? 'Guardando...' : 'Guardar'}</button>
+              <button type="button" onClick={() => setIsContactModalOpen(false)} className="px-4 py-2 rounded-xl text-xs font-bold text-[#666666] hover:bg-black/5">Cancelar</button>
+              <button type="submit" disabled={savingContact} className="flex items-center gap-2 bg-[#222222] hover:bg-black disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold"><Save size={14} />{savingContact ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </form>
         </div>

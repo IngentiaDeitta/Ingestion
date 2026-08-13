@@ -1,8 +1,7 @@
-// Receives meeting transcripts from the Tactiq -> Zapier -> "Webhooks by Zapier"
-// bridge (Tactiq has no native generic webhook, see Recursos/README for the Zap
-// setup). Matches the lead by the attendee's email and stores the transcript.
-// Auth: shared-secret header (external caller, not a logged-in app user) —
-// verify_jwt is disabled at deploy time and this custom check replaces it.
+// Receives meeting transcripts and detailed summaries from Tactiq (MCP Server / Webhook / Zapier).
+// Matches by attendee email across:
+// 1. Leads (leads_cuentas) -> Updates transcript_text for Radiografia / Presale
+// 2. Clients & Projects (client_contacts / clients -> projects) -> Appends to transcripts with Tactiq detailed summary & action items
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -43,6 +42,13 @@ Deno.serve(async (req: Request) => {
 
   const email: string | undefined = body.email || body.attendee_email;
   const transcript: string | undefined = body.transcript || body.transcript_text;
+  const meetingTitle: string = body.title || body.meeting_title || "Minuta de Reunión Tactiq";
+  
+  // Detailed summary from Tactiq (notes, summary, highlights or custom breakdown)
+  const detailedSummary: string = body.detailed_summary || body.summary || body.notes || body.highlights || transcript || "Reunión registrada.";
+  const shortSummary: string = body.title || body.short_summary || meetingTitle;
+  const actionItems: string[] = Array.isArray(body.action_items) ? body.action_items : [];
+  const attendees: string[] = Array.isArray(body.attendees) ? body.attendees : [];
 
   if (!email || !transcript) {
     return new Response(JSON.stringify({ error: "email y transcript son requeridos" }), {
@@ -56,42 +62,151 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const { data: lead, error: findError } = await supabase
+  let leadMatched = false;
+  let projectMatched = false;
+  let clientMatched = false;
+  let updatedProjects: string[] = [];
+  let matchedLeadId: string | null = null;
+  let matchedClientId: string | null = null;
+
+  // 1. Check matching Lead
+  const { data: lead } = await supabase
     .from("leads_cuentas")
     .select("id")
     .ilike("email", email)
     .limit(1)
     .maybeSingle();
 
-  if (findError) {
-    return new Response(JSON.stringify({ error: findError.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (lead) {
+    leadMatched = true;
+    matchedLeadId = lead.id;
+    await supabase
+      .from("leads_cuentas")
+      .update({ transcript_text: transcript })
+      .eq("id", lead.id);
   }
 
-  if (!lead) {
-    // No matching lead: respond 200 (not an error) so Zapier doesn't retry forever,
-    // but flag it clearly so it's easy to spot in logs.
-    return new Response(JSON.stringify({ ok: true, matched: false, reason: `No lead found for email ${email}` }), {
+  // 2. Check matching Client (Directly or via client_contacts)
+  let foundClientId: string | null = null;
+
+  const { data: contact } = await supabase
+    .from("client_contacts")
+    .select("id, client_id")
+    .ilike("email", email)
+    .limit(1)
+    .maybeSingle();
+
+  if (contact && contact.client_id) {
+    foundClientId = contact.client_id;
+  } else {
+    const { data: directClient } = await supabase
+      .from("clients")
+      .select("id, name")
+      .ilike("email", email)
+      .limit(1)
+      .maybeSingle();
+
+    if (directClient) {
+      foundClientId = directClient.id;
+    }
+  }
+
+  if (foundClientId) {
+    const { data: clientRecord } = await supabase
+      .from("clients")
+      .select("id, name, client_analysis")
+      .eq("id", foundClientId)
+      .single();
+
+    if (clientRecord) {
+      clientMatched = true;
+      matchedClientId = clientRecord.id;
+
+      const currentClientAnalysis = clientRecord.client_analysis || {};
+      const clientTranscripts = currentClientAnalysis.transcripts || [];
+      
+      const newTranscript = {
+        id: `tactiq-${crypto.randomUUID()}`,
+        client_id: clientRecord.id,
+        created_at: new Date().toISOString(),
+        summary: shortSummary,
+        detailed_summary: detailedSummary,
+        action_items: actionItems.length ? actionItems : undefined,
+        attendees: attendees.length ? attendees : undefined,
+        transcript_text: transcript
+      };
+
+      const updatedClientTranscripts = [newTranscript, ...clientTranscripts];
+
+      await supabase
+        .from("clients")
+        .update({
+          client_analysis: {
+            ...currentClientAnalysis,
+            transcripts: updatedClientTranscripts
+          }
+        })
+        .eq("id", clientRecord.id);
+
+      // Match active projects by client name
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, name, project_analysis")
+        .eq("client", clientRecord.name);
+
+      if (projects && projects.length > 0) {
+        for (const proj of projects) {
+          const currentAnalysis = proj.project_analysis || {};
+          const transcripts = currentAnalysis.transcripts || [];
+          
+          const projectTranscript = {
+            id: `tactiq-${crypto.randomUUID()}`,
+            project_id: proj.id,
+            created_at: new Date().toISOString(),
+            summary: shortSummary,
+            detailed_summary: detailedSummary,
+            action_items: actionItems.length ? actionItems : undefined,
+            attendees: attendees.length ? attendees : undefined,
+            transcript_text: transcript
+          };
+
+          const updatedProjectTranscripts = [projectTranscript, ...transcripts];
+
+          await supabase
+            .from("projects")
+            .update({
+              project_analysis: {
+                ...currentAnalysis,
+                transcripts: updatedProjectTranscripts
+              }
+            })
+            .eq("id", proj.id);
+
+          projectMatched = true;
+          updatedProjects.push(proj.id);
+        }
+      }
+    }
+  }
+
+  if (!leadMatched && !projectMatched && !clientMatched) {
+    return new Response(JSON.stringify({
+      ok: true,
+      matched: false,
+      reason: `No lead, client, or project found for email ${email}`
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  const { error: updateError } = await supabase
-    .from("leads_cuentas")
-    .update({ transcript_text: transcript })
-    .eq("id", lead.id);
-
-  if (updateError) {
-    return new Response(JSON.stringify({ error: updateError.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  return new Response(JSON.stringify({ ok: true, matched: true, lead_id: lead.id }), {
+  return new Response(JSON.stringify({
+    ok: true,
+    matched: true,
+    lead_id: matchedLeadId,
+    client_id: matchedClientId,
+    project_ids: updatedProjects
+  }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
