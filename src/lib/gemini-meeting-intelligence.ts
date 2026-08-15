@@ -31,15 +31,15 @@ export async function generateMeetingIntelligence(
 
   // Format minutas based on their individual detailed summaries (Tactiq breakdown)
   const minutasFormatted = transcripts.map((t, idx) => {
-    const dateStr = new Date(t.created_at).toLocaleDateString('es-ES', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric' 
+    const dateStr = new Date(t.created_at).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
     });
 
     const detailedText = t.detailed_summary || t.summary || t.transcript_text;
-    const actionItemsText = t.action_items && t.action_items.length 
-      ? `Acuerdos / Action Items de la sesión:\n${t.action_items.map(a => `• ${a}`).join('\n')}` 
+    const actionItemsText = t.action_items && t.action_items.length
+      ? `Acuerdos / Action Items de la sesión:\n${t.action_items.map(a => `• ${a}`).join('\n')}`
       : '';
 
     return `=== REUNIÓN #${idx + 1} · Fecha: ${dateStr} ===

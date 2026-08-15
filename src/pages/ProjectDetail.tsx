@@ -276,9 +276,40 @@ export default function ProjectDetail() {
         .order('name');
       setAllTeam(teamData || []);
 
-      // Fetch transcripts from project_analysis JSON to avoid dependency on unapplied migration
-      const transcriptsData = projectData.project_analysis?.transcripts || [];
-      setProjectTranscripts(transcriptsData.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+      // Fetch transcripts from project_analysis JSON and client_analysis JSON to aggregate all client/project transcripts
+      const aggregatedTranscripts: any[] = [];
+      const seenTranscriptIds = new Set<string>();
+
+      // 1. Transcripts from project
+      const projectTranscriptsList = projectData.project_analysis?.transcripts || [];
+      if (Array.isArray(projectTranscriptsList)) {
+        projectTranscriptsList.forEach((t: any) => {
+          if (t && !seenTranscriptIds.has(t.id || t.summary)) {
+            seenTranscriptIds.add(t.id || t.summary);
+            aggregatedTranscripts.push(t);
+          }
+        });
+      }
+
+      // 2. Transcripts from client if client name exists
+      if (projectData.client) {
+        const { data: clientInfo } = await supabase
+          .from('clients')
+          .select('client_analysis')
+          .eq('name', projectData.client)
+          .maybeSingle();
+
+        if (clientInfo?.client_analysis?.transcripts && Array.isArray(clientInfo.client_analysis.transcripts)) {
+          clientInfo.client_analysis.transcripts.forEach((t: any) => {
+            if (t && !seenTranscriptIds.has(t.id || t.summary)) {
+              seenTranscriptIds.add(t.id || t.summary);
+              aggregatedTranscripts.push(t);
+            }
+          });
+        }
+      }
+
+      setProjectTranscripts(aggregatedTranscripts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
 
       const { data: assignedData, error: assignedError } = await supabase
         .from('project_team')
@@ -300,11 +331,30 @@ export default function ProjectDetail() {
       // Fetch financial summary (billed amount)
       const { data: billedData } = await supabase
         .from('finances')
-        .select('amount')
-        .eq('project_id', id)
+        .select('amount, project_id, client_id')
         .eq('type', 'income');
+
+      let clientIdForProject: string | null = null;
+      if (projectData.client) {
+        const { data: cData } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('name', projectData.client)
+          .maybeSingle();
+        if (cData) clientIdForProject = cData.id;
+      }
       
-      const totalBilled = billedData?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
+      const projectFinances = (billedData || []).filter((f: any) => 
+        f.project_id === id || (clientIdForProject && f.client_id === clientIdForProject)
+      );
+      const financesBilled = projectFinances.reduce((acc: number, curr: any) => acc + (curr.amount || 0), 0);
+
+      const pMilestones = projectData.project_analysis?.milestones || [];
+      const milestonesBilled = (Array.isArray(pMilestones) ? pMilestones : [])
+        .filter((m: any) => m.completed && m.billing_confirmed)
+        .reduce((acc: number, m: any) => acc + (m.amount || 0), 0);
+
+      const totalBilled = Math.max(financesBilled, milestonesBilled);
       setBilledAmount(totalBilled);
 
       // Fetch related Kanban tasks
@@ -2013,7 +2063,72 @@ export default function ProjectDetail() {
               console.error('Error saving meeting intelligence:', error);
             } else {
               setProject(prev => prev ? { ...prev, project_analysis: updatedAnalysis } : null);
+              // Replicar a nivel cliente
+              if (project.client) {
+                const { data: clientInfo } = await supabase
+                  .from('clients')
+                  .select('id, client_analysis')
+                  .eq('name', project.client)
+                  .maybeSingle();
+
+                if (clientInfo) {
+                  await supabase
+                    .from('clients')
+                    .update({
+                      client_analysis: {
+                        ...(clientInfo.client_analysis || {}),
+                        meeting_intelligence: newIntel
+                      }
+                    })
+                    .eq('id', clientInfo.id);
+                }
+              }
             }
+          }}
+          onAddTranscript={async (newTranscript) => {
+            if (!id || !project) return;
+            const currentAnalysis = project.project_analysis || {};
+            const existingTranscripts = currentAnalysis.transcripts || [];
+            const updatedTranscripts = [newTranscript, ...existingTranscripts];
+            const updatedAnalysis = { ...currentAnalysis, transcripts: updatedTranscripts };
+
+            const { error } = await supabase
+              .from('projects')
+              .update({ project_analysis: updatedAnalysis })
+              .eq('id', id);
+
+            if (error) {
+              console.error('Error adding transcript in project:', error);
+              throw error;
+            }
+
+            // Replicar a nivel cliente
+            if (project.client) {
+              const { data: clientInfo } = await supabase
+                .from('clients')
+                .select('id, client_analysis')
+                .eq('name', project.client)
+                .maybeSingle();
+
+              if (clientInfo) {
+                const clientTranscripts = clientInfo.client_analysis?.transcripts || [];
+                const updatedClientTranscripts = [
+                  newTranscript,
+                  ...clientTranscripts.filter((t: any) => t.id !== newTranscript.id)
+                ];
+                await supabase
+                  .from('clients')
+                  .update({
+                    client_analysis: {
+                      ...(clientInfo.client_analysis || {}),
+                      transcripts: updatedClientTranscripts
+                    }
+                  })
+                  .eq('id', clientInfo.id);
+              }
+            }
+
+            await fetchProjectData();
           }}
         />
       )}
@@ -2113,7 +2228,7 @@ export default function ProjectDetail() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Cobros por Avances</span>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-medium text-emerald-600">
-                    ${milestones.filter(m => m.billing_confirmed).reduce((acc, m) => acc + (m.amount || 0), 0).toLocaleString()}
+                    ${milestones.filter(m => m.completed && m.billing_confirmed).reduce((acc, m) => acc + (m.amount || 0), 0).toLocaleString()}
                   </span>
                   <span className="text-xs text-[#666666]">
                     de ${(project.budget || 0).toLocaleString()} USD
@@ -2124,7 +2239,7 @@ export default function ProjectDetail() {
                     className="h-1.5 rounded-full bg-emerald-500"
                     style={{
                       width: `${(project.budget || 0) > 0
-                        ? (milestones.filter(m => m.billing_confirmed).reduce((acc, m) => acc + (m.amount || 0), 0) / (project.budget || 1)) * 100
+                        ? (milestones.filter(m => m.completed && m.billing_confirmed).reduce((acc, m) => acc + (m.amount || 0), 0) / (project.budget || 1)) * 100
                         : 0}%`
                     }}
                   />

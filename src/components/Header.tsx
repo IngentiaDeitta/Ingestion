@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import NotificationsModal from './NotificationsModal';
 
 export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: (val: boolean) => void }) {
   const { profile, signOut, isAdmin } = useUser();
@@ -11,6 +12,7 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
   const isAuthPage = ['/login', '/forgot-password', '/register'].includes(location.pathname);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAllNotificationsOpen, setIsAllNotificationsOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   
@@ -149,7 +151,6 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
   const handleOpenNotifications = async () => {
     setIsNotificationsOpen(!isNotificationsOpen);
     if (!isNotificationsOpen && hasUnread) {
-      // Opcional: Marcar como leídas al abrir
       setHasUnread(false);
     }
   };
@@ -164,6 +165,7 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
       if (error) throw error;
       fetchNotifications();
     } catch (error) {
+      console.error('Error marking all notifications as read:', error);
     }
   };
 
@@ -183,7 +185,6 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
   };
 
   const handleNotificationClick = async (n: any) => {
-    // 1. Marcar como leída si no lo está
     if (!n.is_read) {
       try {
         await supabase
@@ -196,17 +197,23 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
       }
     }
 
-    // 2. Cerrar menú
     setIsNotificationsOpen(false);
 
-    // 3. Navegar según el tipo
     switch (n.type) {
       case 'invoice': navigate('/finance'); break;
       case 'project': navigate('/projects'); break;
       case 'client': navigate('/clients'); break;
       case 'quote': navigate('/clients'); break;
-      case 'system': navigate('/settings'); break;
-      default: break;
+      case 'came_evento':
+      case 'came_boletin':
+      case 'came_ipip':
+      case 'came_novedad':
+        navigate('/dashboard');
+        break;
+      case 'system':
+      default:
+        navigate('/settings');
+        break;
     }
   };
 
@@ -313,8 +320,6 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
           </div>
         )}
       </div>
-
-
 
       {/* Right Actions */}
       <div className="flex items-center gap-3 md:gap-6 ml-auto">
@@ -423,8 +428,11 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
                     )}
                   </div>
                   <button 
-                    onClick={() => setIsNotificationsOpen(false)}
-                    className="w-full py-3 text-xs font-bold text-[#666666] bg-black/5 hover:bg-black/10 transition-colors uppercase tracking-[0.2em]"
+                    onClick={() => {
+                      setIsNotificationsOpen(false);
+                      setIsAllNotificationsOpen(true);
+                    }}
+                    className="w-full py-3 text-xs font-bold text-[#008fcd] hover:text-[#0070a0] bg-black/5 hover:bg-[#008fcd]/10 transition-colors uppercase tracking-[0.2em] flex items-center justify-center gap-1.5"
                   >
                     Ver todas las notificaciones
                   </button>
@@ -458,12 +466,8 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 top-full mt-4 w-64 bg-white rounded-3xl shadow-2xl border border-black/5 p-2 overflow-hidden animate-in slide-in-from-top-4 duration-300">
-               <div className="p-3 mb-2 border-b border-black/5">
-                  <p className="text-xs font-bold text-[#999999] uppercase tracking-widest mb-1">Empresa</p>
-                  <p className="text-sm font-bold text-[#1A1A1A]">Ingentia Digital Studio</p>
-               </div>
-               <Link to="/settings" className="flex items-center gap-3 w-full p-3 rounded-2xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors" onClick={() => setIsProfileOpen(false)}>
+            <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-3xl shadow-2xl border border-black/5 p-2 overflow-hidden animate-in slide-in-from-top-4 duration-300 z-20">
+               <Link to="/settings#perfil" className="flex items-center gap-3 w-full p-3 rounded-2xl hover:bg-black/5 text-sm font-medium text-[#1A1A1A] transition-colors" onClick={() => setIsProfileOpen(false)}>
                   <User size={18} className="text-[#666666]" />
                   Mi Perfil
                </Link>
@@ -483,6 +487,13 @@ export default function Header({ setIsMobileMenuOpen }: { setIsMobileMenuOpen?: 
           )}
         </div>
       </div>
+
+      {/* Modal Completo de Notificaciones */}
+      <NotificationsModal
+        isOpen={isAllNotificationsOpen}
+        onClose={() => setIsAllNotificationsOpen(false)}
+        onUpdateCount={fetchNotifications}
+      />
     </header>
   );
 }

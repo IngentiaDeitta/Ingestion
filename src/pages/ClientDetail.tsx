@@ -355,8 +355,67 @@ export default function ClientDetail() {
 
       if (error) throw error;
       setClient(prev => prev ? { ...prev, client_analysis: updatedAnalysis } : null);
+
+      // Replicar a proyectos activos del cliente
+      if (projects.length > 0) {
+        for (const proj of projects) {
+          const currentProjAnalysis = proj.project_analysis || {};
+          await supabase
+            .from('projects')
+            .update({
+              project_analysis: {
+                ...currentProjAnalysis,
+                meeting_intelligence: newIntel
+              }
+            })
+            .eq('id', proj.id);
+        }
+      }
     } catch (err) {
       console.error('Error saving meeting intelligence in client:', err);
+    }
+  };
+
+  const handleAddTranscript = async (newTranscript: ProjectTranscript) => {
+    if (!client) return;
+    try {
+      const currentAnalysis = client.client_analysis || {};
+      const existingTranscripts = currentAnalysis.transcripts || [];
+      const updatedTranscripts = [newTranscript, ...existingTranscripts];
+      const updatedAnalysis = { ...currentAnalysis, transcripts: updatedTranscripts };
+
+      const { error } = await supabase
+        .from('clients')
+        .update({ client_analysis: updatedAnalysis })
+        .eq('id', client.id);
+
+      if (error) throw error;
+
+      // Replicar a proyectos activos del cliente
+      if (projects.length > 0) {
+        for (const proj of projects) {
+          const currentProjAnalysis = proj.project_analysis || {};
+          const projTranscripts = currentProjAnalysis.transcripts || [];
+          const updatedProjTranscripts = [
+            { ...newTranscript, project_id: proj.id },
+            ...projTranscripts.filter((t: any) => t.id !== newTranscript.id)
+          ];
+          await supabase
+            .from('projects')
+            .update({
+              project_analysis: {
+                ...currentProjAnalysis,
+                transcripts: updatedProjTranscripts
+              }
+            })
+            .eq('id', proj.id);
+        }
+      }
+
+      await fetchClientAndProjects();
+    } catch (err) {
+      console.error('Error adding transcript in client:', err);
+      throw err;
     }
   };
 
@@ -775,6 +834,7 @@ export default function ClientDetail() {
             transcripts={clientTranscripts}
             initialIntelligence={client.client_analysis?.meeting_intelligence || null}
             onSaveIntelligence={handleSaveIntelligence}
+            onAddTranscript={handleAddTranscript}
           />
 
         </div>
