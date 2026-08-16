@@ -8,6 +8,7 @@ import { extractMilestonesWithGemini } from '../lib/gemini-milestones-extractor'
 import { generateTaskBreakdown, GeneratedTask, BalanceEquipo, ENGINEERING_PATH_PHASES } from '../lib/gemini-task-breakdown';
 import CronogramaProyecto from '../components/CronogramaProyecto';
 import MeetingIntelligenceSection from '../components/MeetingIntelligenceSection';
+import ProjectArchitectureSection from '../components/ProjectArchitectureSection';
 import { Sparkles, Loader2, Target, AlertTriangle, Calculator } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EditProjectModal from '../components/EditProjectModal';
@@ -2044,6 +2045,14 @@ export default function ProjectDetail() {
           )}
         </div>
       </div>
+
+      {/* Plan Maestro y Arquitectura del Proyecto */}
+      {project && (
+        <ProjectArchitectureSection
+          project={project}
+          onUpdate={fetchProjectData}
+        />
+      )}
 
       {/* Minutas y Acuerdos de Reunión Inteligentes */}
       {project && (
