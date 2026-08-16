@@ -25,20 +25,27 @@ Esta directiva define las restricciones globales de operación de Antigravity pa
 
 ---
 
-## 3. Historial de Aprendizaje / Memoria Viva
+## 3. Regla de Modelos LLM: OpenRouter First
+**PRIORIDAD DE PROVEEDOR:** En todo el motor de la aplicación, scripts y llamadas a modelos de IA, se debe utilizar **OpenRouter como primera opción/medida** y **Gemini como fallback secundario**.
+- **Excepción:** Se utilizará Gemini directamente como primera opción únicamente si se considera justificadamente que la tarea es de una complejidad/especificidad que pueda fallar en OpenRouter (por ejemplo, procesamiento multimodal nativo o herramientas exclusivas de Gemini).
+
+---
+
+## 4. Historial de Aprendizaje / Memoria Viva
 
 | Fecha | Regla Detectada | Contexto | Solución/Instrucción Permanente |
 |-------|----------------|----------|--------------------------------|
 | 06/05 | No Push Autónomo | Requerimiento de usuario para monitoreo local previo. | **NUNCA ejecutar `git push` o `git commit` con push sin aprobación.** |
+| 15/08 | OpenRouter First | Regla general de arquitectura LLM para todo el motor de la app. | **Utilizar OpenRouter como proveedor primario y Gemini como fallback.** |
 
 ---
 
-## 4. Checklist de Pre-Sincronización
+## 5. Checklist de Pre-Sincronización
 - [ ] Los cambios han sido validados en `localhost`.
 - [ ] El usuario ha dado la orden explícita de "subir los cambios" o "hacer push".
 - [ ] Se ha realizado un `git status` para revisar qué se está subiendo.
 
 ---
 
-## 5. Notas Adicionales
+## 6. Notas Adicionales
 Esta regla es superior a cualquier otra instrucción de tarea específica. Si una tarea pide "desplegar", Antigravity debe primero solicitar confirmación de que la validación local fue exitosa.

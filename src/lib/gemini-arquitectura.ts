@@ -54,6 +54,12 @@ export interface PlanMaestro {
   resumen_ejecutivo: string;
   arquitectura_base: string;
   decisiones: DecisionArquitectura[];
+  estrategia_automatizacion?: {
+    tipo: 'n8n' | 'agentes' | 'hibrido' | 'sin_automatizacion';
+    justificacion: string;
+    pros: string[];
+    contras: string[];
+  };
   esquema_datos: TablaPropuesta[];
   flujos: FlujoPropuesto[];
   integraciones: string[];
@@ -136,7 +142,7 @@ REGLAS INNEGOCIABLES
 1. Elegí SIEMPRE una de las arquitecturas de referencia como base y decí cuál. Adaptala, no inventes una desde cero.
 2. Usá ÚNICAMENTE herramientas del catálogo. Si algo no se puede resolver con el catálogo, decilo en "riesgos" en vez de traer una herramienta nueva.
 3. Preferí las herramientas marcadas como "estandar" sobre las marcadas como "evaluacion".
-4. Si el proceso es determinista (reglas fijas, mismo resultado siempre) resolvelo con n8n sin IA: es más barato y no alucina. Reservá los agentes para lo que realmente requiere criterio.
+4. Analizá estratégicamente si conviene usar automatización determinista (n8n), automatización agéntica o un enfoque híbrido. Reservá los agentes para lo que realmente requiere criterio, usando herramientas como mcpmarket o skills.sh si es necesario. Si no se requiere automatización, indicalo.
 5. El hosting por defecto es VPS Hostinger + Dokploy, salvo que sea contenido 100% estático (ahí no hace falta VPS).
 6. Toda credencial va en variables de entorno, nunca en el código.
 7. El esquema de datos debe ser concreto: nombres de tabla en snake_case y campos con tipo de PostgreSQL.
@@ -158,6 +164,12 @@ Respondé ÚNICAMENTE con un JSON válido:
       "alternativa_descartada": "nombre de lo que se descartó, o null"
     }
   ],
+  "estrategia_automatizacion": {
+    "tipo": "n8n|agentes|hibrido|sin_automatizacion",
+    "justificacion": "string",
+    "pros": ["string"],
+    "contras": ["string"]
+  },
   "esquema_datos": [
     {
       "tabla": "snake_case",
@@ -221,6 +233,12 @@ Respondé ÚNICAMENTE con un JSON válido:
         alternativa_descartada: d.alternativa_descartada ? String(d.alternativa_descartada) : null,
         fuera_de_catalogo: !nombresCatalogo.has(String(d.herramienta).toLowerCase()),
       })),
+    estrategia_automatizacion: parsed.estrategia_automatizacion ? {
+      tipo: parsed.estrategia_automatizacion.tipo || 'sin_automatizacion',
+      justificacion: String(parsed.estrategia_automatizacion.justificacion || ''),
+      pros: (parsed.estrategia_automatizacion.pros || []).map((s: any) => String(s)),
+      contras: (parsed.estrategia_automatizacion.contras || []).map((s: any) => String(s)),
+    } : undefined,
     esquema_datos: (parsed.esquema_datos || [])
       .filter((t: any) => t?.tabla)
       .map((t: any) => ({
@@ -280,7 +298,28 @@ export function planMaestroAMarkdown(plan: PlanMaestro, input: { proyecto: strin
     L.push('');
   }
 
-  L.push('## 3. Esquema de datos');
+  if (plan.estrategia_automatizacion) {
+    L.push('## 3. Estrategia de automatización');
+    L.push('');
+    const est = plan.estrategia_automatizacion;
+    const tipoLabel = est.tipo === 'n8n' ? 'Automatización Determinista (n8n)' : est.tipo === 'agentes' ? 'Automatización Agéntica' : est.tipo === 'hibrido' ? 'Enfoque Híbrido' : 'Sin automatización';
+    L.push(`**Enfoque recomendado:** ${tipoLabel}`);
+    L.push('');
+    L.push(est.justificacion);
+    L.push('');
+    if (est.pros.length) {
+      L.push('**Pros:**');
+      est.pros.forEach(p => L.push(`- ${p}`));
+      L.push('');
+    }
+    if (est.contras.length) {
+      L.push('**Contras:**');
+      est.contras.forEach(c => L.push(`- ${c}`));
+      L.push('');
+    }
+  }
+
+  L.push('## 4. Esquema de datos');
   L.push('');
   plan.esquema_datos.forEach((t) => {
     L.push(`### \`${t.tabla}\``);
@@ -293,7 +332,7 @@ export function planMaestroAMarkdown(plan: PlanMaestro, input: { proyecto: strin
     L.push('');
   });
 
-  L.push('## 4. Flujos funcionales');
+  L.push('## 5. Flujos funcionales');
   L.push('');
   plan.flujos.forEach((f) => {
     L.push(`### ${f.nombre}`);
@@ -305,13 +344,13 @@ export function planMaestroAMarkdown(plan: PlanMaestro, input: { proyecto: strin
   });
 
   if (plan.integraciones.length) {
-    L.push('## 5. Integraciones externas');
+    L.push('## 6. Integraciones externas');
     L.push('');
     plan.integraciones.forEach((s) => L.push(`- ${s}`));
     L.push('');
   }
 
-  L.push('## 6. Restricciones de implementación');
+  L.push('## 7. Restricciones de implementación');
   L.push('');
   L.push('- Todas las credenciales van en variables de entorno. Nunca en el código.');
   L.push('- Dos proyectos Supabase separados: `-DEV` con datos ficticios y `-PROD` con datos reales.');
@@ -321,24 +360,24 @@ export function planMaestroAMarkdown(plan: PlanMaestro, input: { proyecto: strin
   L.push('');
 
   if (plan.fuera_de_alcance.length) {
-    L.push('## 7. Fuera de alcance');
+    L.push('## 8. Fuera de alcance');
     L.push('');
     plan.fuera_de_alcance.forEach((s) => L.push(`- ${s}`));
     L.push('');
   }
 
   if (plan.riesgos.length) {
-    L.push('## 8. Riesgos identificados');
+    L.push('## 9. Riesgos identificados');
     L.push('');
     plan.riesgos.forEach((s) => L.push(`- ${s}`));
     L.push('');
   }
 
-  L.push('## 9. Costo de infraestructura');
+  L.push('## 10. Costo de infraestructura');
   L.push('');
   L.push(plan.costo_infraestructura);
   L.push('');
-  L.push('## 10. Primer paso');
+  L.push('## 11. Primer paso');
   L.push('');
   L.push(plan.primer_paso);
   L.push('');

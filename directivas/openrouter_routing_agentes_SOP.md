@@ -8,19 +8,17 @@
 ---
 
 ## 1. Objetivos y Alcance
-- **Objetivo Principal:** Optimizar los costos y límites de velocidad distribuyendo el procesamiento de IA según la complejidad de la tarea:
-  - **Tareas Simples:** Utilizan modelos **FREE** de OpenRouter (autenticados con `OPENROUTER` / `OPENROUTER_API_KEY` en `.env`).
-  - **Tareas Complejas:** Utilizan la API primaria de Google Gemini (`VITE_GEMINI_API_KEY`).
-- **Criterio de Éxito:** Toda tarea se enruta al proveedor correspondiente con conmutación por error (fallback) automática e invisible si el proveedor primario falla o supera su límite de velocidad.
+- **Objetivo Principal:** Optimizar costos, resiliencia y límites de velocidad priorizando **OpenRouter como proveedor primario** para todo el motor de la app/scripts y utilizando **Gemini API como fallback secundario**.
+- **Criterio de Éxito:** Toda tarea se intenta primero por OpenRouter (usando modelos free u óptimos según la tarea) y, en caso de fallo, error de cuota o rate-limit, conmuta automáticamente a Gemini API (o viceversa sólo si una tarea específica de alta complejidad lo requiere por razones técnicas explícitas).
 
 ---
 
-## 2. Clasificación de Tareas (Matriz de Complejidad)
+## 2. Clasificación de Tareas (Matriz de Prioridad)
 
 | Nivel de Complejidad | Tipo de Tarea | Proveedor Primario | Proveedor Fallback | Modelos / Configuración |
 |----------------------|---------------|-------------------|--------------------|-------------------------|
-| **SIMPLE** | Enriquecimiento básico de leads, clasificación industrial corta, extracción de campos JSON sencillos, resúmenes breves, tagging. | OpenRouter Free | Gemini API | `google/gemini-2.0-flash-lite-001:free`, `meta-llama/llama-3.3-70b-instruct:free`, `qwen/qwen-2.5-72b-instruct:free`, `openrouter/auto` |
-| **COMPLEJA** | Diagnósticos estratégicos, propuestas de Smart Quoter, informes de radiografía de empresas, análisis arquitectónico de soluciones, descomposición de proyectos en hitos. | Gemini API | OpenRouter Free | `gemini-2.5-flash` / `gemini-1.5-pro` (Gemini API) |
+| **GENERAL / ESTÁNDAR** | Enriquecimiento de leads, clasificación, extracción JSON, diagnósticos, propuestas, resúmenes, flujos estándar. | **OpenRouter** | **Gemini API** | `google/gemini-2.0-flash-lite-001:free`, `meta-llama/llama-3.3-70b-instruct:free`, `qwen/qwen-2.5-72b-instruct:free`, `openrouter/auto` |
+| **ESPECÍFICA / EXCEPCIONAL** | Tareas con dependencias directas de herramientas exclusivas de Gemini (búsqueda web nativa integrada de Google, inputs multimodales pesados, etc.). | **Gemini API** | **OpenRouter** | `gemini-2.5-flash` / `gemini-1.5-pro` (Gemini API) |
 
 ---
 

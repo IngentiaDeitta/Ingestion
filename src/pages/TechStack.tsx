@@ -8,6 +8,9 @@ import {
   diseniarArquitectura, planMaestroAMarkdown,
   type PlanMaestro, type HerramientaCatalogo, type ArquitecturaReferencia,
 } from '../lib/gemini-arquitectura';
+import { COMPLEMENTARY_TOOLS, type HerramientaComplementaria } from '../data/complementaryTools';
+
+type ItemCatalogo = (Herramienta & { tipo: 'base' }) | HerramientaComplementaria;
 
 type Tab = 'metodologia' | 'catalogo' | 'arquitecturas' | 'disenador' | 'runbooks';
 
@@ -127,7 +130,14 @@ export default function TechStack() {
       ) : (
         <main>
           {activeTab === 'metodologia' && <Metodologia fases={fases} />}
-          {activeTab === 'catalogo' && <Catalogo herramientas={herramientas} />}
+          {activeTab === 'catalogo' && (
+            <Catalogo
+              items={[
+                ...herramientas.map((h) => ({ ...h, tipo: 'base' as const })),
+                ...COMPLEMENTARY_TOOLS,
+              ]}
+            />
+          )}
           {activeTab === 'arquitecturas' && <Arquitecturas arquitecturas={arquitecturas} />}
           {activeTab === 'disenador' && (
             <Disenador herramientas={herramientas} arquitecturas={arquitecturas} />
@@ -249,23 +259,23 @@ function PromptBox({ titulo, texto }: { titulo: string; texto: string }) {
 
 /* ─────────────────────────── MÓDULO 2 · CATÁLOGO ─────────────────────────── */
 
-function Catalogo({ herramientas }: { herramientas: Herramienta[] }) {
+function Catalogo({ items }: { items: ItemCatalogo[] }) {
   const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
-  const [seleccionada, setSeleccionada] = useState<Herramienta | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [seleccionada, setSeleccionada] = useState<ItemCatalogo | null>(null);
 
-  const filtradas = herramientas.filter((h) => {
+  const filtradas = items.filter((h) => {
     const coincide =
       !busqueda ||
       [h.nombre, h.categoria, h.que_es, h.cuando_usar, ...(h.tags || [])]
         .join(' ')
         .toLowerCase()
         .includes(busqueda.toLowerCase());
-    const estadoOk = filtroEstado === 'todos' || h.estado === filtroEstado;
-    return coincide && estadoOk;
+    const tipoOk = filtroTipo === 'todos' || h.tipo === filtroTipo;
+    return coincide && tipoOk;
   });
 
-  const porCategoria = filtradas.reduce<Record<string, Herramienta[]>>((acc, h) => {
+  const porCategoria = filtradas.reduce<Record<string, ItemCatalogo[]>>((acc, h) => {
     (acc[h.categoria] ||= []).push(h);
     return acc;
   }, {});
@@ -283,16 +293,21 @@ function Catalogo({ herramientas }: { herramientas: Herramienta[] }) {
               className="w-full pl-11 pr-4 py-3 rounded-full border border-black/10 bg-white/60 text-sm outline-none focus:border-[#008fcd] focus:ring-2 focus:ring-[#008fcd]/15 transition-all"
             />
           </div>
-          <div className="flex bg-white/50 p-1 rounded-full border border-black/10">
-            {['todos', 'estandar', 'evaluacion'].map((e) => (
+          <div className="flex flex-wrap bg-white/50 p-1 rounded-full border border-black/10 gap-1">
+            {[
+              { id: 'todos', label: 'Todas' },
+              { id: 'base', label: 'Stack Base' },
+              { id: 'n8n_template', label: 'Plantillas n8n' },
+              { id: 'complementaria', label: 'Complementarias' },
+            ].map((e) => (
               <button
-                key={e}
-                onClick={() => setFiltroEstado(e)}
+                key={e.id}
+                onClick={() => setFiltroTipo(e.id)}
                 className={`px-4 py-2 rounded-full text-xs font-medium transition-colors ${
-                  filtroEstado === e ? 'bg-[#222222] text-white' : 'text-[#666666] hover:text-[#1A1A1A]'
+                  filtroTipo === e.id ? 'bg-[#222222] text-white' : 'text-[#666666] hover:text-[#1A1A1A]'
                 }`}
               >
-                {e === 'todos' ? 'Todas' : ESTADO_LABEL[e]}
+                {e.label}
               </button>
             ))}
           </div>
@@ -316,10 +331,12 @@ function Catalogo({ herramientas }: { herramientas: Herramienta[] }) {
                     <h4 className="font-semibold text-[#1A1A1A] text-sm">{h.nombre}</h4>
                     <span
                       className={`shrink-0 text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border font-semibold ${
-                        ESTADO_STYLE[h.estado] || ESTADO_STYLE.estandar
+                        h.tipo === 'base'
+                          ? ESTADO_STYLE[(h as Herramienta).estado] || ESTADO_STYLE.estandar
+                          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                       }`}
                     >
-                      {ESTADO_LABEL[h.estado] || h.estado}
+                      {h.tipo === 'base' ? (ESTADO_LABEL[(h as Herramienta).estado] || (h as Herramienta).estado) : h.tipo === 'n8n_template' ? 'Plantilla' : 'Recurso'}
                     </span>
                   </div>
                   <p className="text-xs text-[#666666] line-clamp-2">{h.que_es}</p>
@@ -355,28 +372,47 @@ function Catalogo({ herramientas }: { herramientas: Herramienta[] }) {
 
               <div className="space-y-4">
                 <Campo titulo="Cuándo usarla" valor={seleccionada.cuando_usar} />
-                <Campo titulo="Costo" valor={seleccionada.costo} mono />
+                
+                {seleccionada.tipo === 'base' && (
+                  <>
+                    <Campo titulo="Costo" valor={(seleccionada as Herramienta).costo} mono />
 
-                {seleccionada.alternativas?.length ? (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-[#666666] font-bold mb-2">
-                      Alternativas evaluadas
-                    </p>
-                    <div className="space-y-2">
-                      {seleccionada.alternativas.map((alt) => (
-                        <div key={alt.nombre} className="bg-white/60 p-3 rounded-xl border border-white/70">
-                          <p className="font-semibold text-xs text-[#1A1A1A] mb-1.5">vs {alt.nombre}</p>
-                          <p className="text-[11px] text-emerald-600 flex items-start gap-1">
-                            <Check className="w-3 h-3 mt-0.5 shrink-0" /> {alt.pros}
-                          </p>
-                          <p className="text-[11px] text-rose-600 flex items-start gap-1 mt-1">
-                            <X className="w-3 h-3 mt-0.5 shrink-0" /> {alt.contras}
-                          </p>
+                    {(seleccionada as Herramienta).alternativas?.length ? (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-[#666666] font-bold mb-2">
+                          Alternativas evaluadas
+                        </p>
+                        <div className="space-y-2">
+                          {(seleccionada as Herramienta).alternativas!.map((alt) => (
+                            <div key={alt.nombre} className="bg-white/60 p-3 rounded-xl border border-white/70">
+                              <p className="font-semibold text-xs text-[#1A1A1A] mb-1.5">vs {alt.nombre}</p>
+                              <p className="text-[11px] text-emerald-600 flex items-start gap-1">
+                                <Check className="w-3 h-3 mt-0.5 shrink-0" /> {alt.pros}
+                              </p>
+                              <p className="text-[11px] text-rose-600 flex items-start gap-1 mt-1">
+                                <X className="w-3 h-3 mt-0.5 shrink-0" /> {alt.contras}
+                              </p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+
+                {seleccionada.tipo !== 'base' && seleccionada.link && (
+                  <div className="pt-2 pb-1">
+                    <a
+                      href={seleccionada.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#008fcd] text-white text-xs font-medium hover:bg-[#007ab0] transition-colors shadow-sm"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      Visitar recurso externo
+                    </a>
                   </div>
-                ) : null}
+                )}
 
                 {seleccionada.tags?.length ? (
                   <div className="flex flex-wrap gap-1.5 pt-2">
